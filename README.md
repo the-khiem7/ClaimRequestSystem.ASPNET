@@ -1,4 +1,4 @@
-# hcm25-cpl-net04-team2-claim-request-system
+# net04-2025-claimrequest-team1
 
 
 
@@ -15,14 +15,14 @@ Already a pro? Just edit this README.md and make it your own. Want to make it ea
 
 ```
 cd existing_repo
-git remote add origin http://git.fa.edu.vn/net04/hcm25-cpl-net04-team2-claim-request-system.git
+git remote add origin http://git.fa.edu.vn/net04/net04-2025-claimrequest-team1.git
 git branch -M main
 git push -uf origin main
 ```
 
 ## Integrate with your tools
 
-- [ ] [Set up project integrations](http://git.fa.edu.vn/net04/hcm25-cpl-net04-team2-claim-request-system/-/settings/integrations)
+- [ ] [Set up project integrations](http://git.fa.edu.vn/net04/net04-2025-claimrequest-team1/-/settings/integrations)
 
 ## Collaborate with your team
 
