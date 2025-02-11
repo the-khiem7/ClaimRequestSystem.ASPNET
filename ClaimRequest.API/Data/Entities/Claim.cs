@@ -1,36 +1,76 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ClaimRequest.API.Data.Entities
 {
+    public enum ClaimStatus
+    {
+        Draft,
+        Submit,
+        Approve,
+        Reject,
+        Return,
+        Paid
+    }
+
+    [Table("Claims")]
     public class Claim
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        [Required]
+        [Column("id")]
         public int Id { get; set; }
-        public string ClaimType { get; set; }
-        public string Status { get; set; }
-        public string Name { get; set; }
-        public string Description { get; set; }
-        public string Amount { get; set; }
-        public string CreateAt { get; set; }
-        public string UpdateAt { get; set; }
 
-        [ForeignKey("Project")]
+        [Required]
+        [Column("claim_type")]
+        public string ClaimType { get; set; }
+
+        [Required]
+        [Column("status")]
+        public ClaimStatus Status { get; set; }
+
+        [Required]
+        [Column("name")]
+        public string Name { get; set; }
+
+        [Column("description")]
+        public string Description { get; set; }
+
+        [Column("amount")]
+        [Required]
+        public decimal Amount { get; set; }
+
+        [Column("create_at", TypeName = "timestamp with time zone")]
+        [Required]
+        [DataType(DataType.DateTime)]
+        public DateTime CreateAt { get; set; } = DateTime.UtcNow;
+
+        [Column("update_at", TypeName = "timestamp with time zone")]
+        [DataType(DataType.DateTime)]
+        public DateTime UpdateAt { get; set; }
+
+        // One Claim belongs to one Project
+        [ForeignKey(nameof(Project))]
+        [Column("project_id")]
         public int ProjectId { get; set; }
         public virtual Project Project { get; set; }
 
-        [ForeignKey("Staff")]
-        public int StaffId { get; set; }
-        public virtual Staff Staff { get; set; }
+        // One Claim has one Claimer
+        [ForeignKey(nameof(Claimer))]
+        [Column("claimer_id")]
+        public int ClaimerId { get; set; }
+        public virtual Staff Claimer { get; set; }
 
-        [ForeignKey("Approver")]
-        public int ApproverId { get; set; }
-        public virtual Staff Approver { get; set; }
+        // One Claim has many Approvers via the explicit join entity
+        public virtual ICollection<ClaimApprover> ClaimApprovers { get; set; } = new List<ClaimApprover>();
 
-        [ForeignKey("Finance")]
+        // One Claim has one Finance (last approver)
+        [ForeignKey(nameof(Finance))]
+        [Column("finance_id")]
         public int FinanceId { get; set; }
         public virtual Staff Finance { get; set; }
-
     }
 }

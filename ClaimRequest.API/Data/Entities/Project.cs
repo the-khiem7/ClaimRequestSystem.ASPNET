@@ -1,19 +1,51 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using ClaimRequest.API.Data.Entities;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ClaimRequest.API.Data.Entities
 {
+    public enum ProjectStatus
+    {
+        Ongoing,
+        Rejected,
+        Archived
+    }
+
+    [Table("Projects")]
     public class Project
     {
         [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        [Required]
+        [Column("id")]
         public int Id { get; set; }
+
         [Required]
+        [Column("name")]
         public string Name { get; set; }
+
+        [Column("description")]
         public string Description { get; set; }
+
         [Required]
-        public string Status { get; set; }
-        public string StartDate { get; set; }
-        public string EndDate { get; set; }
+        [Column("status")]
+        public ProjectStatus Status { get; set; }
+
+        // Configure to store only the date (without time)
+        [Column("start_date", TypeName = "date")]
+        [Required]
+        [DataType(DataType.Date)]
+        public DateTime StartDate { get; set; } = DateTime.Today;
+
+        // Configure to store only the date (without time)
+        [Column("end_date", TypeName = "date")]
+        [Required]
+        [DataType(DataType.Date)]
+        public DateTime? EndDate { get; set; }
+
+        [Column("budget")]
         public long Budget { get; set; }
 
         [Required]
@@ -21,9 +53,8 @@ namespace ClaimRequest.API.Data.Entities
         public int ProjectManagerId { get; set; }
         public virtual Staff ProjectManager { get; set; }
 
-        public virtual ICollection<Claim>? Claims { get; set; }
-        public virtual ICollection<Staff>? Staffs { get; set; }
+        public virtual ICollection<Claim>? Claims { get; set; } = new List<Claim>();
 
-
+        public virtual ICollection<ProjectStaff> ProjectStaffs { get; set; } = new List<ProjectStaff>();
     }
 }
