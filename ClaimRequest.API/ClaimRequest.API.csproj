@@ -35,6 +35,7 @@
 	  <Folder Include="Controllers\" />
 	  <Folder Include="Data\DTOs\" />
 	  <Folder Include="Data\Responses\" />
+	  <Folder Include="Migrations\" />
 	  <Folder Include="Repositories\" />
 	  <Folder Include="Services\" />
 	</ItemGroup>
