@@ -11,7 +11,7 @@ namespace ClaimRequest.API.Extensions
         public static void ApplyMigrations(this IApplicationBuilder app)
         {
             using IServiceScope scope = app.ApplicationServices.CreateScope();
-            using AppDbContext context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            using ClaimRequestDbContext context = scope.ServiceProvider.GetRequiredService<ClaimRequestDbContext>();
 
             try
             {
@@ -38,7 +38,7 @@ namespace ClaimRequest.API.Extensions
             }
             catch (Exception ex)
             {
-                var logger = scope.ServiceProvider.GetRequiredService<ILogger<AppDbContext>>();
+                var logger = scope.ServiceProvider.GetRequiredService<ILogger<ClaimRequestDbContext>>();
                 logger.LogError(ex, "An error occurred while migrating the database.");
                 throw;
             }

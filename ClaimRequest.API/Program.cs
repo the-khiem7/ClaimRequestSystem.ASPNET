@@ -54,7 +54,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // add db context
-builder.Services.AddDbContext<AppDbContext>(options =>
+builder.Services.AddDbContext<ClaimRequestDbContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("PostgresConnection"),
         npgsqlOptionsAction: sqlOptions =>
@@ -91,13 +91,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+// Update the Kestrel configuration
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenAnyIP(5000); // HTTP
+    serverOptions.ListenAnyIP(5001, listenOptions =>
+    {
+        // In development/docker, we'll use HTTP instead of HTTPS
+        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    // will be used to apply the migrations to the database when the application starts
-    // app.ApplyMigrations(); // uncomment this line to apply the migrations
+    // Only apply migrations if explicitly enabled in configuration
+    if (builder.Configuration.GetValue<bool>("ApplyMigrations", false))
+    {
+        app.ApplyMigrations();
+    }
+
     app.UseSwagger();
     app.UseSwaggerUI();
 }
@@ -105,7 +120,7 @@ if (app.Environment.IsDevelopment())
 // Add the ExceptionHandlerMiddleware to the pipeline
 app.UseMiddleware<ExceptionHandlerMiddleware>();
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseCors(options =>
 {
