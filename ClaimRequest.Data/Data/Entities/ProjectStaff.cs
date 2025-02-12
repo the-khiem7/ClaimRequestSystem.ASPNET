@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace ClaimRequest.API.Data.Entities
+namespace ClaimRequest.DAL.Data.Entities
 {
     public enum ProjectRole
     {
@@ -15,18 +15,18 @@ namespace ClaimRequest.API.Data.Entities
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("id")]
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         [Required]
         [ForeignKey(nameof(Project))]
         [Column("project_id")]
-        public int ProjectId { get; set; }
+        public Guid ProjectId { get; set; }
         public virtual Project Project { get; set; }
 
         [Required]
         [ForeignKey(nameof(Staff))]
         [Column("staff_id")]
-        public int StaffId { get; set; }
+        public Guid StaffId { get; set; }
         public virtual Staff Staff { get; set; }
 
         [Required]

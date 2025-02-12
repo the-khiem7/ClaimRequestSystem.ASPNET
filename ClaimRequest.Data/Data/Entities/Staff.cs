@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace ClaimRequest.API.Data.Entities
+namespace ClaimRequest.DAL.Data.Entities
 {
     public enum Position
     {
@@ -16,9 +16,8 @@ namespace ClaimRequest.API.Data.Entities
     {
         [Key]
         [Required]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("id")]
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         [Required]
         [Column("name")]
         public string Name { get; set; }

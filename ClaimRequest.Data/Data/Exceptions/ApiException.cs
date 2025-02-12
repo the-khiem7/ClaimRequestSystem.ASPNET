@@ -1,6 +1,6 @@
-﻿using System.Net;
+using System.Net;
 
-namespace ClaimRequest.API.Exceptions
+namespace ClaimRequest.DAL.Data.Exceptions
 {
     public class ApiException : Exception
     {

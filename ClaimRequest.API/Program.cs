@@ -1,4 +1,4 @@
-using ClaimRequest.API.Data;
+using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.API.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
@@ -67,13 +67,17 @@ builder.Services.AddDbContext<ClaimRequestDbContext>(options =>
 });
 
 // Add services to the container.
-builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
+//builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 // disable the default ModelStateInvalidFilter => to use the custom ExceptionHandlerMiddleware
-builder.Services.Configure<ApiBehaviorOptions>(options =>
-{
-    options.SuppressModelStateInvalidFilter = true;
-});
+// neu dinh chuong khong doc duoc loi tu swagger => comment lai doan code phia duoi
+// ===============================================
+//builder.Services.Configure<ApiBehaviorOptions>(options =>
+//{
+//    options.SuppressModelStateInvalidFilter = true;
+//});
+// ===============================================
 
 // Add authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -118,7 +122,10 @@ if (app.Environment.IsDevelopment())
 }
 
 // Add the ExceptionHandlerMiddleware to the pipeline
-app.UseMiddleware<ExceptionHandlerMiddleware>();
+// comment lai doan code phia duoi neu chuong khong doc duoc loi tu swagger
+// ===============================================
+//app.UseMiddleware<ExceptionHandlerMiddleware>();
+// ===============================================
 
 //app.UseHttpsRedirection();
 

@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace ClaimRequest.API.Data.MetaDatas
+namespace ClaimRequest.DAL.Data.MetaDatas
 {
     public class ApiResponse<T>
     {

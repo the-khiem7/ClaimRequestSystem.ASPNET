@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using ClaimRequest.DAL.Data.MetaDatas;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using ClaimRequest.API.Data.MetaDatas;
 
 namespace ClaimRequest.API.Extensions
 {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace ClaimRequest.API.Data.Entities
+namespace ClaimRequest.DAL.Data.Entities
 {
     public enum ClaimStatus
     {
@@ -19,10 +19,9 @@ namespace ClaimRequest.API.Data.Entities
     public class Claim
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Required]
         [Column("id")]
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         [Required]
         [Column("claim_type")]
@@ -55,13 +54,13 @@ namespace ClaimRequest.API.Data.Entities
         // One Claim belongs to one Project
         [ForeignKey(nameof(Project))]
         [Column("project_id")]
-        public int ProjectId { get; set; }
+        public Guid ProjectId { get; set; }
         public virtual Project Project { get; set; }
 
         // One Claim has one Claimer
         [ForeignKey(nameof(Claimer))]
         [Column("claimer_id")]
-        public int ClaimerId { get; set; }
+        public Guid ClaimerId { get; set; }
         public virtual Staff Claimer { get; set; }
 
         // One Claim has many Approvers via the explicit join entity
@@ -70,7 +69,7 @@ namespace ClaimRequest.API.Data.Entities
         // One Claim has one Finance (last approver)
         [ForeignKey(nameof(Finance))]
         [Column("finance_id")]
-        public int FinanceId { get; set; }
+        public Guid FinanceId { get; set; }
         public virtual Staff Finance { get; set; }
     }
 }
