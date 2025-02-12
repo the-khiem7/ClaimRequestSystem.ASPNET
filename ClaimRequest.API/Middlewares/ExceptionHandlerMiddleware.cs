@@ -1,8 +1,8 @@
-﻿using ClaimRequest.API.Data.MetaDatas;
-using ClaimRequest.API.Exceptions;
+﻿using ClaimRequest.DAL.Data.MetaDatas;
+using ClaimRequest.DAL.Data.Exceptions;
 using System.Net;
 
-namespace ClaimRequest.API.Extensions
+namespace ClaimRequest.API.Middlewares
 {
     public class ExceptionHandlerMiddleware
     {

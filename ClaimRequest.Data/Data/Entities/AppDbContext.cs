@@ -1,8 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using ClaimRequest.API.Data.Entities;
 using System.Collections.Generic;
 
-namespace ClaimRequest.API.Data
+namespace ClaimRequest.DAL.Data.Entities
 {
     public class ClaimRequestDbContext : DbContext
     {

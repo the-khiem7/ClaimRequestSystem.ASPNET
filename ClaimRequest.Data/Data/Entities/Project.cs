@@ -1,10 +1,9 @@
-﻿using ClaimRequest.API.Data.Entities;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace ClaimRequest.API.Data.Entities
+namespace ClaimRequest.DAL.Data.Entities
 {
     public enum ProjectStatus
     {
@@ -17,10 +16,9 @@ namespace ClaimRequest.API.Data.Entities
     public class Project
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Required]
         [Column("id")]
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         [Required]
         [Column("name")]
@@ -50,7 +48,7 @@ namespace ClaimRequest.API.Data.Entities
 
         [Required]
         [ForeignKey("ProjectManager")]
-        public int ProjectManagerId { get; set; }
+        public Guid ProjectManagerId { get; set; }
         public virtual Staff ProjectManager { get; set; }
 
         public virtual ICollection<Claim>? Claims { get; set; } = new List<Claim>();
