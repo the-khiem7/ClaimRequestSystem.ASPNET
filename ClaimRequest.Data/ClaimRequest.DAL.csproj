@@ -7,8 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Data\Requests\" />
-    <Folder Include="Data\Responses\" />
     <Folder Include="Migrations\" />
   </ItemGroup>
 
