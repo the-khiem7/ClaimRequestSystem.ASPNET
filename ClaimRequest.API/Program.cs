@@ -8,6 +8,8 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using ClaimRequest.DAL.Repositories.Implements;
+using ClaimRequest.BLL.Services.Interfaces;
+using ClaimRequest.BLL.Services.Implements;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -74,6 +76,12 @@ builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 // Add IUnitOfWork and UnitOfWork
 builder.Services.AddScoped<IUnitOfWork<ClaimRequestDbContext>, UnitOfWork<ClaimRequestDbContext>>();
+
+// Add this line before registering your services
+builder.Services.AddHttpContextAccessor();
+
+// Add services to the container.
+builder.Services.AddScoped<IClaimService, ClaimService>();
 
 // Dependency Injection for Repositories and Services
 // ex: builder.Services.AddScoped<IStaffService, StaffService>();

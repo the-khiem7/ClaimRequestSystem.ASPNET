@@ -16,13 +16,13 @@ WORKDIR /src
 # Copy all csproj files and restore as distinct layers
 COPY ["ClaimRequest.API/ClaimRequest.API.csproj", "ClaimRequest.API/"]
 COPY ["ClaimRequest.Data/ClaimRequest.DAL.csproj", "ClaimRequest.Data/"]
-COPY ["ClaimRequest.Service/ClaimRequest.Service.csproj", "ClaimRequest.Service/"]
+COPY ["ClaimRequest.Service/ClaimRequest.BLL.csproj", "ClaimRequest.Service/"]
 COPY ["ClaimRequest.UnitTest/ClaimRequest.UnitTest.csproj", "ClaimRequest.UnitTest/"]
 
 # Restore packages
 RUN dotnet restore "ClaimRequest.API/ClaimRequest.API.csproj"
 RUN dotnet restore "ClaimRequest.Data/ClaimRequest.DAL.csproj"
-RUN dotnet restore "ClaimRequest.Service/ClaimRequest.Service.csproj"
+RUN dotnet restore "ClaimRequest.Service/ClaimRequest.BLL.csproj"
 RUN dotnet restore "ClaimRequest.UnitTest/ClaimRequest.UnitTest.csproj"
 
 # Copy everything else
