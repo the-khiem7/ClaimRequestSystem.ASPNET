@@ -7,6 +7,7 @@ namespace ClaimRequest.DAL.Data.Entities
 {
     public enum ProjectStatus
     {
+        Draft,
         Ongoing,
         Rejected,
         Archived
@@ -22,9 +23,11 @@ namespace ClaimRequest.DAL.Data.Entities
 
         [Required]
         [Column("name")]
+        [StringLength(100)]
         public string Name { get; set; }
 
         [Column("description")]
+        [StringLength(1000)]
         public string Description { get; set; }
 
         [Required]
@@ -43,8 +46,8 @@ namespace ClaimRequest.DAL.Data.Entities
         [DataType(DataType.Date)]
         public DateTime? EndDate { get; set; }
 
-        [Column("budget")]
-        public long Budget { get; set; }
+        [Column("budget", TypeName = "numeric")]
+        public decimal Budget { get; set; }
 
         [Required]
         [ForeignKey("ProjectManager")]
@@ -53,6 +56,6 @@ namespace ClaimRequest.DAL.Data.Entities
 
         public virtual ICollection<Claim>? Claims { get; set; } = new List<Claim>();
 
-        public virtual ICollection<ProjectStaff> ProjectStaffs { get; set; } = new List<ProjectStaff>();
+        public virtual ICollection<ProjectStaff>? ProjectStaffs { get; set; } = new List<ProjectStaff>();
     }
 }

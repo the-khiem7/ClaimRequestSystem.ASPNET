@@ -12,7 +12,7 @@ Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-co
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaimRequest.DAL", "ClaimRequest.Data\ClaimRequest.DAL.csproj", "{24228F23-90DB-40CF-8DB7-1A398F416AC8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaimRequest.Service", "ClaimRequest.Service\ClaimRequest.Service.csproj", "{1A9C1AC2-891E-418E-A04D-13E5236DB38D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaimRequest.BLL", "ClaimRequest.Service\ClaimRequest.BLL.csproj", "{1A9C1AC2-891E-418E-A04D-13E5236DB38D}"
 	ProjectSection(ProjectDependencies) = postProject
 		{24228F23-90DB-40CF-8DB7-1A398F416AC8} = {24228F23-90DB-40CF-8DB7-1A398F416AC8}
 	EndProjectSection

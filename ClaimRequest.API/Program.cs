@@ -6,14 +6,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using ClaimRequest.DAL.Repositories.Interfaces;
+using ClaimRequest.DAL.Repositories.Implements;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -53,7 +54,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// add db context
+// Add DbContext connect to Postgres
 builder.Services.AddDbContext<ClaimRequestDbContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("PostgresConnection"),
@@ -68,7 +69,15 @@ builder.Services.AddDbContext<ClaimRequestDbContext>(options =>
 
 // Add services to the container.
 //builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
+// tat ca cac service implement tu Profile cuar AutoMapperProfile se duoc tu dong add vao
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
+// Add IUnitOfWork and UnitOfWork
+builder.Services.AddScoped<IUnitOfWork<ClaimRequestDbContext>, UnitOfWork<ClaimRequestDbContext>>();
+
+// Dependency Injection for Repositories and Services
+// ex: builder.Services.AddScoped<IStaffService, StaffService>();
+
 
 // disable the default ModelStateInvalidFilter => to use the custom ExceptionHandlerMiddleware
 // neu dinh chuong khong doc duoc loi tu swagger => comment lai doan code phia duoi

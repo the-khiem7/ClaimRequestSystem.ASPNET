@@ -8,11 +8,21 @@ namespace ClaimRequest.DAL.Data.Entities
     public enum ClaimStatus
     {
         Draft,
-        Submit,
-        Approve,
-        Reject,
-        Return,
-        Paid
+        Pending,
+        Approved,
+        Paid,
+        Rejected,
+        Cancelled
+    }
+
+    public enum ClaimType
+    {
+        HardwareRequest,        // Requesting laptops, monitors, or peripherals
+        SoftwareLicense,        // Claiming a license or software subscription
+        OvertimeCompensation,   // Claiming extra payment for overtime work
+        ProjectBudgetIncrease,  // Requesting additional budget for a project
+        EquipmentRepair,        // Claiming repairs or replacements for broken equipment
+        Miscellaneous           // Any other claim that doesn't fit predefined types
     }
 
     [Table("Claims")]
@@ -25,7 +35,7 @@ namespace ClaimRequest.DAL.Data.Entities
 
         [Required]
         [Column("claim_type")]
-        public string ClaimType { get; set; }
+        public ClaimType ClaimType { get; set; }
 
         [Required]
         [Column("status")]
@@ -33,12 +43,14 @@ namespace ClaimRequest.DAL.Data.Entities
 
         [Required]
         [Column("name")]
+        [StringLength(100)]
         public string Name { get; set; }
 
-        [Column("description")]
-        public string Description { get; set; }
+        [Column("remark")]
+        [StringLength(1000)]
+        public string Remark { get; set; }
 
-        [Column("amount")]
+        [Column("amount", TypeName = "numeric")]
         [Required]
         public decimal Amount { get; set; }
 
@@ -49,7 +61,21 @@ namespace ClaimRequest.DAL.Data.Entities
 
         [Column("update_at", TypeName = "timestamp with time zone")]
         [DataType(DataType.DateTime)]
-        public DateTime UpdateAt { get; set; }
+        public DateTime UpdateAt { get; set; } = DateTime.UtcNow;
+
+        [Column("total_working_hours", TypeName = "numeric")]
+        [Required]
+        public decimal TotalWorkingHours { get; set; }
+
+        [Column("start_date", TypeName = "date")]
+        [Required]
+        [DataType(DataType.Date)]
+        public DateTime StartDate { get; set; }
+
+        [Column("end_date", TypeName = "date")]
+        [Required]
+        [DataType(DataType.Date)]
+        public DateTime EndDate { get; set; }
 
         // One Claim belongs to one Project
         [ForeignKey(nameof(Project))]
@@ -64,12 +90,15 @@ namespace ClaimRequest.DAL.Data.Entities
         public virtual Staff Claimer { get; set; }
 
         // One Claim has many Approvers via the explicit join entity
-        public virtual ICollection<ClaimApprover> ClaimApprovers { get; set; } = new List<ClaimApprover>();
+        public virtual ICollection<ClaimApprover>? ClaimApprovers { get; set; } = new List<ClaimApprover>();
 
         // One Claim has one Finance (last approver)
         [ForeignKey(nameof(Finance))]
         [Column("finance_id")]
-        public Guid FinanceId { get; set; }
-        public virtual Staff Finance { get; set; }
+        public Guid? FinanceId { get; set; }
+        public virtual Staff? Finance { get; set; }
+
+        // Add navigation property for change logs
+        public virtual ICollection<ClaimChangeLog> ChangeHistory { get; set; } = new List<ClaimChangeLog>();
     }
 }

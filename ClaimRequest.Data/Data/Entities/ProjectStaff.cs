@@ -6,14 +6,16 @@ namespace ClaimRequest.DAL.Data.Entities
     public enum ProjectRole
     {
         ProjectManager,
-        Member
+        Developer,
+        Tester,
+        BusinessAnalyst,
+        QualityAssurance,
     }
 
     [Table("ProjectStaffs")]
     public class ProjectStaff
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("id")]
         public Guid Id { get; set; }
 
