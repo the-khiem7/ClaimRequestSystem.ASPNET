@@ -3,13 +3,34 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ClaimRequest.DAL.Data.Entities
 {
-    public enum Position
+    public enum SystemRole
     {
         ProjectManager,
         Staff,
         Finance,
         Admin
     }
+
+    public enum Department
+    {
+        SoftwareDevelopment,   // Developers, engineers, and coders
+        QualityAssurance,      // Testers and QA engineers
+        ITSupport,            // Helpdesk and infrastructure support
+        ProjectManagement,    // Project managers and coordinators
+        BusinessAnalysis,     // Business analysts and requirement gatherers
+        UIUXDesign,           // UX/UI designers and front-end specialists
+        DevOps,               // CI/CD, cloud engineers, and automation
+        CyberSecurity,        // Security specialists and compliance officers
+        DataScience,          // AI, machine learning, and big data analytics
+        TechnicalWriting,     // Documentation and knowledge base maintenance
+        HumanResources,       // Recruitment, employee relations, and training
+        Finance,              // Budgeting, accounting, and financial planning
+        SalesAndMarketing,    // Sales, marketing, and client relationship management
+        CustomerSupport,      // Handling customer inquiries and support tickets
+        ResearchAndInnovation,// Exploring new technologies and innovations
+        LegalAndCompliance    // Handling legal, contracts, and policy enforcement
+    }
+
 
     [Table("Staffs")]
     public class Staff
@@ -20,16 +41,25 @@ namespace ClaimRequest.DAL.Data.Entities
         public Guid Id { get; set; }
         [Required]
         [Column("name")]
+        [StringLength(100)]
         public string Name { get; set; }
         [Required]
         [Column("email")]
+        [StringLength(256)]
         public string Email { get; set; }
         [Required]
         [Column("password")]
         public string Password { get; set; }
         [Required]
         [Column("role")]
-        public Position Position { get; set; }
+        public SystemRole SystemRole { get; set; }
+
+        [Column("department")]
+        [Required]
+        public Department Department { get; set; }
+
+        [Column("salary", TypeName = "numeric")]
+        public decimal Salary { get; set; }
 
         [Required]
         [Column("is_active")]
