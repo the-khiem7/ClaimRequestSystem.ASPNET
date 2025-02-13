@@ -22,9 +22,9 @@ namespace ClaimRequest.DAL.Data.Responses.Claim
 
         public decimal TotalWorkingHours { get; set; }
 
-        public DateTime StartDate { get; set; }
+        public DateOnly StartDate { get; set; }
 
-        public DateTime EndDate { get; set; }
+        public DateOnly EndDate { get; set; }
 
         public class Project
         {

@@ -67,15 +67,13 @@ namespace ClaimRequest.DAL.Data.Entities
         [Required]
         public decimal TotalWorkingHours { get; set; }
 
-        [Column("start_date", TypeName = "date")]
+        [Column("start_date")]
         [Required]
-        [DataType(DataType.Date)]
-        public DateTime StartDate { get; set; }
+        public DateOnly StartDate { get; set; }
 
-        [Column("end_date", TypeName = "date")]
+        [Column("end_date")]
         [Required]
-        [DataType(DataType.Date)]
-        public DateTime EndDate { get; set; }
+        public DateOnly EndDate { get; set; }
 
         // One Claim belongs to one Project
         [ForeignKey(nameof(Project))]
@@ -89,14 +87,14 @@ namespace ClaimRequest.DAL.Data.Entities
         public Guid ClaimerId { get; set; }
         public virtual Staff Claimer { get; set; }
 
-        // One Claim has many Approvers via the explicit join entity
-        public virtual ICollection<ClaimApprover>? ClaimApprovers { get; set; } = new List<ClaimApprover>();
-
         // One Claim has one Finance (last approver)
         [ForeignKey(nameof(Finance))]
         [Column("finance_id")]
         public Guid? FinanceId { get; set; }
         public virtual Staff? Finance { get; set; }
+
+        // One Claim has many Approvers via the explicit join entity
+        public virtual ICollection<ClaimApprover>? ClaimApprovers { get; set; } = new List<ClaimApprover>();
 
         // Add navigation property for change logs
         public virtual ICollection<ClaimChangeLog> ChangeHistory { get; set; } = new List<ClaimChangeLog>();

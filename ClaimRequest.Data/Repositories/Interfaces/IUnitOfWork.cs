@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace ClaimRequest.DAL.Repositories.Interfaces
 {
@@ -12,13 +13,16 @@ namespace ClaimRequest.DAL.Repositories.Interfaces
         int Commit();
 
         Task<int> CommitAsync();
+
+        Task<IDbContextTransaction> BeginTransactionAsync();
+
+        Task CommitTransactionAsync(IDbContextTransaction transaction);
+
+        Task RollbackTransactionAsync(IDbContextTransaction transaction);
     }
 
     public interface IUnitOfWork<TContext> : IUnitOfWork where TContext : DbContext
     {
         TContext Context { get; }
-        void BeginTransaction();
-        void CommitTransaction();
-        void RollbackTransaction();
     }
 }

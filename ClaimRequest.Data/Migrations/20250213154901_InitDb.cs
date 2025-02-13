@@ -40,14 +40,14 @@ namespace ClaimRequest.DAL.Migrations
                     start_date = table.Column<DateTime>(type: "date", nullable: false),
                     end_date = table.Column<DateTime>(type: "date", nullable: false),
                     budget = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    ProjectManagerId = table.Column<Guid>(type: "uuid", nullable: false)
+                    project_manager_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Projects", x => x.id);
                     table.ForeignKey(
-                        name: "FK_Projects_Staffs_ProjectManagerId",
-                        column: x => x.ProjectManagerId,
+                        name: "FK_Projects_Staffs_project_manager_id",
+                        column: x => x.project_manager_id,
                         principalTable: "Staffs",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -70,8 +70,7 @@ namespace ClaimRequest.DAL.Migrations
                     end_date = table.Column<DateTime>(type: "date", nullable: false),
                     project_id = table.Column<Guid>(type: "uuid", nullable: false),
                     claimer_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    finance_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    StaffId = table.Column<Guid>(type: "uuid", nullable: true)
+                    finance_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -82,11 +81,6 @@ namespace ClaimRequest.DAL.Migrations
                         principalTable: "Projects",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Claims_Staffs_StaffId",
-                        column: x => x.StaffId,
-                        principalTable: "Staffs",
-                        principalColumn: "id");
                     table.ForeignKey(
                         name: "FK_Claims_Staffs_claimer_id",
                         column: x => x.claimer_id,
@@ -200,14 +194,9 @@ namespace ClaimRequest.DAL.Migrations
                 column: "project_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Claims_StaffId",
-                table: "Claims",
-                column: "StaffId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Projects_ProjectManagerId",
+                name: "IX_Projects_project_manager_id",
                 table: "Projects",
-                column: "ProjectManagerId");
+                column: "project_manager_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ProjectStaffs_project_id",

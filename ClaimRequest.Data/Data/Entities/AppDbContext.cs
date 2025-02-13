@@ -55,14 +55,14 @@ namespace ClaimRequest.DAL.Data.Entities
             // Configure the relationship for Claim.Claimer
             modelBuilder.Entity<Claim>()
                 .HasOne(c => c.Claimer)
-                .WithMany() // No inverse navigation property on Staff for this relationship
+                .WithMany()
                 .HasForeignKey(c => c.ClaimerId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // Configure the relationship for Claim.Finance
             modelBuilder.Entity<Claim>()
                 .HasOne(c => c.Finance)
-                .WithMany() // No inverse navigation property on Staff for this relationship
+                .WithMany()
                 .HasForeignKey(c => c.FinanceId)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -101,6 +101,39 @@ namespace ClaimRequest.DAL.Data.Entities
                 .Property(s => s.Salary)
                 .HasColumnType("decimal(18,2)");
 
+            // Configure DateOnly conversions for Claim
+            modelBuilder.Entity<Claim>()
+                .Property(c => c.StartDate)
+                .HasColumnType("date")
+                .HasConversion(
+                    dateOnly => dateOnly.ToDateTime(TimeOnly.MinValue),
+                    dateTime => DateOnly.FromDateTime(dateTime)
+                );
+
+            modelBuilder.Entity<Claim>()
+                .Property(c => c.EndDate)
+                .HasColumnType("date")
+                .HasConversion(
+                    dateOnly => dateOnly.ToDateTime(TimeOnly.MinValue),
+                    dateTime => DateOnly.FromDateTime(dateTime)
+                );
+
+            // Configure DateOnly conversions for Project
+            modelBuilder.Entity<Project>()
+                .Property(p => p.StartDate)
+                .HasColumnType("date")
+                .HasConversion(
+                    dateOnly => dateOnly.ToDateTime(TimeOnly.MinValue),
+                    dateTime => DateOnly.FromDateTime(dateTime)
+                );
+
+            modelBuilder.Entity<Project>()
+                .Property(p => p.EndDate)
+                .HasColumnType("date")
+                .HasConversion<DateTime?>(
+        dateOnly => dateOnly.HasValue ? dateOnly.Value.ToDateTime(TimeOnly.MinValue) : null,
+        dateTime => dateTime.HasValue ? DateOnly.FromDateTime(dateTime.Value) : null
+    );
         }
 
         public override int SaveChanges()

@@ -10,6 +10,7 @@ using ClaimRequest.DAL.Repositories.Interfaces;
 using ClaimRequest.DAL.Repositories.Implements;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.BLL.Services.Implements;
+using ClaimRequest.API.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -82,6 +83,7 @@ builder.Services.AddHttpContextAccessor();
 
 // Add services to the container.
 builder.Services.AddScoped<IClaimService, ClaimService>();
+builder.Services.AddScoped<IStaffService, StaffService>();
 
 // Dependency Injection for Repositories and Services
 // ex: builder.Services.AddScoped<IStaffService, StaffService>();

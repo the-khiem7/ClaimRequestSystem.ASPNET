@@ -9,7 +9,6 @@ namespace ClaimRequest.DAL.Repositories.Implements
     {
         public TContext Context { get; }
         private Dictionary<Type, object> _repositories;
-        private IDbContextTransaction? _transaction = null;
 
         public UnitOfWork(TContext context)
         {
@@ -32,36 +31,25 @@ namespace ClaimRequest.DAL.Repositories.Implements
         #endregion
 
         #region Transaction Management
-        public void BeginTransaction()
+        public async Task<IDbContextTransaction> BeginTransactionAsync()
         {
-            _transaction = Context.Database.BeginTransaction();
+            return await Context.Database.BeginTransactionAsync();
         }
 
-        public void CommitTransaction()
+        public async Task CommitTransactionAsync(IDbContextTransaction transaction)
         {
-            if (_transaction != null)
-            {
-                _transaction.Commit();
-                _transaction.Dispose();
-                _transaction = null;
-            }
+            await transaction.CommitAsync();
         }
 
-        public void RollbackTransaction()
+        public async Task RollbackTransactionAsync(IDbContextTransaction transaction)
         {
-            if (_transaction != null)
-            {
-                _transaction.Rollback();
-                _transaction.Dispose();
-                _transaction = null;
-            }
+            await transaction.RollbackAsync();
         }
         #endregion
 
         #region IDisposable Implementation
         public void Dispose()
         {
-            _transaction?.Dispose();
             Context?.Dispose();
             GC.SuppressFinalize(this);
         }
@@ -92,7 +80,7 @@ namespace ClaimRequest.DAL.Repositories.Implements
             {
                 var exceptionMessage = string.Join(Environment.NewLine,
                     validationErrors.Select(error => $"Properties {error.MemberNames} Error: {error.ErrorMessage}"));
-                throw new Exception(exceptionMessage);
+                throw new ValidationException(exceptionMessage);
             }
         }
         #endregion

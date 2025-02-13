@@ -34,23 +34,20 @@ namespace ClaimRequest.DAL.Data.Entities
         [Column("status")]
         public ProjectStatus Status { get; set; }
 
-        // Configure to store only the date (without time)
-        [Column("start_date", TypeName = "date")]
+        [Column("start_date")]
         [Required]
-        [DataType(DataType.Date)]
-        public DateTime StartDate { get; set; } = DateTime.Today;
+        public DateOnly StartDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
 
-        // Configure to store only the date (without time)
-        [Column("end_date", TypeName = "date")]
+        [Column("end_date")]
         [Required]
-        [DataType(DataType.Date)]
-        public DateTime? EndDate { get; set; }
+        public DateOnly? EndDate { get; set; }
 
         [Column("budget", TypeName = "numeric")]
         public decimal Budget { get; set; }
 
         [Required]
         [ForeignKey("ProjectManager")]
+        [Column("project_manager_id")]
         public Guid ProjectManagerId { get; set; }
         public virtual Staff ProjectManager { get; set; }
 

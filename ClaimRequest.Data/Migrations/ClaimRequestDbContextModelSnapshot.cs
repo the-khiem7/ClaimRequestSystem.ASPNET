@@ -70,9 +70,6 @@ namespace ClaimRequest.DAL.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("remark");
 
-                    b.Property<Guid?>("StaffId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("date")
                         .HasColumnName("start_date");
@@ -97,8 +94,6 @@ namespace ClaimRequest.DAL.Migrations
                     b.HasIndex("FinanceId");
 
                     b.HasIndex("ProjectId");
-
-                    b.HasIndex("StaffId");
 
                     b.ToTable("Claims");
                 });
@@ -179,8 +174,7 @@ namespace ClaimRequest.DAL.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("description");
 
-                    b.Property<DateTime?>("EndDate")
-                        .IsRequired()
+                    b.Property<DateTime>("EndDate")
                         .HasColumnType("date")
                         .HasColumnName("end_date");
 
@@ -191,7 +185,8 @@ namespace ClaimRequest.DAL.Migrations
                         .HasColumnName("name");
 
                     b.Property<Guid>("ProjectManagerId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_manager_id");
 
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("date")
@@ -304,10 +299,6 @@ namespace ClaimRequest.DAL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ClaimRequest.DAL.Data.Entities.Staff", null)
-                        .WithMany("Claims")
-                        .HasForeignKey("StaffId");
-
                     b.Navigation("Claimer");
 
                     b.Navigation("Finance");
@@ -391,8 +382,6 @@ namespace ClaimRequest.DAL.Migrations
 
             modelBuilder.Entity("ClaimRequest.DAL.Data.Entities.Staff", b =>
                 {
-                    b.Navigation("Claims");
-
                     b.Navigation("ProjectStaffs");
                 });
 #pragma warning restore 612, 618

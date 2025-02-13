@@ -46,14 +46,13 @@ namespace ClaimRequest.DAL.Data.Requests.Claim
 
 
 
-        [Required(ErrorMessage = "Total working hour is required")]
-        [Range(0, double.MaxValue, ErrorMessage = "Must be greater than 0")]
-        public DateTime StartDate { get; set; }
+        [Required(ErrorMessage = "Start date is required")]
+        public DateOnly StartDate { get; set; }
 
 
-        [Required(ErrorMessage = "Total working hour is required")]
-        [Range(0, double.MaxValue, ErrorMessage = "Must be greater than 0")]
-        public DateTime EndDate { get; set; }
+        [Required(ErrorMessage = "End date is required")]
+        [CustomValidation(typeof(CreateClaimRequest), nameof(ValidateEndDate))]
+        public DateOnly EndDate { get; set; }
 
 
         [Required(ErrorMessage = "Project Id is required")]
@@ -63,5 +62,15 @@ namespace ClaimRequest.DAL.Data.Requests.Claim
 
         [Required(ErrorMessage = "Claimer Id is required")]
         public Guid ClaimerId { get; set; }
+
+        public static ValidationResult ValidateEndDate(DateOnly endDate, ValidationContext context)
+        {
+            var instance = (CreateClaimRequest)context.ObjectInstance;
+            if (endDate < instance.StartDate)
+            {
+                return new ValidationResult("End date must be greater than or equal to start date");
+            }
+            return ValidationResult.Success;
+        }
     }
 }

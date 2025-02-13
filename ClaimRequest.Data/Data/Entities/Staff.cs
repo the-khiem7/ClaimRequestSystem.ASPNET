@@ -65,10 +65,6 @@ namespace ClaimRequest.DAL.Data.Entities
         [Column("is_active")]
         public bool IsActive { get; set; } = true;
 
-        public virtual ICollection<Claim> Claims { get; set; } = [];
-
         public virtual ICollection<ProjectStaff> ProjectStaffs { get; set; } = [];
-
-
     }
 }
