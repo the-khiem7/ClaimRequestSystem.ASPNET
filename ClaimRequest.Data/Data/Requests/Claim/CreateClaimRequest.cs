@@ -11,7 +11,6 @@ namespace ClaimRequest.DAL.Data.Requests.Claim
 {
     public class CreateClaimRequest
     {
-
         [Required(ErrorMessage = "Claim Type is required")]
         public ClaimType ClaimType { get; set; }
 

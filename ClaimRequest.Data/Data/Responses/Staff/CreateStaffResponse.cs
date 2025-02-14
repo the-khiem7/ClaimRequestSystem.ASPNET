@@ -1,16 +1,20 @@
 ﻿using ClaimRequest.DAL.Data.Entities;
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ClaimRequest.DAL.Data.Responses.Staff
 {
+    // tao class response de tra thong tin ve cho client
     public class CreateStaffResponse
     {
         public Guid Id { get; set; }
 
-        public string Name { get; set; }
+        public string ResponseName { get; set; }
 
         public string Email { get; set; }
+
+        public string Password { get; set; }
 
         public SystemRole SystemRole { get; set; }
 

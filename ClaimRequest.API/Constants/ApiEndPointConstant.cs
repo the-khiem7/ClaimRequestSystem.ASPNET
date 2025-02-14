@@ -3,7 +3,7 @@
     public class ApiEndPointConstant
     {
         static ApiEndPointConstant()
-            { }
+        { }
 
         public const string RootEndpoint = "/api";
         public const string ApiVersion = "/v1";

@@ -81,12 +81,10 @@ builder.Services.AddScoped<IUnitOfWork<ClaimRequestDbContext>, UnitOfWork<ClaimR
 // Add this line before registering your services
 builder.Services.AddHttpContextAccessor();
 
-// Add services to the container.
-builder.Services.AddScoped<IClaimService, ClaimService>();
-builder.Services.AddScoped<IStaffService, StaffService>();
-
 // Dependency Injection for Repositories and Services
 // ex: builder.Services.AddScoped<IStaffService, StaffService>();
+builder.Services.AddScoped<IClaimService, ClaimService>();
+builder.Services.AddScoped<IStaffService, StaffService>();
 
 
 // disable the default ModelStateInvalidFilter => to use the custom ExceptionHandlerMiddleware

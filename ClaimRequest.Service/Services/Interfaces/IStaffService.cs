@@ -10,9 +10,14 @@ using System.Threading.Tasks;
 
 namespace ClaimRequest.BLL.Services.Interfaces
 {
+    // define cac method CRUD cho Staff
     public interface IStaffService
     {
-        // CRUD methods for Staff
+        // B2: Tao method CRUD cho Staff
         Task<CreateStaffResponse> CreateStaff(CreateStaffRequest createStaffRequest);
+        Task<CreateStaffResponse> GetStaffById(Guid id);
+        Task<IEnumerable<CreateStaffResponse>> GetStaffs();
+        Task<UpdateStaffResponse> UpdateStaff(Guid id, UpdateStaffRequest updateStaffRequest);
+        Task<bool> DeleteStaff(Guid id);
     }
 }
