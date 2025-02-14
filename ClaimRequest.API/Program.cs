@@ -82,9 +82,9 @@ builder.Services.AddScoped<IUnitOfWork<ClaimRequestDbContext>, UnitOfWork<ClaimR
 builder.Services.AddHttpContextAccessor();
 
 // Dependency Injection for Repositories and Services
-// ex: builder.Services.AddScoped<IStaffService, StaffService>();
 builder.Services.AddScoped<IClaimService, ClaimService>();
 builder.Services.AddScoped<IStaffService, StaffService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
 
 
 // disable the default ModelStateInvalidFilter => to use the custom ExceptionHandlerMiddleware

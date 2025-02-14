@@ -12,6 +12,7 @@ namespace ClaimRequest.DAL.Data.Requests.Staff
     // tao class CreateStaffRequest de nhan thong tin tu client gui ve BE
     public class CreateStaffRequest
     {
+
         [Required(ErrorMessage = "Name field is required")]
         [MaxLength(100, ErrorMessage = "Name cannot be more than 100 characters")]
         public string Name { get; set; }
