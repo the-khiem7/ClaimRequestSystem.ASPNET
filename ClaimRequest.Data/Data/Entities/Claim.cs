@@ -57,11 +57,11 @@ namespace ClaimRequest.DAL.Data.Entities
         [Column("create_at", TypeName = "timestamp with time zone")]
         [Required]
         [DataType(DataType.DateTime)]
-        public DateTime CreateAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreateAt { get; set; }
 
         [Column("update_at", TypeName = "timestamp with time zone")]
         [DataType(DataType.DateTime)]
-        public DateTime UpdateAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdateAt { get; set; }
 
         [Column("total_working_hours", TypeName = "numeric")]
         [Required]
@@ -75,28 +75,22 @@ namespace ClaimRequest.DAL.Data.Entities
         [Required]
         public DateOnly EndDate { get; set; }
 
-        // One Claim belongs to one Project
         [ForeignKey(nameof(Project))]
         [Column("project_id")]
         public Guid ProjectId { get; set; }
         public virtual Project Project { get; set; }
 
-        // One Claim has one Claimer
         [ForeignKey(nameof(Claimer))]
         [Column("claimer_id")]
         public Guid ClaimerId { get; set; }
         public virtual Staff Claimer { get; set; }
 
-        // One Claim has one Finance (last approver)
         [ForeignKey(nameof(Finance))]
         [Column("finance_id")]
         public Guid? FinanceId { get; set; }
         public virtual Staff? Finance { get; set; }
 
-        // One Claim has many Approvers via the explicit join entity
-        public virtual ICollection<ClaimApprover>? ClaimApprovers { get; set; } = new List<ClaimApprover>();
-
-        // Add navigation property for change logs
-        public virtual ICollection<ClaimChangeLog> ChangeHistory { get; set; } = new List<ClaimChangeLog>();
+        public virtual ICollection<ClaimApprover>? ClaimApprovers { get; set; }
+        public virtual ICollection<ClaimChangeLog> ChangeHistory { get; set; }
     }
 }

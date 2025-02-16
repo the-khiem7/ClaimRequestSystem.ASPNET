@@ -19,7 +19,12 @@ namespace ClaimRequest.BLL.Services.Implements
 {
     public class ClaimService : BaseService<Claim>, IClaimService
     {
-        public ClaimService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, ILogger<Claim> logger, IMapper mapper, IHttpContextAccessor httpContextAccessor) : base(unitOfWork, logger, mapper, httpContextAccessor)
+        public ClaimService(
+            IUnitOfWork<ClaimRequestDbContext> unitOfWork,
+            ILogger<Claim> logger,
+            IMapper mapper,
+            IHttpContextAccessor httpContextAccessor)
+            : base(unitOfWork, logger, mapper, httpContextAccessor)
         {
         }
 
@@ -27,35 +32,17 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+                // Map request to entity
+                var newClaim = _mapper.Map<Claim>(createClaimRequest);
 
-                return await executionStrategy.ExecuteAsync(async () =>
-                {
-                    // Begin transaction
-                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
-                    try
-                    {
-                        // Map request to entity
-                        var newClaim = _mapper.Map<Claim>(createClaimRequest);
+                // Insert new claim
+                await _unitOfWork.GetRepository<Claim>().InsertAsync(newClaim);
 
-                        // Insert new claim
-                        await _unitOfWork.GetRepository<Claim>().InsertAsync(newClaim);
+                // Save changes
+                await _unitOfWork.CommitAsync();
 
-                        // Save changes
-                        await _unitOfWork.CommitAsync();
-
-                        // Commit transaction
-                        await _unitOfWork.CommitTransactionAsync(transaction);
-
-                        // Map and return response
-                        return _mapper.Map<CreateClaimResponse>(newClaim);
-                    }
-                    catch (Exception)
-                    {
-                        await _unitOfWork.RollbackTransactionAsync(transaction);
-                        throw;
-                    }
-                });
+                // Map and return response
+                return _mapper.Map<CreateClaimResponse>(newClaim);
             }
             catch (Exception ex)
             {
