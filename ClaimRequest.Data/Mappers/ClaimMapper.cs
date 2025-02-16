@@ -22,13 +22,13 @@ namespace ClaimRequest.DAL.Mappers
                 .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
                 .ForMember(dest => dest.Finance, opt => opt.Ignore())
                 .ForMember(dest => dest.FinanceId, opt => opt.Ignore())
+                .ForMember(dest => dest.Project, opt => opt.Ignore())
+                .ForMember(dest => dest.Claimer, opt => opt.Ignore())
                 .ForMember(dest => dest.ClaimApprovers, opt => opt.Ignore())
                 .ForMember(dest => dest.ChangeHistory, opt => opt.Ignore());
 
-            //CreateMap<Project, ProjectResponse>();
-
-            //CreateMap<Claim, CreateClaimResponse>()
-            //    .ForMember(dest => dest.Project, opt => opt.MapFrom(src => src.Project));
+            // Map Claim to CreateClaimResponse
+            CreateMap<Claim, CreateClaimResponse>();
         }
     }
 }
