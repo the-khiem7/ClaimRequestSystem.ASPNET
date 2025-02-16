@@ -35,5 +35,19 @@ namespace ClaimRequest.API.Controllers
             }
             return CreatedAtAction(nameof(CreateClaim), response);
         }
+
+        [HttpPut(ApiEndPointConstant.Claim.CancelClaimEndpoint)]
+        [ProducesResponseType(typeof(CancelClaimResponse), StatusCodes.Status200OK)]
+        public async Task<IActionResult> CancelClaim([FromBody] CancelClaimRequest cancelClaimRequest)
+        {
+            var response = await _claimService.CancelClaim(cancelClaimRequest);
+            if (response == null)
+            {
+                _logger.LogError("Cancel claim failed");
+                return Problem("Cancel claim failed");
+            }
+            return Ok(response);
+        }
+
     }
 }
