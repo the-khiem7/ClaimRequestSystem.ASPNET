@@ -28,6 +28,60 @@ namespace ClaimRequest.BLL.Services.Implements
         {
         }
 
+        public async Task<CancelClaimResponse> CancelClaim(CancelClaimRequest cancelClaimRequest)
+        {
+            try
+            {
+                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+                return await executionStrategy.ExecuteAsync(async () =>
+                {
+                    // Begin transaction
+                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
+                    try
+                    {
+                        // Get claim by id
+                        var claim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(cancelClaimRequest.ClaimId);
+                        if (claim == null)
+                        {
+                            throw new Exception("Claim not found.");
+                        }
+                        if (claim.Status != ClaimStatus.Draft)
+                        {
+                            throw new Exception("Claim cannot be cancelled as it is not in Draft status.");
+                        }
+                        if (claim.ClaimerId != cancelClaimRequest.ClaimerId)
+                        {
+                            throw new Exception("Claim cannot be cancelled as you are not the claimer.");
+                        }
+                        // Update claim status
+                        claim.Status = ClaimStatus.Cancelled;
+                        claim.UpdateAt = DateTime.UtcNow;
+                        // Update claim
+                        _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
+                        // Save changes
+                        await _unitOfWork.CommitAsync();
+                        // Commit transaction
+                        await _unitOfWork.CommitTransactionAsync(transaction);
+                        // Log the change of claim status
+                        _logger.LogInformation("Cancelled claim by {ClaimerId} on {Time}", cancelClaimRequest.ClaimerId, claim.UpdateAt);
+                        // Map and return response
+                        return _mapper.Map<CancelClaimResponse>(claim);
+                        
+                    }
+                    catch (Exception)
+                    {
+                        await _unitOfWork.RollbackTransactionAsync(transaction);
+                        throw;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cancelling claim: {Message}", ex.Message);
+                throw;
+            }
+        }
+
         public async Task<CreateClaimResponse> CreateClaim(CreateClaimRequest createClaimRequest)
         {
             try
@@ -50,5 +104,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
+
     }
 }
