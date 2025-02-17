@@ -26,6 +26,11 @@
                 Message = message,
                 Reason = reason,
                 IsSuccess = false
+                //StatusCode = statusCode,
+                //Message = message,
+                //Data = null,
+                //IsSuccess = false,
+                //Reason = reason
             };
         }
 
@@ -59,5 +64,32 @@
                 Reason = null
             };
         }
+
+
+        //// API Response Wrapper
+        //public class ApiResponse<T>
+        //{
+        //    public int StatusCode { get; set; }
+        //    public string Message { get; set; }
+        //    public T Data { get; set; }
+        //    public bool IsSuccess { get; set; }
+        //    public string Reason { get; set; }
+        //}
+
+        //// Pagination Wrapper
+        //public class PagingResponse<T>
+        //{
+        //    public IEnumerable<T> Items { get; set; }
+        //    public PaginationMeta Meta { get; set; }
+        //}
+
+        //// Pagination MetaData
+        //public class PaginationMeta
+        //{
+        //    public int TotalPages { get; set; }
+        //    public int CurrentPage { get; set; }
+        //    public int PageSize { get; set; }
+        //    public long TotalItems { get; set; }
+        //}
     }
 }
