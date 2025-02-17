@@ -37,6 +37,8 @@ namespace ClaimRequest.API.Controllers
             return CreatedAtAction(nameof(CreateClaim), response);
         }
 
+
+        //[HttpPut(ApiEndPointConstant.Claim.RejectClaimEndpoint)]
         [HttpPut("reject/{Id}")] // Endpoint API
         [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]   // Status codes
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

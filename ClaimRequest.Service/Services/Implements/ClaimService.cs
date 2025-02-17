@@ -80,14 +80,36 @@ namespace ClaimRequest.BLL.Services.Implements
                         // Tìm Claim với điều kiện yêu cầu
                         var pendingClaim = await _unitOfWork.GetRepository<Claim>()
                         .SingleOrDefaultAsync(
-                            predicate: s => s.Id == Id && s.Status == ClaimStatus.Pending
+                            predicate: s => s.Id == Id,
+                            include: q => q.Include(c => c.ClaimApprovers)
                             );
                         if (pendingClaim == null)
                         {
-                            throw new NotFoundException($"Claim with ID {Id} not found or it is not in 'Pending' status.");
+                            throw new NotFoundException($"Claim with ID {Id} not found.");
+                        }
+
+                        if(pendingClaim.Status != ClaimStatus.Pending) 
+                        {
+                            throw new NotFoundException($"Claim with ID {Id} is not in pending.");
                         }
                         // Ghi lại log ai đã từ chối claim nào, phục vụ cho audit trail (sau này).
                         _logger.LogInformation("Rejecting claim with ID: {Id} by approver: {ApproverId}", Id, rejectClaimRequest.ApproverId);
+
+
+                        var existingApprover = pendingClaim.ClaimApprovers
+                            .FirstOrDefault(ca => ca.ApproverId == rejectClaimRequest.ApproverId);
+
+                        if (existingApprover == null)
+                        {
+                            var newApprover = new ClaimApprover
+                            {
+                                ClaimId = pendingClaim.Id,
+                                ApproverId = rejectClaimRequest.ApproverId
+                            };
+
+                            await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
+                        }
+
 
                         // Cập nhật vào Claim
                         _mapper.Map(rejectClaimRequest, pendingClaim);
@@ -97,8 +119,8 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         // Lưu vào db
                         _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
-                        await _unitOfWork.CommitAsync(); // save changes
-                        await transaction.CommitAsync(); // thuc hien commit transaction => thay doi duoc luu vao db
+                        await _unitOfWork.CommitAsync();
+                        await transaction.CommitAsync();
 
                         return _mapper.Map<RejectClaimResponse>(pendingClaim);
                     }
