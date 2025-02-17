@@ -44,6 +44,10 @@ namespace ClaimRequest.BLL.Services.Implements
                         {
                             throw new Exception("Claim cannot be cancelled as it is not in Draft status.");
                         }
+                        if (claim.ClaimerId != cancelClaimRequest.ClaimerId)
+                        {
+                            throw new Exception("Claim cannot be cancelled as you are not the claimer.");
+                        }
                         // Update claim status
                         claim.Status = ClaimStatus.Cancelled;
                         claim.UpdateAt = DateTime.UtcNow;
