@@ -11,5 +11,7 @@ namespace ClaimRequest.BLL.Services.Interfaces
     public interface IClaimService
     {
         Task<CreateClaimResponse> CreateClaim(CreateClaimRequest createClaimRequest);
+
+        Task<RejectClaimResponse> RejectClaim(Guid Id, RejectClaimRequest rejectClaimRequest);
     }
 }
