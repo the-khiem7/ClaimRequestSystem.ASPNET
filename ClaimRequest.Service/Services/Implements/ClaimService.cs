@@ -57,8 +57,11 @@ namespace ClaimRequest.BLL.Services.Implements
                         await _unitOfWork.CommitAsync();
                         // Commit transaction
                         await _unitOfWork.CommitTransactionAsync(transaction);
+                        // Log the change of claim status
+                        _logger.LogInformation("Cancelled claim by {ClaimerId} on {Time}", cancelClaimRequest.ClaimerId, claim.UpdateAt);
                         // Map and return response
                         return _mapper.Map<CancelClaimResponse>(claim);
+                        
                     }
                     catch (Exception)
                     {
