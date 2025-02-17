@@ -9,10 +9,10 @@ namespace ClaimRequest.DAL.Data.Responses.Claim
 {
     public class RejectClaimResponse
     {
-        public Guid Id { get; set; }  // ID của Claim bị từ chối
-        public ClaimStatus Status { get; set; } = ClaimStatus.Rejected;
-        public string Remark { get; set; }  // Lý do từ chối
-        public Guid ApproverId { get; set; }  // Người đã từ chối Claim
-        public DateTime UpdateAt { get; set; }  // Thời điểm cập nhật trạng thái
+        public Guid Id { get; set; }
+        public ClaimStatus Status { get; set; }
+        public string Remark { get; set; }
+        public Guid ApproverId { get; set; }
+        public DateTime UpdateAt { get; set; }
     }
 }

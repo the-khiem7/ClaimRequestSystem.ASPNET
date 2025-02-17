@@ -69,15 +69,12 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                //Đảm bảo tính toàn vẹn của dự liệu khi thực hiện transaction
                 var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
                 return await executionStrategy.ExecuteAsync(async () =>
                 {
-                    // Nếu có lỗi thì sẽ rollback lại
                     await using var transaction = await _unitOfWork.BeginTransactionAsync();
                     try
                     {
-                        // Tìm Claim với điều kiện yêu cầu
                         var pendingClaim = await _unitOfWork.GetRepository<Claim>()
                         .SingleOrDefaultAsync(
                             predicate: s => s.Id == Id,
@@ -90,9 +87,8 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         if(pendingClaim.Status != ClaimStatus.Pending) 
                         {
-                            throw new NotFoundException($"Claim with ID {Id} is not in pending.");
+                            throw new BadRequestException($"Claim with ID {Id} is not in pending.");
                         }
-                        // Ghi lại log ai đã từ chối claim nào, phục vụ cho audit trail (sau này).
                         _logger.LogInformation("Rejecting claim with ID: {Id} by approver: {ApproverId}", Id, rejectClaimRequest.ApproverId);
 
 
@@ -111,20 +107,16 @@ namespace ClaimRequest.BLL.Services.Implements
                         }
 
 
-                        // Cập nhật vào Claim
                         _mapper.Map(rejectClaimRequest, pendingClaim);
 
-                        // Set status về rejected
                         pendingClaim.Status = ClaimStatus.Rejected;
 
-                        // Lưu vào db
                         _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();
 
                         return _mapper.Map<RejectClaimResponse>(pendingClaim);
                     }
-                    // Rollback nếu c ó lỗi
                     catch (Exception)
                     {
                         await transaction.RollbackAsync();
@@ -132,10 +124,9 @@ namespace ClaimRequest.BLL.Services.Implements
                     }
                 });
             } 
-            // Bắt lỗi gì đó không lường trước :v
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating staff member: {Message}", ex.Message);
+                _logger.LogError(ex, "Error rejecting claim with ID {Id}: {Message}", Id, ex.Message);
                 throw;
             }
         }
