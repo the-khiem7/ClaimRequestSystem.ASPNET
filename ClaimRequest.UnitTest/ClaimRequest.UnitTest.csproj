@@ -11,6 +11,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+<<<<<<< HEAD
+    <PackageReference Include="FluentAssertions" Version="8.0.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.2" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClaimRequest.Data\ClaimRequest.DAL.csproj" />
+    <ProjectReference Include="..\ClaimRequest.Service\ClaimRequest.BLL.csproj" />
+=======
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="Moq" Version="4.20.70" />
     <PackageReference Include="xunit" Version="2.6.6" />
@@ -28,6 +40,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ClaimRequest.Service\ClaimRequest.BLL.csproj" />
     <ProjectReference Include="..\ClaimRequest.Data\ClaimRequest.DAL.csproj" />
+>>>>>>> 29d8e11f67d342375eb3da8b5f2913801aad55b7
   </ItemGroup>
 
 </Project>
