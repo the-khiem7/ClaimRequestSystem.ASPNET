@@ -14,6 +14,7 @@ using Claim = ClaimRequest.DAL.Data.Entities.Claim;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
 using Microsoft.EntityFrameworkCore;
+using ClaimRequest.DAL.Data.Exceptions;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -49,6 +50,36 @@ namespace ClaimRequest.BLL.Services.Implements
                 _logger.LogError(ex, "Error creating claim: {Message}", ex.Message);
                 throw;
             }
+        }
+        public async Task<IEnumerable<ViewClaimResponse>> GetClaimsAsync(ClaimStatus? status)
+        {
+            if (status.HasValue && !Enum.IsDefined(typeof(ClaimStatus), status.Value))
+            {
+                throw new BadRequestException("Invalid claim status!");
+            }
+
+            var claimRepository = _unitOfWork.GetRepository<Claim>();
+            var claims = await claimRepository.GetListAsync(
+                c => new { c, c.Claimer, c.Project },
+                c => !status.HasValue || c.Status == status.Value,
+                include: q => q.Include(c => c.Claimer).Include(c => c.Project)
+            );
+            return _mapper.Map<IEnumerable<ViewClaimResponse>>(claims.Select(c => c.c));
+        }
+
+        public async Task<ViewClaimResponse> GetClaimByIdAsync(Guid id)
+        {
+            var claimRepository = _unitOfWork.GetRepository<Claim>();
+            var claim = await claimRepository.SingleOrDefaultAsync(
+                c => new { c, c.Claimer, c.Project },
+                c => c.Id == id,
+                include: q => q.Include(c => c.Claimer).Include(c => c.Project)
+            );
+            if (claim == null)
+            {
+                throw new NotFoundException($"Claim with ID {id} not found");
+            }
+            return _mapper.Map<ViewClaimResponse>(claim.c);
         }
     }
 }
