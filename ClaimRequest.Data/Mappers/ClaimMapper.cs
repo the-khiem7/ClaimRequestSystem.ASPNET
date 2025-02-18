@@ -22,6 +22,8 @@ namespace ClaimRequest.DAL.Mappers
                 .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
                 .ForMember(dest => dest.Finance, opt => opt.Ignore())
                 .ForMember(dest => dest.FinanceId, opt => opt.Ignore())
+                .ForMember(dest => dest.Project, opt => opt.Ignore())
+                .ForMember(dest => dest.Claimer, opt => opt.Ignore())
                 .ForMember(dest => dest.ClaimApprovers, opt => opt.Ignore())
                 .ForMember(dest => dest.ChangeHistory, opt => opt.Ignore());
 
@@ -29,6 +31,12 @@ namespace ClaimRequest.DAL.Mappers
 
             //CreateMap<Claim, CreateClaimResponse>()
             //    .ForMember(dest => dest.Project, opt => opt.MapFrom(src => src.Project));
+
+            CreateMap<Claim, ViewClaimResponse>()
+                .ForMember(dest => dest.StaffName, opt => opt.MapFrom(src => src.Claimer.Name))
+                .ForMember(dest => dest.ProjectName, opt => opt.MapFrom(src => src.Project.Name))
+                .ForMember(dest => dest.ProjectStartDate, opt => opt.MapFrom(src => src.Project.StartDate))
+                .ForMember(dest => dest.ProjectEndDate, opt => opt.MapFrom(src => src.Project.EndDate));
         }
     }
 }
