@@ -11,6 +11,7 @@ using ClaimRequest.DAL.Repositories.Implements;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.API.Middlewares;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -85,6 +86,12 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IClaimService, ClaimService>();
 builder.Services.AddScoped<IStaffService, StaffService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
+
+//Serilize enum to string
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 
 // disable the default ModelStateInvalidFilter => to use the custom ExceptionHandlerMiddleware
