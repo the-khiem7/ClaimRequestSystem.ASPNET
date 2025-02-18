@@ -14,6 +14,7 @@ using Claim = ClaimRequest.DAL.Data.Entities.Claim;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
 using Microsoft.EntityFrameworkCore;
+using ClaimRequest.DAL.Data.Exceptions;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -28,7 +29,73 @@ namespace ClaimRequest.BLL.Services.Implements
         {
         }
 
-        public async Task<CreateClaimResponse> CreateClaim(CreateClaimRequest createClaimRequest)
+        public async Task<ApproveClaimResponse> ApproveClaim(Guid Id, ApproveClaimRequest approveClaimRequest)
+        {
+            try
+            {
+                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+                return await executionStrategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
+                    try
+                    {
+                        var pendingClaim = await _unitOfWork.GetRepository<Claim>()
+                        .SingleOrDefaultAsync(
+                            predicate: s => s.Id == Id,
+                            include: q => q.Include(c => c.ClaimApprovers)
+                            );
+                        if (pendingClaim == null)
+                        {
+                            throw new NotFoundException($"Claim with ID {Id} not found.");
+                        }
+
+                        if (pendingClaim.Status != ClaimStatus.Pending)
+                        {
+                            throw new BadRequestException($"Claim with ID {Id} is not in pending.");
+                        }
+                        _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproverId}", Id, approveClaimRequest.ApproverId);
+
+
+                        var existingApprover = pendingClaim.ClaimApprovers
+                            .FirstOrDefault(ca => ca.ApproverId == approveClaimRequest.ApproverId);
+
+                        if (existingApprover == null)
+                        {
+                            var newApprover = new ClaimApprover
+                            {
+                                ClaimId = pendingClaim.Id,
+                                ApproverId = approveClaimRequest.ApproverId
+                            };
+
+                            await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
+                        }
+
+
+                        _mapper.Map(approveClaimRequest, pendingClaim);
+
+                        pendingClaim.Status = ClaimStatus.Rejected;
+
+                        _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
+                        await _unitOfWork.CommitAsync();
+                        await transaction.CommitAsync();
+
+                        return _mapper.Map<ApproveClaimResponse>(pendingClaim);
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error approve claim with ID {Id}: {Message}", Id, ex.Message);
+                throw;
+            }
+        }
+
+    public async Task<CreateClaimResponse> CreateClaim(CreateClaimRequest createClaimRequest)
         {
             try
             {
