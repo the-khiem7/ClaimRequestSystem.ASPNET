@@ -27,8 +27,16 @@ namespace ClaimRequest.DAL.Mappers
                 .ForMember(dest => dest.ClaimApprovers, opt => opt.Ignore())
                 .ForMember(dest => dest.ChangeHistory, opt => opt.Ignore());
 
-            // Map Claim to CreateClaimResponse
-            CreateMap<Claim, CreateClaimResponse>();
+            //CreateMap<Project, ProjectResponse>();
+
+            //CreateMap<Claim, CreateClaimResponse>()
+            //    .ForMember(dest => dest.Project, opt => opt.MapFrom(src => src.Project));
+
+            CreateMap<Claim, ViewClaimResponse>()
+                .ForMember(dest => dest.StaffName, opt => opt.MapFrom(src => src.Claimer.Name))
+                .ForMember(dest => dest.ProjectName, opt => opt.MapFrom(src => src.Project.Name))
+                .ForMember(dest => dest.ProjectStartDate, opt => opt.MapFrom(src => src.Project.StartDate))
+                .ForMember(dest => dest.ProjectEndDate, opt => opt.MapFrom(src => src.Project.EndDate));
         }
     }
 }
