@@ -48,6 +48,11 @@ namespace ClaimRequest.DAL.Mappers
                 .ForMember(dest => dest.Amount, opt => opt.MapFrom(src => src.Amount))
                 .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(src => src.UpdateAt))
                 .ForMember(dest => dest.ClaimerId, opt => opt.MapFrom(src => src.ClaimerId));
+            CreateMap<Claim, ViewClaimResponse>()
+                .ForMember(dest => dest.StaffName, opt => opt.MapFrom(src => src.Claimer.Name))
+                .ForMember(dest => dest.ProjectName, opt => opt.MapFrom(src => src.Project.Name))
+                .ForMember(dest => dest.ProjectStartDate, opt => opt.MapFrom(src => src.Project.StartDate))
+                .ForMember(dest => dest.ProjectEndDate, opt => opt.MapFrom(src => src.Project.EndDate));
         }
     }
 }
