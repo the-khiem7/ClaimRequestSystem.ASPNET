@@ -1,5 +1,7 @@
 ﻿using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
+using ClaimRequest.DAL.Data.Entities;
+using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
 using Microsoft.AspNetCore.Http;
@@ -36,18 +38,27 @@ namespace ClaimRequest.API.Controllers
             return CreatedAtAction(nameof(CreateClaim), response);
         }
 
-        [HttpPut(ApiEndPointConstant.Claim.CancelClaimEndpoint)]
-        [ProducesResponseType(typeof(CancelClaimResponse), StatusCodes.Status200OK)]
-        public async Task<IActionResult> CancelClaim([FromBody] CancelClaimRequest cancelClaimRequest)
+        [HttpGet(ApiEndPointConstant.Claim.ClaimsEndpoint)]
+        [ProducesResponseType(typeof(IEnumerable<ViewClaimResponse>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status)
         {
-            var response = await _claimService.CancelClaim(cancelClaimRequest);
-            if (response == null)
-            {
-                _logger.LogError("Cancel claim failed");
-                return Problem("Cancel claim failed");
-            }
-            return Ok(response);
+            var response = await _claimService.GetClaimsAsync(status);
+            return Ok(ApiResponseBuilder.BuildResponse(
+                message: "Get claims successfully!",
+                data: response,
+                statusCode: StatusCodes.Status200OK));
         }
 
+        [HttpGet(ApiEndPointConstant.Claim.ClaimsEndpoint + "/{id}")]
+        [ProducesResponseType(typeof(ViewClaimResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetClaimById(Guid id)
+        {
+            var response = await _claimService.GetClaimByIdAsync(id);
+            return Ok(ApiResponseBuilder.BuildResponse(
+                message: $"Get claim with id {id} successfully!",
+                data: response,
+                statusCode: StatusCodes.Status200OK));
+        }
     }
 }
