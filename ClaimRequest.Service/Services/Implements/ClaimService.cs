@@ -81,5 +81,73 @@ namespace ClaimRequest.BLL.Services.Implements
             }
             return _mapper.Map<ViewClaimResponse>(claim.c);
         }
+
+        public async Task<RejectClaimResponse> RejectClaim(Guid Id, RejectClaimRequest rejectClaimRequest)
+        {
+            try
+            {
+                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+                return await executionStrategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
+                    try
+                    {
+                        var pendingClaim = await _unitOfWork.GetRepository<Claim>()
+                        .SingleOrDefaultAsync(
+                            predicate: s => s.Id == Id,
+                            include: q => q.Include(c => c.ClaimApprovers)
+                            );
+                        if (pendingClaim == null)
+                        {
+                            throw new NotFoundException($"Claim with ID {Id} not found.");
+                        }
+
+                        if(pendingClaim.Status != ClaimStatus.Pending) 
+                        {
+                            throw new BadRequestException($"Claim with ID {Id} is not in pending.");
+                        }
+                        _logger.LogInformation("Rejecting claim with ID: {Id} by approver: {ApproverId}", Id, rejectClaimRequest.ApproverId);
+
+
+                        var existingApprover = pendingClaim.ClaimApprovers
+                            .FirstOrDefault(ca => ca.ApproverId == rejectClaimRequest.ApproverId);
+
+                        if (existingApprover == null)
+                        {
+                            var newApprover = new ClaimApprover
+                            {
+                                ClaimId = pendingClaim.Id,
+                                ApproverId = rejectClaimRequest.ApproverId
+                            };
+
+                            await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
+                        }
+
+
+                        _mapper.Map(rejectClaimRequest, pendingClaim);
+
+                        pendingClaim.Status = ClaimStatus.Rejected;
+
+                        _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
+                        await _unitOfWork.CommitAsync();
+                        await transaction.CommitAsync();
+
+                        return _mapper.Map<RejectClaimResponse>(pendingClaim);
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
+            } 
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error rejecting claim with ID {Id}: {Message}", Id, ex.Message);
+                throw;
+            }
+        }
+
+
     }
 }
