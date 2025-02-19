@@ -157,7 +157,7 @@ if (app.Environment.IsDevelopment())
 // Add the ExceptionHandlerMiddleware to the pipeline
 // comment lai doan code phia duoi neu chuong khong doc duoc loi tu swagger
 // ===============================================
-//app.UseMiddleware<ExceptionHandlerMiddleware>();
+app.UseMiddleware<ExceptionHandlerMiddleware>();
 // ===============================================
 
 //app.UseHttpsRedirection();
