@@ -29,6 +29,74 @@ namespace ClaimRequest.BLL.Services.Implements
         {
         }
 
+        public async Task<CancelClaimResponse> CancelClaim(CancelClaimRequest cancelClaimRequest)
+        {
+            try
+            {
+                if (_unitOfWork?.Context?.Database == null)
+                {
+                    throw new InvalidOperationException("Database context is not initialized.");
+                }
+
+                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+                return await executionStrategy.ExecuteAsync(async () =>
+                {
+                    // Get claim by ID first before starting the transaction
+                    var claim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(cancelClaimRequest.ClaimId)
+                                ?? throw new KeyNotFoundException("Claim not found.");
+
+                    // Validate claim status and claimer BEFORE starting transaction
+                    if (claim.Status != ClaimStatus.Draft)
+                    {
+                        throw new InvalidOperationException("Claim cannot be cancelled as it is not in Draft status.");
+                    }
+
+                    if (claim.ClaimerId != cancelClaimRequest.ClaimerId)
+                    {
+                        throw new UnauthorizedAccessException("Claim cannot be cancelled as you are not the claimer.");
+                    }
+
+                    // Begin transaction only after all validation checks have passed
+                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
+
+                    try
+                    {
+                        // Update claim status
+                        claim.Status = ClaimStatus.Cancelled;
+                        claim.UpdateAt = DateTime.UtcNow;
+
+                        // Update claim
+                        _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
+
+                        // Commit changes and transaction
+                        await _unitOfWork.CommitAsync();
+                        await _unitOfWork.CommitTransactionAsync(transaction);
+
+                        // Log the change of claim status
+                        _logger.LogInformation("Cancelled claim by {ClaimerId} on {Time}", cancelClaimRequest.ClaimerId, claim.UpdateAt);
+
+                        // Map and return response
+                        return _mapper.Map<CancelClaimResponse>(claim);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Rollback transaction only if transaction has started
+                        await _unitOfWork.RollbackTransactionAsync(transaction);
+                        _logger.LogError(ex, "Error occurred during claim cancellation.");
+                        throw;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cancelling claim: {Message}", ex.Message);
+                throw;
+            }
+        }
+
+
+
+
         public async Task<CreateClaimResponse> CreateClaim(CreateClaimRequest createClaimRequest)
         {
             try
@@ -51,35 +119,62 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-        public async Task<IEnumerable<ViewClaimResponse>> GetClaimsAsync(ClaimStatus? status)
+        public async Task<IEnumerable<ViewClaimResponse>> GetClaims(ClaimStatus? status)
         {
-            if (status.HasValue && !Enum.IsDefined(typeof(ClaimStatus), status.Value))
+            try
             {
-                throw new BadRequestException("Invalid claim status!");
-            }
+                if (status.HasValue && !Enum.IsDefined(typeof(ClaimStatus), status.Value))
+                {
+                    throw new BadRequestException("Invalid claim status!");
+                }
 
-            var claimRepository = _unitOfWork.GetRepository<Claim>();
-            var claims = await claimRepository.GetListAsync(
-                c => new { c, c.Claimer, c.Project },
-                c => !status.HasValue || c.Status == status.Value,
-                include: q => q.Include(c => c.Claimer).Include(c => c.Project)
-            );
-            return _mapper.Map<IEnumerable<ViewClaimResponse>>(claims.Select(c => c.c));
+                var claimRepository = _unitOfWork.GetRepository<Claim>();
+                var claims = await claimRepository.GetListAsync(
+                    c => new { c, c.Claimer, c.Project },
+                    c => !status.HasValue || c.Status == status.Value,
+                    include: q => q.Include(c => c.Claimer).Include(c => c.Project)
+                );
+
+                return _mapper.Map<IEnumerable<ViewClaimResponse>>(claims.Select(c => c.c));
+            }
+            catch (BadRequestException)
+            {
+                throw; // Rethrow known exception
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while retrieving claims.");
+                throw;
+            }
         }
 
-        public async Task<ViewClaimResponse> GetClaimByIdAsync(Guid id)
+        public async Task<ViewClaimResponse> GetClaimById(Guid id)
         {
-            var claimRepository = _unitOfWork.GetRepository<Claim>();
-            var claim = await claimRepository.SingleOrDefaultAsync(
-                c => new { c, c.Claimer, c.Project },
-                c => c.Id == id,
-                include: q => q.Include(c => c.Claimer).Include(c => c.Project)
-            );
-            if (claim == null)
+            try
             {
-                throw new NotFoundException($"Claim with ID {id} not found");
+                var claimRepository = _unitOfWork.GetRepository<Claim>();
+                var claim = await claimRepository.SingleOrDefaultAsync(
+                    c => new { c, c.Claimer, c.Project },
+                    c => c.Id == id,
+                    include: q => q.Include(c => c.Claimer).Include(c => c.Project)
+                );
+
+                if (claim == null)
+                {
+                    throw new NotFoundException($"Claim with ID {id} not found");
+                }
+
+                return _mapper.Map<ViewClaimResponse>(claim.c);
             }
-            return _mapper.Map<ViewClaimResponse>(claim.c);
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while retrieving the claim.");
+                throw;
+            }
         }
 
         public async Task<RejectClaimResponse> RejectClaim(Guid Id, RejectClaimRequest rejectClaimRequest)
@@ -144,6 +239,73 @@ namespace ClaimRequest.BLL.Services.Implements
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error rejecting claim with ID {Id}: {Message}", Id, ex.Message);
+                throw;
+            }
+        }
+
+
+        public async Task<ApproveClaimResponse> ApproveClaim(Guid Id, ApproveClaimRequest approveClaimRequest)
+        {
+            try
+            {
+                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+                return await executionStrategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
+                    try
+                    {
+                        var pendingClaim = await _unitOfWork.GetRepository<Claim>()
+                        .SingleOrDefaultAsync(
+                            predicate: s => s.Id == Id,
+                            include: q => q.Include(c => c.ClaimApprovers)
+                            );
+                        if (pendingClaim == null)
+                        {
+                            throw new NotFoundException($"Claim with ID {Id} not found.");
+                        }
+
+                        if (pendingClaim.Status != ClaimStatus.Pending)
+                        {
+                            throw new BadRequestException($"Claim with ID {Id} is not in pending.");
+                        }
+                        _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproverId}", Id, approveClaimRequest.ApproverId);
+
+
+                        var existingApprover = pendingClaim.ClaimApprovers
+                            .FirstOrDefault(ca => ca.ApproverId == approveClaimRequest.ApproverId);
+
+                        if (existingApprover == null)
+                        {
+                            var newApprover = new ClaimApprover
+                            {
+                                ClaimId = pendingClaim.Id,
+                                ApproverId = approveClaimRequest.ApproverId
+                            };
+
+                            await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
+                        }
+
+
+                        _mapper.Map(approveClaimRequest, pendingClaim);
+
+                        pendingClaim.Status = ClaimStatus.Rejected;
+
+                        _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
+                        await _unitOfWork.CommitAsync();
+                        await transaction.CommitAsync();
+
+                        return _mapper.Map<ApproveClaimResponse>(pendingClaim);
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error approve claim with ID {Id}: {Message}", Id, ex.Message);
                 throw;
             }
         }

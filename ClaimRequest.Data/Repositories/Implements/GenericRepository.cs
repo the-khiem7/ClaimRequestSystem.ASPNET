@@ -118,6 +118,10 @@ namespace ClaimRequest.DAL.Repositories.Implements
             _dbSet.RemoveRange(entities);
         }
 
+        public virtual async Task<T> GetByIdAsync(Guid id)
+        {
+            return await _dbSet.FindAsync(id);
+        }
 
         #endregion
     }
