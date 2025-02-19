@@ -18,6 +18,15 @@
             public const string ClaimEndpoint = ClaimsEndpoint + "/{id}";
             public const string CancelClaimEndpoint = ClaimsEndpoint + "/cancel";
             public const string RejectClaimEndpoint = ClaimEndpoint + "/reject";
+            public const string ApproveClaimEndpoint = ClaimsEndpoint + "/approve/{id}";
+
+        }
+        public static class Email
+        {
+            public const string EmailEndpoint = ApiEndpoint + "/email";
+
+            public const string SendEmail = EmailEndpoint + "/send";
+
             public const string ApproveClaimEndpoint = ClaimEndpoint + "/approve";
 
         }
