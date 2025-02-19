@@ -42,19 +42,19 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(IEnumerable<ViewClaimResponse>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status)
         {
-            var response = await _claimService.GetClaimsAsync(status);
+            var response = await _claimService.GetClaims(status);
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: "Get claims successfully!",
                 data: response,
                 statusCode: StatusCodes.Status200OK));
         }
 
-        [HttpGet(ApiEndPointConstant.Claim.ClaimsEndpoint + "/{id}")]
+        [HttpGet(ApiEndPointConstant.Claim.ClaimEndpointById)]
         [ProducesResponseType(typeof(ViewClaimResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetClaimById(Guid id)
         {
-            var response = await _claimService.GetClaimByIdAsync(id);
+            var response = await _claimService.GetClaimById(id);
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: $"Get claim with id {id} successfully!",
                 data: response,
