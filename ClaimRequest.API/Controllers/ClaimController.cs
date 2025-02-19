@@ -120,5 +120,46 @@ namespace ClaimRequest.API.Controllers
             }
             return Ok(response);
         }
+        [HttpPut(ApiEndPointConstant.Claim.ApproveClaimEndpoint)]
+        [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]  
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ApproveClaim(Guid Id, [FromBody] ApproveClaimRequest approveClaimRequest)
+        {
+            try
+            {
+                var approveClaim = await _claimService.ApproveClaim(Id, approveClaimRequest);
+                if (approveClaim == null)
+                {
+                    var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                            null,
+                            StatusCodes.Status404NotFound,
+                            "Claim not found",
+                            "The claim ID provided does not exist or is not pending for approve"
+                            );
+                    return NotFound(errorResponse);
+                }
+
+                var successResponse = ApiResponseBuilder.BuildResponse(
+                    StatusCodes.Status200OK,
+                    "Claim Approved successfully",
+                    approveClaim 
+                );
+                return Ok(successResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error approve claim with ID {ClaimId}", Id);
+
+                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status500InternalServerError,
+                    "An error occurred while approve the claim",
+                    "Internal server error"
+                );
+                return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+            }
+
+        }
     }
 }
