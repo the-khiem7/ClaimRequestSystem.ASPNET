@@ -12,6 +12,7 @@ namespace ClaimRequest.BLL.Services.Interfaces
     public interface IClaimService
     {
         Task<CreateClaimResponse> CreateClaim(CreateClaimRequest createClaimRequest);
+        Task<CancelClaimResponse> CancelClaim(CancelClaimRequest cancelClaimRequest);   
         Task<IEnumerable<ViewClaimResponse>> GetClaimsAsync(ClaimStatus? status);
         Task<ViewClaimResponse> GetClaimByIdAsync(Guid id);
 
