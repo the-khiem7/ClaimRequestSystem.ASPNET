@@ -16,8 +16,6 @@
 
             // Duoi ko "s" danh cho cac tac vu chi dinh 1 doi tuong object: GetByID (GET), Update(PUT), Delete(DELETE)
             public const string ClaimEndpoint = ClaimsEndpoint + "/{id}";
-            public const string RejectClaimEndpoint = ClaimEndpoint + "/reject";
-
         }
     }
 }

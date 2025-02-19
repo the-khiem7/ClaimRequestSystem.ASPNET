@@ -118,6 +118,7 @@ namespace ClaimRequest.DAL.Repositories.Implements
             _dbSet.RemoveRange(entities);
         }
 
+
         #endregion
     }
 }

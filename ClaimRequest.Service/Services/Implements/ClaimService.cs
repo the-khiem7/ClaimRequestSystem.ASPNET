@@ -99,12 +99,12 @@ namespace ClaimRequest.BLL.Services.Implements
                             );
                         if (pendingClaim == null)
                         {
-                            throw new NotFoundException($"Claim with ID {Id} not found.");
+                            throw new KeyNotFoundException($"Claim with ID {Id} not found.");
                         }
 
                         if(pendingClaim.Status != ClaimStatus.Pending) 
                         {
-                            throw new BadRequestException($"Claim with ID {Id} is not in pending.");
+                            throw new InvalidOperationException($"Claim with ID {Id} is not in pending.");
                         }
                         _logger.LogInformation("Rejecting claim with ID: {Id} by approver: {ApproverId}", Id, rejectClaimRequest.ApproverId);
 

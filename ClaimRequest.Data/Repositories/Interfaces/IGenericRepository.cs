@@ -37,7 +37,6 @@ namespace ClaimRequest.DAL.Repositories.Interfaces
         Task<int> CountAsync(Expression<Func<T, bool>> predicate = null);
 
         #endregion
-
         #region Insert
 
         Task InsertAsync(T entity);
