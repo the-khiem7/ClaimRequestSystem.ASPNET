@@ -21,5 +21,13 @@
             public const string ApproveClaimEndpoint = ClaimsEndpoint + "/approve/{id}";
 
         }
+        public static class Email
+        {
+            public const string EmailEndpoint = ApiEndpoint + "/email";
+
+            public const string SendEmail = EmailEndpoint + "/send";
+
+
+        }
     }
 }
