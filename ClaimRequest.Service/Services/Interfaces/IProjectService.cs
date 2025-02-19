@@ -15,5 +15,6 @@ namespace ClaimRequest.BLL.Services.Interfaces
         Task<CreateProjectResponse> GetProjectById(Guid id);
         Task<IEnumerable<CreateProjectResponse>> GetProjects();
         Task<CreateProjectResponse> UpdateProject(Guid id, UpdateProjectRequest updateProjectRequest);
+        Task<bool> DeleteProject(Guid id);
     }
 }
