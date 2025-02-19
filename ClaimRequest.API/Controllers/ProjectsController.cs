@@ -1,4 +1,5 @@
 ﻿using ClaimRequest.BLL.Services.Interfaces;
+using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Project;
 using ClaimRequest.DAL.Data.Responses.Project;
@@ -88,6 +89,46 @@ namespace ClaimRequest.API.Controllers
                 "Project updated successfully",
                 updatedProject
             ));
+        }
+
+        [HttpDelete("{id}")]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DeleteProject(Guid id)
+        {
+            try
+            {
+                bool isDeleted = await _projectService.DeleteProject(id);
+                if (!isDeleted)
+                {
+                    return NotFound(new ApiResponse<object>
+                    {
+                        StatusCode = StatusCodes.Status404NotFound,
+                        Message = $"Project with ID {id} not found",
+                        Data = null
+                    });
+                }
+
+                return Ok(new ApiResponse<object>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Message = "Project deleted successfully",
+                    IsSuccess = true, // chỗ này xem lại
+                    Data = null
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting project: {Message}", ex.Message);
+
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Message = "An unexpected error occurred while deleting the project",
+                    Data = null
+                });
+            }
         }
     }
 }
