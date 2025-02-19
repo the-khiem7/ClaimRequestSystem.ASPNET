@@ -15,9 +15,9 @@
             public const string ClaimsEndpoint = ApiEndpoint + "/claim";
 
             // Duoi ko "s" danh cho cac tac vu chi dinh 1 doi tuong object: GetByID (GET), Update(PUT), Delete(DELETE)
-            public const string ClaimEndpoint = ClaimsEndpoint + "/{id}";
+            public const string ClaimEndpointById = ClaimsEndpoint + "/{id}";
             public const string CancelClaimEndpoint = ClaimsEndpoint + "/cancel";
-            public const string RejectClaimEndpoint = ClaimEndpoint + "/reject";
+            public const string RejectClaimEndpoint = ClaimEndpointById + "/reject";
             public const string ApproveClaimEndpoint = ClaimsEndpoint + "/approve/{id}";
 
         }
