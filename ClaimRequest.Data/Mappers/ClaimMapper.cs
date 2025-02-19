@@ -35,11 +35,11 @@ namespace ClaimRequest.DAL.Mappers
             //    .ForMember(dest => dest.Project, opt => opt.MapFrom(src => src.Project));
 
 
-            //CancelClaimRequest -> Claim
+            // CancelClaimRequest -> Claim
             CreateMap<CancelClaimRequest, Claim>()
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(_ => ClaimStatus.Cancelled))
                 .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(_ => DateTime.UtcNow));
-            //Claim -> CancelClaimResponse
+            // Claim -> CancelClaimResponse
             CreateMap<Claim, CancelClaimResponse>()
                 .ForMember(dest => dest.ClaimId, opt => opt.MapFrom(src => src.Id))
                 .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
@@ -48,6 +48,7 @@ namespace ClaimRequest.DAL.Mappers
                 .ForMember(dest => dest.Amount, opt => opt.MapFrom(src => src.Amount))
                 .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(src => src.UpdateAt))
                 .ForMember(dest => dest.ClaimerId, opt => opt.MapFrom(src => src.ClaimerId));
+
             CreateMap<Claim, ViewClaimResponse>()
                 .ForMember(dest => dest.StaffName, opt => opt.MapFrom(src => src.Claimer.Name))
                 .ForMember(dest => dest.ProjectName, opt => opt.MapFrom(src => src.Project.Name))

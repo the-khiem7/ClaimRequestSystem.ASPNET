@@ -19,6 +19,7 @@
             public const string CancelClaimEndpoint = ClaimsEndpoint + "/cancel";
             public const string RejectClaimEndpoint = ClaimEndpoint + "/reject";
             public const string ApproveClaimEndpoint = ClaimsEndpoint + "/approve/{id}";
+            public const string DownloadClaimEndpoint = ClaimsEndpoint + "/download";
 
         }
     }

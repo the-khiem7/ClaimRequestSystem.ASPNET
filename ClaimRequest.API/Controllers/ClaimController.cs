@@ -120,6 +120,25 @@ namespace ClaimRequest.API.Controllers
             }
             return Ok(response);
         }
+
+        [HttpGet(ApiEndPointConstant.Claim.DownloadClaimEndpoint)]
+        [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+        public async Task<IActionResult> DownloadClaim([FromQuery] DownloadClaimRequest downloadClaimRequest)
+        {
+            var stream = await _claimService.DownloadClaimAsync(downloadClaimRequest);
+
+            if (stream == null)
+            {
+                _logger.LogError("Download claim failed");
+                return Problem("Download claim failed");
+            }
+
+            var fileName = "Template_Export_Claim.xlsx";
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        }
+
+
+
         [HttpPut(ApiEndPointConstant.Claim.ApproveClaimEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]  
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

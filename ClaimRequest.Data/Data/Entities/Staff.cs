@@ -15,7 +15,7 @@ namespace ClaimRequest.DAL.Data.Entities
     {
         //SoftwareDevelopment,   // Developers, engineers, and coders
         QualityAssurance,      // Testers and QA engineers
-        //ITSupport,            // Helpdesk and infrastructure support
+        ITSupport,            // Helpdesk and infrastructure support
         //ProjectManagement,    // Project managers and coordinators
         //BusinessAnalysis,     // Business analysts and requirement gatherers
         //UIUXDesign,           // UX/UI designers and front-end specialists
