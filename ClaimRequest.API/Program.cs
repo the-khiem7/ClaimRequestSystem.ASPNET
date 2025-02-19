@@ -94,6 +94,14 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 });
 
 
+
+//Serilize enum to string
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
+
+
 // disable the default ModelStateInvalidFilter => to use the custom ExceptionHandlerMiddleware
 // neu dinh chuong khong doc duoc loi tu swagger => comment lai doan code phia duoi
 // ===============================================

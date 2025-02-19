@@ -31,7 +31,7 @@ services:
       POSTGRES_PASSWORD: Iloveyou3000!
       POSTGRES_DB: ClaimRequestDB
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - claimrequest_network
     volumes:
