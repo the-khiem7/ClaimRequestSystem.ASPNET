@@ -20,5 +20,13 @@
             public const string RejectClaimEndpoint = ClaimEndpoint + "/reject";
 
         }
+        public static class Email
+        {
+            public const string EmailEndpoint = ApiEndpoint + "/email";
+
+            public const string SendEmail = EmailEndpoint + "/send";
+
+
+        }
     }
 }
