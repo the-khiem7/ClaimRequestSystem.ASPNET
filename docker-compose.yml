@@ -14,31 +14,12 @@ services:
       - "5001:5001"
     depends_on:
       claimrequest.db:
-        condition: service_healthy
+        condition: service_healthy  
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:5000;http://+:5001
       - ConnectionStrings__PostgresConnection=Host=claimrequest.db;Database=ClaimRequestDB;Username=db_user;Password=Iloveyou3000!;Port=5432
       - EXTERNAL_API_HOST=localhost:5000  
-    networks:
-      - claimrequest_network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  claimrequest.test:
-    container_name: claimrequest-test
-    image: ${DOCKER_REGISTRY-}claimrequesttest
-    build:
-      context: .
-      dockerfile: ClaimRequest.UnitTest/Dockerfile
-    volumes:
-      - ./TestResults:/TestResults
-    depends_on:
-      - claimrequest.api
     networks:
       - claimrequest_network
 
@@ -50,7 +31,7 @@ services:
       POSTGRES_PASSWORD: Iloveyou3000!
       POSTGRES_DB: ClaimRequestDB
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - claimrequest_network
     volumes:
