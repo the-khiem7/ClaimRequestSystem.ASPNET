@@ -86,6 +86,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IClaimService, ClaimService>();
 builder.Services.AddScoped<IStaffService, StaffService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 //Serilize enum to string
 builder.Services.AddControllers().AddJsonOptions(options =>
@@ -156,7 +157,7 @@ if (app.Environment.IsDevelopment())
 // Add the ExceptionHandlerMiddleware to the pipeline
 // comment lai doan code phia duoi neu chuong khong doc duoc loi tu swagger
 // ===============================================
-//app.UseMiddleware<ExceptionHandlerMiddleware>();
+app.UseMiddleware<ExceptionHandlerMiddleware>();
 // ===============================================
 
 //app.UseHttpsRedirection();

@@ -42,19 +42,19 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(IEnumerable<ViewClaimResponse>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status)
         {
-            var response = await _claimService.GetClaimsAsync(status);
+            var response = await _claimService.GetClaims(status);
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: "Get claims successfully!",
                 data: response,
                 statusCode: StatusCodes.Status200OK));
         }
 
-        [HttpGet(ApiEndPointConstant.Claim.ClaimsEndpoint + "/{id}")]
+        [HttpGet(ApiEndPointConstant.Claim.ClaimEndpointById)]
         [ProducesResponseType(typeof(ViewClaimResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetClaimById(Guid id)
         {
-            var response = await _claimService.GetClaimByIdAsync(id);
+            var response = await _claimService.GetClaimById(id);
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: $"Get claim with id {id} successfully!",
                 data: response,
@@ -62,50 +62,25 @@ namespace ClaimRequest.API.Controllers
         }
 
 
-        //[HttpPut(ApiEndPointConstant.Claim.RejectClaimEndpoint)]
-        [HttpPut("reject/{Id}")] // Endpoint API
-        [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]   // Status codes
+        [HttpPut("reject/{Id}")]
+        [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> RejectClaim(Guid Id, [FromBody] RejectClaimRequest rejectClaimRequest)
         {
-            try
-            {
-                // Gọi service để thực hiện logic reject
                 var rejectClaim = await _claimService.RejectClaim(Id, rejectClaimRequest);
-                if (rejectClaim == null)
-                {
-                    var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
-                            null,
-                            StatusCodes.Status404NotFound,
-                            "Claim not found",
-                            "The claim ID provided does not exist or is not pending for rejection"
-                            );
-                    return NotFound(errorResponse);
-                }
-
+                    if (rejectClaim == null)
+                    {
+                        _logger.LogError("Reject claim failed");
+                        return Problem("Reject claim failed");
+                    }
 
                 var successResponse = ApiResponseBuilder.BuildResponse(
                     StatusCodes.Status200OK,
                     "Claim Rejected successfully",
-                    rejectClaim // Để show dự liệu khi response
+                    rejectClaim
                 );
                 return Ok(successResponse);
-            }
-            catch (Exception ex)
-            {
-                // Hiện lỗi
-                _logger.LogError(ex, "Error rejecting claim with ID {ClaimId}", Id);
-
-                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
-                    null,
-                    StatusCodes.Status500InternalServerError,
-                    "An error occurred while rejecting the claim",
-                    "Internal server error"
-                );
-                return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
-            }
-
         }
 
         [HttpPut(ApiEndPointConstant.Claim.CancelClaimEndpoint)]
@@ -139,7 +114,8 @@ namespace ClaimRequest.API.Controllers
 
 
 
-        [HttpPut(ApiEndPointConstant.Claim.ApproveClaimEndpoint)]
+
+        [HttpPut("approve/{Id}")]
         [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]  
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
