@@ -120,7 +120,9 @@ namespace ClaimRequest.API.Controllers
             }
             return Ok(response);
         }
-        [HttpPut(ApiEndPointConstant.Claim.ApproveClaimEndpoint)]
+
+
+        [HttpPut("approve/{Id}")]
         [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]  
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
