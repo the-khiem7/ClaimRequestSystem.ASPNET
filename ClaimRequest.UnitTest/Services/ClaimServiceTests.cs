@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using AutoMapper;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.DAL.Data.Entities;
@@ -8,6 +9,7 @@ using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -128,6 +130,52 @@ namespace ClaimRequest.UnitTest.Services
             _mockUnitOfWork.Verify(uow => uow.CommitAsync(), Times.Once);
             _mockUnitOfWork.Verify(uow => uow.BeginTransactionAsync(), Times.Once);
             _mockUnitOfWork.Verify(uow => uow.CommitTransactionAsync(It.IsAny<IDbContextTransaction>()), Times.Once);
+        }
+        [Fact]
+        public async Task ApproveClaim_ShouldWork()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var approverId = Guid.NewGuid();
+            var approveClaimRequest = new ApproveClaimRequest();
+
+            var pendingClaim = new Claim
+            {
+                Id = claimId,
+                Status = ClaimStatus.Pending,
+                ClaimApprovers = new List<ClaimApprover>()
+            };
+
+            _mockClaimRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                    It.IsAny<Expression<Func<Claim, bool>>>(),
+                    It.IsAny<Func<IQueryable<Claim>, IOrderedQueryable<Claim>>>(),
+                    It.IsAny<Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>>>()))
+                .ReturnsAsync(pendingClaim);
+
+            _mockUnitOfWork.SetupGet(uow => uow.GetRepository<Claim>())
+                .Returns(_mockClaimRepository.Object);
+
+            var claimApproverRepo = new Mock<IGenericRepository<ClaimApprover>>();
+            _mockUnitOfWork.SetupGet(uow => uow.GetRepository<ClaimApprover>())
+                .Returns(claimApproverRepo.Object); 
+
+            _mockUnitOfWork.Setup(uow => uow.BeginTransactionAsync())
+                .ReturnsAsync(_mockTransaction.Object);
+
+            _mockUnitOfWork.Setup(uow => uow.CommitAsync())
+                .ReturnsAsync(1);
+
+            // Act
+            var result = await _claimService.ApproveClaim(claimId, approverId, approveClaimRequest);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(ClaimStatus.Approved, pendingClaim.Status);
+
+            _mockClaimRepository.Verify(repo => repo.UpdateAsync(It.IsAny<Claim>()), Times.Once);
+            claimApproverRepo.Verify(repo => repo.InsertAsync(It.IsAny<ClaimApprover>()), Times.Once);
+            _mockUnitOfWork.Verify(uow => uow.CommitAsync(), Times.Once);
+            _mockTransaction.Verify(tran => tran.CommitAsync(CancellationToken.None), Times.Once);
         }
 
         public void Dispose()

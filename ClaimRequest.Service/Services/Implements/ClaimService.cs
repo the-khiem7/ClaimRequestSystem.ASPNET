@@ -215,74 +215,67 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-
-
-        public async Task<ApproveClaimResponse> ApproveClaim(Guid Id, ApproveClaimRequest approveClaimRequest)
+        public async Task<ApproveClaimResponse> ApproveClaim(Guid id, Guid approveId, ApproveClaimRequest approveClaimRequest)
         {
-            try
+            var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+
+            return await executionStrategy.ExecuteAsync(async () =>
             {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-                return await executionStrategy.ExecuteAsync(async () =>
+                await using var transaction = await _unitOfWork.BeginTransactionAsync();
+                try
                 {
-                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
-                    try
+                    var claimRepo = _unitOfWork.GetRepository<Claim>();
+                    var approverRepo = _unitOfWork.GetRepository<ClaimApprover>();
+
+                    // Tìm Claim cần approve
+                    var pendingClaim = await claimRepo.SingleOrDefaultAsync(
+                        predicate: s => s.Id == id,
+                        include: q => q.Include(c => c.ClaimApprovers)
+                    );
+
+                    if (pendingClaim == null)
                     {
-                        var pendingClaim = await _unitOfWork.GetRepository<Claim>()
-                        .SingleOrDefaultAsync(
-                            predicate: s => s.Id == Id,
-                            include: q => q.Include(c => c.ClaimApprovers)
-                            );
-                        if (pendingClaim == null)
-                        {
-                            throw new NotFoundException($"Claim with ID {Id} not found.");
-                        }
-
-                        if (pendingClaim.Status != ClaimStatus.Pending)
-                        {
-                            throw new BadRequestException($"Claim with ID {Id} is not in pending.");
-                        }
-                        _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproverId}", Id, approveClaimRequest.ApproverId);
-
-
-                        var existingApprover = pendingClaim.ClaimApprovers
-                            .FirstOrDefault(ca => ca.ApproverId == approveClaimRequest.ApproverId);
-
-                        if (existingApprover == null)
-                        {
-                            var newApprover = new ClaimApprover
-                            {
-                                ClaimId = pendingClaim.Id,
-                                ApproverId = approveClaimRequest.ApproverId
-                            };
-
-                            await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
-                        }
-
-
-                        _mapper.Map(approveClaimRequest, pendingClaim);
-
-                        pendingClaim.Status = ClaimStatus.Rejected;
-
-                        _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
-                        await _unitOfWork.CommitAsync();
-                        await transaction.CommitAsync();
-
-                        return _mapper.Map<ApproveClaimResponse>(pendingClaim);
+                        _logger.LogWarning("Claim with ID {Id} not found.", id);
+                        throw new NotFoundException($"Claim with ID {id} not found.");
                     }
-                    catch (Exception)
+
+                    if (pendingClaim.Status != ClaimStatus.Pending)
                     {
-                        await transaction.RollbackAsync();
-                        throw;
+                        _logger.LogWarning("Claim with ID {Id} is not in pending state.", id);
+                        throw new BadRequestException($"Claim with ID {id} is not in pending state.");
                     }
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error approve claim with ID {Id}: {Message}", Id, ex.Message);
-                throw;
-            }
+
+                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approveId);
+                    var existingApprover = pendingClaim.ClaimApprovers
+                        .FirstOrDefault(ca => ca.ApproverId == approveId);
+
+                    if (existingApprover == null)
+                    {
+                        var newApprover = new ClaimApprover
+                        {
+                            ClaimId = pendingClaim.Id,
+                            ApproverId = approveId
+                        };
+
+                        await approverRepo.InsertAsync(newApprover);
+                    }
+
+                    _mapper.Map(approveClaimRequest, pendingClaim);
+                    pendingClaim.Status = ClaimStatus.Approved;
+
+                    claimRepo.UpdateAsync(pendingClaim);
+
+                    await transaction.CommitAsync();
+                    await _unitOfWork.CommitAsync();
+
+                    return _mapper.Map<ApproveClaimResponse>(pendingClaim);
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
-
-
     }
 }

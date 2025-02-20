@@ -16,7 +16,7 @@ namespace ClaimRequest.BLL.Services.Interfaces
         Task<IEnumerable<ViewClaimResponse>> GetClaimsAsync(ClaimStatus? status);
         Task<ViewClaimResponse> GetClaimByIdAsync(Guid id);
         Task<RejectClaimResponse> RejectClaim(Guid Id, RejectClaimRequest rejectClaimRequest);
-        Task<ApproveClaimResponse> ApproveClaim(Guid Id, ApproveClaimRequest approveClaimRequest);
+        Task<ApproveClaimResponse> ApproveClaim(Guid id, Guid approveId, ApproveClaimRequest approveClaimRequest);
 
     }
 }

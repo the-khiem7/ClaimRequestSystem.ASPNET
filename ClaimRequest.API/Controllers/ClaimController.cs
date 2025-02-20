@@ -1,6 +1,7 @@
 ﻿using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
+using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
@@ -121,47 +122,35 @@ namespace ClaimRequest.API.Controllers
             return Ok(response);
         }
 
-
-        [HttpPut("approve/{Id}")]
-        [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]  
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ApproveClaim(Guid Id, [FromBody] ApproveClaimRequest approveClaimRequest)
+        [HttpPut("approve/{id}/approver/{approveId}")]
+        [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ApproveClaim(Guid id, Guid approveId, [FromBody] ApproveClaimRequest approveClaimRequest)
         {
             try
             {
-                var approveClaim = await _claimService.ApproveClaim(Id, approveClaimRequest);
-                if (approveClaim == null)
-                {
-                    var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
-                            null,
-                            StatusCodes.Status404NotFound,
-                            "Claim not found",
-                            "The claim ID provided does not exist or is not pending for approve"
-                            );
-                    return NotFound(errorResponse);
-                }
-
-                var successResponse = ApiResponseBuilder.BuildResponse(
-                    StatusCodes.Status200OK,
-                    "Claim Approved successfully",
-                    approveClaim 
-                );
-                return Ok(successResponse);
+                var response = await _claimService.ApproveClaim(id, approveId, approveClaimRequest);
+                return Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error approve claim with ID {ClaimId}", Id);
-
-                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
-                    null,
-                    StatusCodes.Status500InternalServerError,
-                    "An error occurred while approve the claim",
-                    "Internal server error"
-                );
-                return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+                _logger.LogError(ex, "Unexpected error approving claim with ID {Id}: {Message}", id, ex.Message);
+                return StatusCode(500, new { message = "An unexpected error occurred." });
             }
-
         }
+
     }
+
 }
+
