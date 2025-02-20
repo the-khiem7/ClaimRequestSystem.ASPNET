@@ -83,6 +83,47 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
+        public async Task<bool> DeleteProject(Guid id)
+        {
+            try
+            {
+                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+
+                return await executionStrategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
+                    try
+                    {
+                        // Retrieve the project by ID
+                        var existingProject = await _unitOfWork.GetRepository<Project>()
+                            .SingleOrDefaultAsync(predicate: p => p.Id == id);
+
+                        if (existingProject == null)
+                        {
+                            return false; // Return false instead of throwing an exception
+                        }
+
+                        // Delete the project
+                        _unitOfWork.GetRepository<Project>().DeleteAsync(existingProject);
+                        await _unitOfWork.CommitAsync();
+                        await transaction.CommitAsync();
+
+                        return true;
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting project: {Message}", ex.Message);
+                throw;
+            }
+        }
+
         public async Task<CreateProjectResponse> GetProjectById(Guid id)
         {
             try
@@ -174,5 +215,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
+
     }
 }

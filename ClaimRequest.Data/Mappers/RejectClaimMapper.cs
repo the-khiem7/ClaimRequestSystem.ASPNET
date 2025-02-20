@@ -14,13 +14,14 @@ namespace ClaimRequest.DAL.Mappers
     {
         public RejectClaimMapper()
         {
-            CreateMap<RejectClaimRequest, Claim>()  //Ánh xạ dữ liệu từ Request --> Entity
+            CreateMap<RejectClaimRequest, Claim>() 
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.ProjectId, opt => opt.Ignore())
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(_ => ClaimStatus.Rejected))
                 .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(_ => DateTime.UtcNow));
 
-            CreateMap<Claim, RejectClaimResponse>(); //Ánh xạ ngược về Response
+            CreateMap<Claim, RejectClaimResponse>()
+                .ForMember(dest => dest.ApproverId, opt => opt.MapFrom(src => src.ClaimApprovers.FirstOrDefault().ApproverId));
         }
     }
 }

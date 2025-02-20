@@ -12,10 +12,13 @@ namespace ClaimRequest.BLL.Services.Interfaces
     public interface IClaimService
     {
         Task<CreateClaimResponse> CreateClaim(CreateClaimRequest createClaimRequest);
+        Task<UpdateClaimResponse> UpdateClaim(Guid Id, UpdateClaimRequest updateClaimRequest);
         Task<CancelClaimResponse> CancelClaim(CancelClaimRequest cancelClaimRequest);   
-        Task<IEnumerable<ViewClaimResponse>> GetClaimsAsync(ClaimStatus? status);
-        Task<ViewClaimResponse> GetClaimByIdAsync(Guid id);
+        Task<IEnumerable<ViewClaimResponse>> GetClaims(ClaimStatus? status);
+        Task<ViewClaimResponse> GetClaimById(Guid id);
         Task<RejectClaimResponse> RejectClaim(Guid Id, RejectClaimRequest rejectClaimRequest);
+        Task<PaidClaimResponse> PaidClaim(Guid Id, PaidClaimRequest request);
+        Task<MemoryStream> DownloadClaimAsync(DownloadClaimRequest downloadClaimRequest);
         Task<ApproveClaimResponse> ApproveClaim(Guid id, Guid approveId, ApproveClaimRequest approveClaimRequest);
 
     }
