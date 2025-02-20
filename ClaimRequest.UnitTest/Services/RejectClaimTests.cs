@@ -144,10 +144,7 @@ namespace ClaimRequest.UnitTest.Services
                 (Func<It.IsAnyType, Exception, string>)It.IsAny<object>()), Times.Once);
         }
 
-
-
         // End test here
-
 
         public void Dispose()
         {
@@ -160,8 +157,6 @@ namespace ClaimRequest.UnitTest.Services
             _mockUnitOfWork.Reset();
             GC.SuppressFinalize(this);
         }
-
-
 
     }
 }

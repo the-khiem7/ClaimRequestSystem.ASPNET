@@ -223,7 +223,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         pendingClaim.Status = ClaimStatus.Rejected;
 
-                        _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
+                        _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim); //?
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();
 
