@@ -198,5 +198,44 @@ namespace ClaimRequest.API.Controllers
             }
 
         }
+
+        public async Task<IActionResult> PaidClaim(Guid id, [FromBody] PaidClaimRequest paidClaimRequest)
+        {
+            try
+            {
+                var paidClaim = await _claimService.PaidClaim(id, paidClaimRequest);
+                if (paidClaim == null)
+                {
+                    var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                        null,
+                        StatusCodes.Status404NotFound,
+                        "Claim not found",
+                        "The claim ID provided does not exist or is not eligible for payment"
+                    );
+                    return NotFound(errorResponse);
+                }
+
+                var successResponse = ApiResponseBuilder.BuildResponse(
+                    StatusCodes.Status200OK,
+                    "Claim marked as Paid successfully",
+                    paidClaim
+                );
+                return Ok(successResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error marking claim as Paid with ID {ClaimId}", id);
+
+                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status500InternalServerError,
+                    "An error occurred while processing the claim payment",
+                    "Internal server error"
+                );
+                return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+            }
+        }
+
+
     }
 }

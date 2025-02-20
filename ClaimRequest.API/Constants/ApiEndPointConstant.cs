@@ -22,7 +22,7 @@ namespace ClaimRequest.API.Constants
             public const string RejectClaimEndpoint = ClaimEndpointById + "/reject";
             public const string ApproveClaimEndpoint = ClaimsEndpoint + "/approve/{id}";
             public const string DownloadClaimEndpoint = ClaimsEndpoint + "/download";
-
+            public const string PaidClaimEndpoint = ClaimsEndpoint + "/paid/{id}";
         }
         public static class Email
         {
