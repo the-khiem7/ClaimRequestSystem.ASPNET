@@ -24,6 +24,11 @@ namespace ClaimRequest.BLL.Services.Implements
 {
     public class ClaimService : BaseService<Claim>, IClaimService
     {
+        private IUnitOfWork<ClaimRequestDbContext> object1;
+        private IMapper object2;
+        private ILogger<Claim> object3;
+        private IHttpContextAccessor object4;
+
         public ClaimService(
             IUnitOfWork<ClaimRequestDbContext> unitOfWork,
             ILogger<Claim> logger,
@@ -31,6 +36,14 @@ namespace ClaimRequest.BLL.Services.Implements
             IHttpContextAccessor httpContextAccessor)
             : base(unitOfWork, logger, mapper, httpContextAccessor)
         {
+        }
+
+        public ClaimService(IUnitOfWork<ClaimRequestDbContext> object1, IMapper object2, ILogger<Claim> object3, IHttpContextAccessor object4)
+        {
+            this.object1 = object1;
+            this.object2 = object2;
+            this.object3 = object3;
+            this.object4 = object4;
         }
 
         #region Nguyen_Anh_Quan
@@ -419,6 +432,65 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
+        public async Task<PaidClaimResponse> PaidClaimResponse(Guid Id , PaidClaimRequest paidClaimRequest)
+        {
+            try
+            {
+                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+                return await executionStrategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
+                    try
+                    {
+                        var claim = await _unitOfWork.GetRepository<Claim>().SingleOrDefaultAsync(
+                            predicate: c => c.Id == paidClaimRequest.ClaimId,
+                            include: q => q.Include(c => c.ClaimApprovers)
+                        );
 
+                        if (claim == null)
+                        {
+                            throw new NotFoundException($"Claim with ID {paidClaimRequest.ClaimId} not found.");
+                        }
+
+                        if (claim.Status != ClaimStatus.Approved)
+                        {
+                            throw new InvalidOperationException($"Claim with ID {paidClaimRequest.ClaimId} is not approved.");
+                        }
+
+                        _logger.LogInformation("Processing paid claim response for claim ID: {ClaimId}", paidClaimRequest.ClaimId);
+
+                        claim.Status = ClaimStatus.Paid;
+                        claim.PaidAt = DateTime.UtcNow;
+                        claim.PaidBy = paidClaimRequest.PaidBy;
+                        claim.Remark = paidClaimRequest.Remark;
+
+                        _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
+
+                        await _unitOfWork.CommitAsync();
+                        await _unitOfWork.CommitTransactionAsync(transaction);
+
+                        _logger.LogInformation("Successfully processed paid claim for claim ID: {ClaimId}", paidClaimRequest.ClaimId);
+
+                        return _mapper.Map<PaidClaimResponse>(claim);
+                    }
+                    catch (Exception ex)
+                    {
+                        await _unitOfWork.RollbackTransactionAsync(transaction);
+                        _logger.LogError(ex, "Error processing paid claim response: {Message}", ex.Message);
+                        throw;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in paid claim response: {Message}", ex.Message);
+                throw;
+            }
+        }
+
+        public Task<PaidClaimResponse?> PaidClaim(Guid claimId, PaidClaimRequest request)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
