@@ -140,7 +140,7 @@ namespace ClaimRequest.API.Controllers
             return Ok(response);
         }
 
-        [HttpPut("approve/{id}/approver/{approveId}")]
+        [HttpPut(ApiEndPointConstant.Claim.ApproveClaimEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
