@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
@@ -229,6 +229,69 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
+
+        public async Task<UpdateClaimResponse> UpdateClaim(Guid Id, UpdateClaimRequest request)
+        {
+            try
+            {
+                // Get the claim by ID
+                var claimRepository = _unitOfWork.GetRepository<Claim>();
+                var claim = await claimRepository.GetByIdAsync(Id);
+
+                // Check if the claim exists
+                if (claim == null)
+                {
+                    return new UpdateClaimResponse
+                    {
+                        ClaimId = Id,
+                        Message = "Claim not found",
+                        Success = false
+                    };
+                }
+
+                // Update only the required fields
+                // Ensure that the new dates are valid
+                if (request.StartDate >= request.EndDate)
+                {
+                    return new UpdateClaimResponse
+                    {
+                        ClaimId = Id,
+                        Message = "Start Date must be earlier than End Date",
+                        Success = false
+                    };
+                }
+
+                claim.StartDate = request.StartDate;
+                claim.EndDate = request.EndDate;
+                claim.TotalWorkingHours = request.TotalWorkingHours;
+                claim.UpdateAt = DateTime.UtcNow;
+
+                // Save the changes
+                claimRepository.UpdateAsync(claim);
+                await _unitOfWork.CommitAsync();
+
+                // Return a successful response
+                return new UpdateClaimResponse
+                {
+                    ClaimId = claim.Id,
+                    StartDate = claim.StartDate,
+                    EndDate = claim.EndDate,
+                    TotalWorkingHours = claim.TotalWorkingHours,
+                    Success = true,
+                    Message = "Claim updated successfully"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating claim with ID {ClaimId}: {Message}", Id, ex.Message);
+                throw;
+            }
+        }
+
+
+
+
+
         public async Task<IEnumerable<ViewClaimResponse>> GetClaims(ClaimStatus? status)
         {
             try
