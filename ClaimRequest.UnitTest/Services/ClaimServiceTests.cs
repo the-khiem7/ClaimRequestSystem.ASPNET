@@ -131,10 +131,10 @@ namespace ClaimRequest.UnitTest.Services
             _mockUnitOfWork.Verify(uow => uow.BeginTransactionAsync(), Times.Once);
             _mockUnitOfWork.Verify(uow => uow.CommitTransactionAsync(It.IsAny<IDbContextTransaction>()), Times.Once);
         }
+
         [Fact]
         public async Task ApproveClaim_ShouldWork()
         {
-            // Arrange
             var claimId = Guid.NewGuid();
             var approverId = Guid.NewGuid();
             var approveClaimRequest = new ApproveClaimRequest();
@@ -165,10 +165,8 @@ namespace ClaimRequest.UnitTest.Services
             _mockUnitOfWork.Setup(uow => uow.CommitAsync())
                 .ReturnsAsync(1);
 
-            // Act
             var result = await _claimService.ApproveClaim(claimId, approverId, approveClaimRequest);
 
-            // Assert
             Assert.NotNull(result);
             Assert.Equal(ClaimStatus.Approved, pendingClaim.Status);
 

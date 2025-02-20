@@ -227,7 +227,6 @@ namespace ClaimRequest.BLL.Services.Implements
                     var claimRepo = _unitOfWork.GetRepository<Claim>();
                     var approverRepo = _unitOfWork.GetRepository<ClaimApprover>();
 
-                    // Tìm Claim cần approve
                     var pendingClaim = await claimRepo.SingleOrDefaultAsync(
                         predicate: s => s.Id == id,
                         include: q => q.Include(c => c.ClaimApprovers)
