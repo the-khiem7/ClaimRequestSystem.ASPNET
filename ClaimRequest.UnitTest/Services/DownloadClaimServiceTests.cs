@@ -164,6 +164,24 @@ namespace ClaimRequest.Tests.Services
         public async Task DownloadClaimAsync_ShouldExcludeUnpaidClaims()
         {
             // Arrange
+            var fakeClaim = new Claim
+            {
+                Id = Guid.NewGuid(),
+                Claimer = new Staff { Id = Guid.NewGuid(), Name = "John Doe", Email = "JohnDoe@gmail.com", Password = "1" },
+                Project = new Project { Id = Guid.NewGuid(), Name = "Project A", Description = "N/A", EndDate = DateOnly.MaxValue },
+                Finance = new Staff { Id = Guid.NewGuid(), Name = "Jane Doe", Email = "JaneDoe@gmail.com", Password = "2" },
+                Name = "Claim 1",
+                ClaimType = ClaimType.OvertimeCompensation,
+                Status = ClaimStatus.Paid,
+                Amount = 100,
+                TotalWorkingHours = 8,
+                StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                EndDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                CreateAt = DateTime.UtcNow,
+                UpdateAt = DateTime.UtcNow,
+                Remark = "N/A"
+            };
+
             _claimRepositoryMock.Setup(repo => repo.GetListAsync(
                 It.IsAny<Expression<Func<Claim, bool>>>(),
                 It.IsAny<Func<IQueryable<Claim>, IOrderedQueryable<Claim>>>(),
