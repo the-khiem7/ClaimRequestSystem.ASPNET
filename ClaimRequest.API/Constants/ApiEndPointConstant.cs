@@ -30,7 +30,7 @@ namespace ClaimRequest.API.Constants
 
             public const string SendEmail = EmailEndpoint + "/send";
 
-            public const string ApproveClaimEndpoint = ClaimEndpoint + "/approve";
+            public const string ApproveClaimEndpoint = Claim.ClaimEndpoint + "/approve";
 
         }
     }
