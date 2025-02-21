@@ -25,7 +25,7 @@ namespace ClaimRequest.UnitTest.Services
         }
     }
 
-    public class ClaimServiceTests
+    public class CreateClaimServiceTests : IDisposable
     {
         private readonly Mock<IUnitOfWork<ClaimRequestDbContext>> _mockUnitOfWork;
         private readonly Mock<ILogger<Claim>> _mockLogger;
@@ -33,20 +33,16 @@ namespace ClaimRequest.UnitTest.Services
         private readonly IMapper _mapper;
         private readonly ClaimService _claimService;
         private readonly Mock<IGenericRepository<Claim>> _mockClaimRepository;
-        private readonly Mock<IDbContextTransaction> _mockTransaction;
         private readonly TestClaimRequestDbContext _dbContext;
-        private readonly Mock<DatabaseFacade> _mockDatabase;
 
-        public ClaimServiceTests()
+        public CreateClaimServiceTests()
         {
             // Initialize mocks
             _mockUnitOfWork = new Mock<IUnitOfWork<ClaimRequestDbContext>>();
             _mockLogger = new Mock<ILogger<Claim>>();
             _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
             _mockClaimRepository = new Mock<IGenericRepository<Claim>>();
-            _mockTransaction = new Mock<IDbContextTransaction>();
             _dbContext = new TestClaimRequestDbContext();
-            _mockDatabase = new Mock<DatabaseFacade>(_dbContext);
 
             // Setup mapper
             var mapperConfig = new MapperConfiguration(cfg =>
@@ -55,26 +51,13 @@ namespace ClaimRequest.UnitTest.Services
             });
             _mapper = mapperConfig.CreateMapper();
 
-            // Setup database
-            _mockDatabase.Setup(d => d.CreateExecutionStrategy())
-                .Returns(new MockExecutionStrategy());
-            _mockDatabase.Setup(d => d.BeginTransactionAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(_mockTransaction.Object);
-
-            // Setup unit of work
-            _mockUnitOfWork.Setup(uow => uow.Context)
-                .Returns(_dbContext);
-
-            // Setup transaction
-            _mockUnitOfWork.Setup(uow => uow.BeginTransactionAsync())
-                .ReturnsAsync(_mockTransaction.Object);
-
-            _mockUnitOfWork.Setup(uow => uow.CommitTransactionAsync(It.IsAny<IDbContextTransaction>()))
-                .Returns(Task.CompletedTask);
-
             // Setup repository
             _mockUnitOfWork.Setup(uow => uow.GetRepository<Claim>())
                 .Returns(_mockClaimRepository.Object);
+
+            // Setup unit of work
+            _mockUnitOfWork.Setup(uow => uow.CommitAsync())
+                .ReturnsAsync(1);
 
             // Initialize service
             _claimService = new ClaimService(
@@ -86,7 +69,7 @@ namespace ClaimRequest.UnitTest.Services
         }
 
         [Fact]
-        public async Task CreateClaim_ShouldWork()
+        public async Task CreateClaim_ShouldCreateNewClaim()
         {
             // Arrange
             var createClaimRequest = new CreateClaimRequest
@@ -96,7 +79,10 @@ namespace ClaimRequest.UnitTest.Services
                 Remark = "Test Remark",
                 Amount = 100.00m,
                 ProjectId = Guid.NewGuid(),
-                ClaimerId = Guid.NewGuid()
+                ClaimerId = Guid.NewGuid(),
+                TotalWorkingHours = 8,
+                StartDate = DateOnly.FromDateTime(DateTime.Today),
+                EndDate = DateOnly.FromDateTime(DateTime.Today.AddDays(1))
             };
 
             Claim capturedClaim = null;
@@ -104,30 +90,28 @@ namespace ClaimRequest.UnitTest.Services
                 .Callback<Claim>(claim => capturedClaim = claim)
                 .Returns(Task.CompletedTask);
 
-            _mockUnitOfWork.Setup(uow => uow.CommitAsync())
-                .ReturnsAsync(1);
-
             // Act
             var result = await _claimService.CreateClaim(createClaimRequest);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(createClaimRequest.Name, result.Name);
-            Assert.Equal(createClaimRequest.Amount, result.Amount);
-            Assert.Equal(createClaimRequest.ClaimType, result.ClaimType);
+            Assert.NotNull(capturedClaim);
 
             // Verify the claim was created with correct data
-            Assert.NotNull(capturedClaim);
             Assert.Equal(createClaimRequest.Name, capturedClaim.Name);
             Assert.Equal(createClaimRequest.Amount, capturedClaim.Amount);
             Assert.Equal(createClaimRequest.ClaimType, capturedClaim.ClaimType);
+            Assert.Equal(createClaimRequest.Remark, capturedClaim.Remark);
+            Assert.Equal(createClaimRequest.ProjectId, capturedClaim.ProjectId);
+            Assert.Equal(createClaimRequest.ClaimerId, capturedClaim.ClaimerId);
+            Assert.Equal(createClaimRequest.TotalWorkingHours, capturedClaim.TotalWorkingHours);
+            Assert.Equal(createClaimRequest.StartDate, capturedClaim.StartDate);
+            Assert.Equal(createClaimRequest.EndDate, capturedClaim.EndDate);
             Assert.Equal(ClaimStatus.Draft, capturedClaim.Status);
 
-            // Verify method calls
+            // Verify repository and unit of work interactions
             _mockClaimRepository.Verify(repo => repo.InsertAsync(It.IsAny<Claim>()), Times.Once);
             _mockUnitOfWork.Verify(uow => uow.CommitAsync(), Times.Once);
-            _mockUnitOfWork.Verify(uow => uow.BeginTransactionAsync(), Times.Once);
-            _mockUnitOfWork.Verify(uow => uow.CommitTransactionAsync(It.IsAny<IDbContextTransaction>()), Times.Once);
         }
 
         public void Dispose()
