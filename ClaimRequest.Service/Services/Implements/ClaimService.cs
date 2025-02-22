@@ -24,11 +24,6 @@ namespace ClaimRequest.BLL.Services.Implements
 {
     public class ClaimService : BaseService<Claim>, IClaimService
     {
-        private IUnitOfWork<ClaimRequestDbContext> object1;
-        private IMapper object2;
-        private ILogger<Claim> object3;
-        private IHttpContextAccessor object4;
-
         public ClaimService(
             IUnitOfWork<ClaimRequestDbContext> unitOfWork,
             ILogger<Claim> logger,
@@ -36,14 +31,6 @@ namespace ClaimRequest.BLL.Services.Implements
             IHttpContextAccessor httpContextAccessor)
             : base(unitOfWork, logger, mapper, httpContextAccessor)
         {
-        }
-
-        public ClaimService(IUnitOfWork<ClaimRequestDbContext> object1, IMapper object2, ILogger<Claim> object3, IHttpContextAccessor object4)
-        {
-            this.object1 = object1;
-            this.object2 = object2;
-            this.object3 = object3;
-            this.object4 = object4;
         }
 
         #region Nguyen_Anh_Quan
