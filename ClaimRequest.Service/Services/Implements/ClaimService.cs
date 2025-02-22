@@ -460,7 +460,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         _mapper.Map(approveClaimRequest, pendingClaim);
 
-                        pendingClaim.Status = ClaimStatus.Rejected;
+                        pendingClaim.Status = ClaimStatus.Approved;
 
                         _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
                         await _unitOfWork.CommitAsync();
