@@ -1,5 +1,7 @@
 ﻿using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
+using ClaimRequest.DAL.Data.Entities;
+using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
 using Microsoft.AspNetCore.Http;
@@ -34,6 +36,167 @@ namespace ClaimRequest.API.Controllers
                 return Problem("Create claim failed");
             }
             return CreatedAtAction(nameof(CreateClaim), response);
+        }
+
+        [HttpGet(ApiEndPointConstant.Claim.ClaimsEndpoint)]
+        [ProducesResponseType(typeof(IEnumerable<ViewClaimResponse>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status)
+        {
+            var response = await _claimService.GetClaims(status);
+            return Ok(ApiResponseBuilder.BuildResponse(
+                message: "Get claims successfully!",
+                data: response,
+                statusCode: StatusCodes.Status200OK));
+        }
+
+        [HttpGet(ApiEndPointConstant.Claim.ClaimEndpointById)]
+        [ProducesResponseType(typeof(ViewClaimResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetClaimById(Guid id)
+        {
+            var response = await _claimService.GetClaimById(id);
+            return Ok(ApiResponseBuilder.BuildResponse(
+                message: $"Get claim with id {id} successfully!",
+                data: response,
+                statusCode: StatusCodes.Status200OK));
+        }
+
+        [HttpPut(ApiEndPointConstant.Claim.UpdateClaimEndpoint)]
+        [ProducesResponseType(typeof(UpdateClaimResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UpdateClaim(Guid id, [FromBody] UpdateClaimRequest updateClaimRequest)
+        {
+            try
+            {
+                var updatedClaim = await _claimService.UpdateClaim(id, updateClaimRequest);
+                if (updatedClaim == null)
+                {
+                    var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                        null,
+                        StatusCodes.Status404NotFound,
+                        "Claim not found",
+                        "The claim ID provided does not exist or could not be updated"
+                    );
+                    return NotFound(errorResponse);
+                }
+
+                var successResponse = ApiResponseBuilder.BuildResponse(
+                    StatusCodes.Status200OK,
+                    "Claim updated successfully",
+                    updatedClaim
+                );
+                return Ok(successResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating claim with ID {ClaimId}", id);
+
+                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status500InternalServerError,
+                    "An error occurred while updating the claim",
+                    "Internal server error"
+                );
+                return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+            }
+        }
+
+
+        [HttpPut("reject/{Id}")]
+        [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> RejectClaim(Guid Id, [FromBody] RejectClaimRequest rejectClaimRequest)
+        {
+                var rejectClaim = await _claimService.RejectClaim(Id, rejectClaimRequest);
+                    if (rejectClaim == null)
+                    {
+                        _logger.LogError("Reject claim failed");
+                        return Problem("Reject claim failed");
+                    }
+
+                var successResponse = ApiResponseBuilder.BuildResponse(
+                    StatusCodes.Status200OK,
+                    "Claim Rejected successfully",
+                    rejectClaim
+                );
+                return Ok(successResponse);
+        }
+
+       
+        [HttpPut(ApiEndPointConstant.Claim.CancelClaimEndpoint)]
+        [ProducesResponseType(typeof(CancelClaimResponse), StatusCodes.Status200OK)]
+        public async Task<IActionResult> CancelClaim([FromBody] CancelClaimRequest cancelClaimRequest)
+        {
+            var response = await _claimService.CancelClaim(cancelClaimRequest);
+            if (response == null)
+            {
+                _logger.LogError("Cancel claim failed");
+                return Problem("Cancel claim failed");
+            }
+            return Ok(response);
+        }
+
+        [HttpGet(ApiEndPointConstant.Claim.DownloadClaimEndpoint)]
+        [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+        public async Task<IActionResult> DownloadClaim([FromQuery] DownloadClaimRequest downloadClaimRequest)
+        {
+            var stream = await _claimService.DownloadClaimAsync(downloadClaimRequest);
+
+            if (stream == null)
+            {
+                _logger.LogError("Download claim failed");
+                return Problem("Download claim failed");
+            }
+
+            var fileName = "Template_Export_Claim.xlsx";
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        }
+
+
+
+
+        [HttpPut("approve/{Id}")]
+        [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]  
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ApproveClaim(Guid Id, [FromBody] ApproveClaimRequest approveClaimRequest)
+        {
+            try
+            {
+                var approveClaim = await _claimService.ApproveClaim(Id, approveClaimRequest);
+                if (approveClaim == null)
+                {
+                    var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                            null,
+                            StatusCodes.Status404NotFound,
+                            "Claim not found",
+                            "The claim ID provided does not exist or is not pending for approve"
+                            );
+                    return NotFound(errorResponse);
+                }
+
+                var successResponse = ApiResponseBuilder.BuildResponse(
+                    StatusCodes.Status200OK,
+                    "Claim Approved successfully",
+                    approveClaim 
+                );
+                return Ok(successResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error approve claim with ID {ClaimId}", Id);
+
+                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status500InternalServerError,
+                    "An error occurred while approve the claim",
+                    "Internal server error"
+                );
+                return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+            }
+
         }
     }
 }

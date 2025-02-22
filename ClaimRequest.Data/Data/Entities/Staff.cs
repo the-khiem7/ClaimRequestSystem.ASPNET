@@ -28,7 +28,83 @@ namespace ClaimRequest.DAL.Data.Entities
         SalesAndMarketing,    // Sales, marketing, and client relationship management
         CustomerSupport,      // Handling customer inquiries and support tickets
         ResearchAndInnovation,// Exploring new technologies and innovations
-        LegalAndCompliance    // Handling legal, contracts, and policy enforcement
+        LegalAndCompliance,    // Handling legal, contracts, and policy enforcement
+        SoftwareEngineer,
+        SeniorSoftwareEngineer,
+        TechLead,
+        SoftwareArchitect,
+
+        // Quality Assurance
+        QAEngineer,
+        SeniorQAEngineer,
+        QAAnalyst,
+        AutomationTester,
+
+        // IT Support
+        ITSupportSpecialist,
+        HelpdeskTechnician,
+        SystemAdministrator,
+
+        // Project Management
+        ProjectManager,
+        ScrumMaster,
+        AgileCoach,
+
+        // Business Analysis
+        BusinessAnalyst,
+        ProductOwner,
+        RequirementsAnalyst,
+
+        // UI/UX Design
+        UXDesigner,
+        UIDesigner,
+        FrontEndDeveloper,
+
+        // DevOps
+        DevOpsEngineer,
+        CloudEngineer,
+        SiteReliabilityEngineer,
+
+        // Cyber Security
+        SecurityAnalyst,
+        EthicalHacker,
+        ComplianceOfficer,
+
+        // Data Science
+        DataScientist,
+        DataEngineer,
+        MachineLearningEngineer,
+
+        // Technical Writing
+        TechnicalWriter,
+        DocumentationSpecialist,
+
+        // Human Resources
+        HRManager,
+        TalentAcquisitionSpecialist,
+        EmployeeRelationsManager,
+
+        // Finance
+        FinancialAnalyst,
+        Accountant,
+        ChiefFinancialOfficer,
+
+        // Sales & Marketing
+        SalesRepresentative,
+        DigitalMarketingManager,
+        BrandStrategist,
+
+        // Customer Support
+        CustomerSupportRepresentative,
+        TechnicalSupportSpecialist,
+
+        // Research & Innovation
+        ResearchScientist,
+        InnovationManager,
+
+        // Legal & Compliance
+        LegalAdvisor,
+        ComplianceManager
     }
 
 

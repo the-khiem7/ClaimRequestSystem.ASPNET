@@ -19,8 +19,10 @@ namespace ClaimRequest.API.Controllers
         }
         // B1: tao cac endpoint cho CRUD staff
 
-
-        [HttpGet] // get all staffs
+        /// <summary>
+        /// Get all active staff members
+        /// </summary>
+        [HttpGet] 
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<CreateStaffResponse>>), StatusCodes.Status200OK)] // tra ve response 200 OK
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)] // tra ve response 500 neu co loi
         public async Task<IActionResult> GetStaffs()
@@ -33,6 +35,9 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
+        /// <summary>
+        /// Get staff by Id
+        /// </summary>
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(ApiResponse<CreateStaffResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -47,6 +52,9 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
+        /// <summary>
+        /// Update staff details
+        /// </summary>
         [HttpPut("{id}")]
         [ProducesResponseType(typeof(ApiResponse<UpdateStaffResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -61,20 +69,53 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
+        /// <summary>
+        /// Soft delete a staff member (set IsActive = false)
+        /// </summary>
         [HttpDelete("{id}")]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteStaff(Guid id)
         {
+
+            //var request = new DeleteStaffRequest { StaffId = id };
+
+            //// Gọi service để xử lý xóa nhân viên
+            //bool isDeleted = _staffService.DeleteStaff(request.StaffId);
+
+            //var response = new DeleteStaffResponse(
+            //    isDeleted,
+            //    isDeleted ? "Delete Success" : "cannot find the staff"
+            //);
+
+            //return isDeleted ? Ok(response) : NotFound(response);
+
             await _staffService.DeleteStaff(id);
             return Ok(ApiResponseBuilder.BuildResponse<object>(
                 StatusCodes.Status200OK,
                 "Staff deleted successfully",
                 null
             ));
+            //var result = await _staffService.DeleteStaff(id);
+            //if (!result)
+            //{
+            //    return NotFound(ApiResponseBuilder.BuildErrorResponse(
+            //        StatusCodes.Status404NotFound,
+            //        "Staff not found"
+            //    ));
+            //}
+
+            //return Ok(ApiResponseBuilder.BuildResponse<object>(
+            //    StatusCodes.Status200OK,
+            //    "Staff deleted successfully",
+            //    null
+            //));
         }
 
+        /// <summary>
+        /// Create a new staff member
+        /// </summary>
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<CreateStaffResponse>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -104,6 +145,20 @@ namespace ClaimRequest.API.Controllers
                     response
                 )
             );
+            //if (!ModelState.IsValid)
+            //{
+            //    return BadRequest(ApiResponseBuilder.BuildErrorResponse(
+            //        StatusCodes.Status400BadRequest,
+            //        "Invalid request data"
+            //    ));
+            //}
+
+            //var newStaff = await _staffService.CreateStaff(request);
+            //return CreatedAtAction(nameof(GetStaffById), new { id = newStaff.Id }, ApiResponseBuilder.BuildResponse(
+            //    StatusCodes.Status201Created,
+            //    "Staff created successfully",
+            //    newStaff
+            //));
         }
     }
 }
