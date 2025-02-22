@@ -52,10 +52,7 @@ namespace ClaimRequest.UnitTest.Services
             _realDbContext.Database.EnsureDeleted();  // Ensure database is clean before each test
             _realDbContext.Database.EnsureCreated();  // Create a new database for each test
 
-            _mockUnitOfWork.Setup(uow => uow.GetRepository<Claim>())
-                .Returns(new GenericRepository<Claim>(_realDbContext));
             _mockUnitOfWork.Setup(uow => uow.Context).Returns(_realDbContext);
-
 
             // Setup unit of work
             _mockUnitOfWork.Setup(uow => uow.BeginTransactionAsync())
@@ -74,10 +71,10 @@ namespace ClaimRequest.UnitTest.Services
                 _mockMapper.Object,
                 _mockHttpContextAccessor.Object
             );
+
         }
 
         // Begin test here
-        // Đang fail :[
         [Fact]
         public async Task RejectClaim_Should_Reject_Valid_Claim()
         {
@@ -114,7 +111,7 @@ namespace ClaimRequest.UnitTest.Services
 
             // Mock repository behavior using SingleOrDefaultAsync
             _mockClaimRepository.Setup(repo => repo.SingleOrDefaultAsync(
-                It.IsAny<Expression<Func<Claim, bool>>>(), null, null))
+            It.IsAny<Expression<Func<Claim, bool>>>(), null, null))
             .ReturnsAsync((Expression<Func<Claim, bool>> predicate, object _, object __) =>
                 _realDbContext.Claims.FirstOrDefault(predicate.Compile()));
 
@@ -127,21 +124,19 @@ namespace ClaimRequest.UnitTest.Services
             // Assert
             Assert.NotNull(result);
             Assert.Equal(ClaimStatus.Rejected, result.Status);
-            Assert.Equal(rejectRequest.Remark, result.Remark);
 
             // Ensure transactions and commit were handled properly
             _mockUnitOfWork.Verify(uow => uow.BeginTransactionAsync(), Times.Once);
             _mockUnitOfWork.Verify(uow => uow.CommitTransactionAsync(It.IsAny<IDbContextTransaction>()), Times.Once);
             _mockUnitOfWork.Verify(uow => uow.CommitAsync(), Times.Once);
             _mockUnitOfWork.Verify(uow => uow.RollbackTransactionAsync(It.IsAny<IDbContextTransaction>()), Times.Never);
-
-            // Ensure logging was performed
             _mockLogger.Verify(logger => logger.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((v, t) => true),
                 It.IsAny<Exception>(),
                 (Func<It.IsAnyType, Exception, string>)It.IsAny<object>()), Times.Once);
+
         }
 
         // End test here

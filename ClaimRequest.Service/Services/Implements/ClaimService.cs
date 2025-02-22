@@ -184,6 +184,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
                 return await executionStrategy.ExecuteAsync(async () =>
                 {
+                    //Start transaction
                     await using var transaction = await _unitOfWork.BeginTransactionAsync();
                     try
                     {
@@ -192,6 +193,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             predicate: s => s.Id == Id,
                             include: q => q.Include(c => c.ClaimApprovers)
                             );
+                        //Checking the Id and Status
                         if (pendingClaim == null)
                         {
                             throw new KeyNotFoundException($"Claim with ID {Id} not found.");
@@ -203,7 +205,7 @@ namespace ClaimRequest.BLL.Services.Implements
                         }
                         _logger.LogInformation("Rejecting claim with ID: {Id} by approver: {ApproverId}", Id, rejectClaimRequest.ApproverId);
 
-
+                        //Find Approvers
                         var existingApprover = pendingClaim.ClaimApprovers
                             .FirstOrDefault(ca => ca.ApproverId == rejectClaimRequest.ApproverId);
 
