@@ -34,6 +34,12 @@ namespace ClaimRequest.DAL.Mappers
             //CreateMap<Claim, CreateClaimResponse>()
             //    .ForMember(dest => dest.Project, opt => opt.MapFrom(src => src.Project));
 
+            // UpdateClaimRequest -> Claim
+            CreateMap<UpdateClaimRequest, Claim>()
+                .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
+                .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
+                .ForMember(dest => dest.TotalWorkingHours, opt => opt.MapFrom(src => src.TotalWorkingHours))
+                .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(_ => DateTime.UtcNow));
 
             //CancelClaimRequest -> Claim
             CreateMap<CancelClaimRequest, Claim>()
