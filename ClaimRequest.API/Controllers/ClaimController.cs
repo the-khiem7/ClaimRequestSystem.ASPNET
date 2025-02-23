@@ -104,7 +104,6 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
-
         [HttpPut("reject/{Id}")]
         [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -126,7 +125,7 @@ namespace ClaimRequest.API.Controllers
             return Ok(successResponse);
         }
 
-       
+
         [HttpPut(ApiEndPointConstant.Claim.CancelClaimEndpoint)]
         [ProducesResponseType(typeof(CancelClaimResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> CancelClaim([FromBody] CancelClaimRequest cancelClaimRequest)

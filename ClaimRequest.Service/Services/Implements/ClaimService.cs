@@ -281,11 +281,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-
-
-
-
-
         public async Task<IEnumerable<ViewClaimResponse>> GetClaims(ClaimStatus? status)
         {
             try
