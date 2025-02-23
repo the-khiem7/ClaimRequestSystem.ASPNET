@@ -28,9 +28,6 @@ namespace ClaimRequest.DAL.Data.Entities
     [Table("Claims")]
     public class Claim
     {
-        public DateTime PaidAt;
-        public object PaidBy;
-
         [Key]
         [Required]
         [Column("id")]

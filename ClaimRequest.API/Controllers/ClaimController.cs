@@ -104,7 +104,6 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
-
         [HttpPut("reject/{Id}")]
         [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
