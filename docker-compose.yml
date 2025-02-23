@@ -36,18 +36,6 @@ services:
     networks:
       - claimrequest_network
 
-  claimrequest.test:
-    container_name: claimrequest-test
-    image: ${DOCKER_REGISTRY-}claimrequesttest
-    build:
-      context: .
-      dockerfile: ClaimRequest.UnitTest/Dockerfile
-    volumes:
-      - ./TestResults:/TestResults
-    depends_on:
-      - claimrequest.api
-    networks:
-      - claimrequest_network
 
   claimrequest.db:
     container_name: claimrequest-db
