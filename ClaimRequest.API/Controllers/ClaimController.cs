@@ -104,20 +104,20 @@ namespace ClaimRequest.API.Controllers
 
 
 
-        [HttpPut("reject/{Id}")]
+        [HttpPut("reject/{Id}")] //endpoint
         [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> RejectClaim(Guid Id, [FromBody] RejectClaimRequest rejectClaimRequest)
         {
-            var rejectClaim = await _claimService.RejectClaim(Id, rejectClaimRequest);
-            if (rejectClaim == null)
+            var rejectClaim = await _claimService.RejectClaim(Id, rejectClaimRequest); // call reject claim service
+            if (rejectClaim == null) //log errors
             {
                 _logger.LogError("Reject claim failed");
                 return Problem("Reject claim failed");
             }
 
-            var successResponse = ApiResponseBuilder.BuildResponse(
+            var successResponse = ApiResponseBuilder.BuildResponse( // log response
                 StatusCodes.Status200OK,
                 "Claim Rejected successfully",
                 rejectClaim
