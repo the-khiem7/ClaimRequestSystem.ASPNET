@@ -13,6 +13,6 @@ namespace ClaimRequest.DAL.Data.Responses.Claim
         public DateOnly EndDate { get; set; }
         public decimal TotalWorkingHours { get; set; }
         public bool Success { get; set; }
-        public string Message { get; set; } 
+        public string Message { get; set; }
     }
 }
