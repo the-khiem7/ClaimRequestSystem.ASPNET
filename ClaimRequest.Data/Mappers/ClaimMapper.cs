@@ -54,12 +54,14 @@ namespace ClaimRequest.DAL.Mappers
                 .ForMember(dest => dest.ProjectName, opt => opt.MapFrom(src => src.Project.Name))
                 .ForMember(dest => dest.ProjectStartDate, opt => opt.MapFrom(src => src.Project.StartDate))
                 .ForMember(dest => dest.ProjectEndDate, opt => opt.MapFrom(src => src.Project.EndDate));
+
             CreateMap<Claim, ApproveClaimResponse>()
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => "Approved"))
                 .ForMember(dest => dest.Remark, opt => opt.MapFrom(src => src.Remark))
                 .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(src => src.UpdateAt))
-                .ForMember(dest => dest.ClaimerId, opt => opt.MapFrom(src => src.ClaimerId));
+                .ForMember(dest => dest.ClaimerId, opt => opt.MapFrom(src => src.ClaimerId))
+                .ForMember(dest => dest.ApproverId, opt => opt.Ignore());
             CreateMap<ApproveClaimRequest, Claim>();
         }
     }

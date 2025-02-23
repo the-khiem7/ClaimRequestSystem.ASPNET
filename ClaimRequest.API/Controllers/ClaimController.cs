@@ -111,22 +111,22 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> RejectClaim(Guid Id, [FromBody] RejectClaimRequest rejectClaimRequest)
         {
-                var rejectClaim = await _claimService.RejectClaim(Id, rejectClaimRequest);
-                    if (rejectClaim == null)
-                    {
-                        _logger.LogError("Reject claim failed");
-                        return Problem("Reject claim failed");
-                    }
+            var rejectClaim = await _claimService.RejectClaim(Id, rejectClaimRequest);
+            if (rejectClaim == null)
+            {
+                _logger.LogError("Reject claim failed");
+                return Problem("Reject claim failed");
+            }
 
-                var successResponse = ApiResponseBuilder.BuildResponse(
-                    StatusCodes.Status200OK,
-                    "Claim Rejected successfully",
-                    rejectClaim
-                );
-                return Ok(successResponse);
+            var successResponse = ApiResponseBuilder.BuildResponse(
+                StatusCodes.Status200OK,
+                "Claim Rejected successfully",
+                rejectClaim
+            );
+            return Ok(successResponse);
         }
 
-       
+
         [HttpPut(ApiEndPointConstant.Claim.CancelClaimEndpoint)]
         [ProducesResponseType(typeof(CancelClaimResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> CancelClaim([FromBody] CancelClaimRequest cancelClaimRequest)
@@ -138,34 +138,6 @@ namespace ClaimRequest.API.Controllers
                 return Problem("Cancel claim failed");
             }
             return Ok(response);
-        }
-
-        [HttpPut(ApiEndPointConstant.Claim.ApproveClaimEndpoint)]
-        [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> ApproveClaim(Guid id, Guid approveId, [FromBody] ApproveClaimRequest approveClaimRequest)
-        {
-            try
-            {
-                var response = await _claimService.ApproveClaim(id, approveId, approveClaimRequest);
-                return Ok(response);
-            }
-            catch (NotFoundException ex)
-            {
-                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
-                return NotFound(new { message = ex.Message });
-            }
-            catch (BadRequestException ex)
-            {
-                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error approving claim with ID {Id}: {Message}", id, ex.Message);
-                return StatusCode(500, new { message = "An unexpected error occurred." });
-            }
         }
 
         [HttpGet(ApiEndPointConstant.Claim.DownloadClaimEndpoint)]
@@ -182,42 +154,33 @@ namespace ClaimRequest.API.Controllers
 
             var fileName = "Template_Export_Claim.xlsx";
             return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
-        }  
-    
-        public async Task<IActionResult> PaidClaim(Guid id, [FromBody] PaidClaimRequest paidClaimRequest)
+        }
+
+        [HttpPut(ApiEndPointConstant.Claim.ApproveClaimEndpoint)]
+        [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id, [FromRoute] Guid approverId, [FromBody] ApproveClaimRequest approveClaimRequest)
         {
             try
             {
-                var paidClaim = await _claimService.PaidClaim(id, paidClaimRequest);
-                if (paidClaim == null)
-                {
-                    var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
-                        null,
-                        StatusCodes.Status404NotFound,
-                        "Claim not found",
-                        "The claim ID provided does not exist or is not eligible for payment"
-                    );
-                    return NotFound(errorResponse);
-                }
-
-                var successResponse = ApiResponseBuilder.BuildResponse(
-                    StatusCodes.Status200OK,
-                    "Claim marked as Paid successfully",
-                    paidClaim
-                );
-                return Ok(successResponse);
+                var response = await _claimService.ApproveClaim(id, approverId, approveClaimRequest);
+                return Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error marking claim as Paid with ID {ClaimId}", id);
-
-                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
-                    null,
-                    StatusCodes.Status500InternalServerError,
-                    "An error occurred while processing the claim payment",
-                    "Internal server error"
-                );
-                return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+                _logger.LogError(ex, "Unexpected error approving claim with ID {Id}: {Message}", id, ex.Message);
+                return StatusCode(500, new { message = ex.Message });
             }
         }
     }

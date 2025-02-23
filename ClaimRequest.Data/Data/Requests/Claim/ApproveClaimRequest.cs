@@ -12,6 +12,5 @@ namespace ClaimRequest.DAL.Data.Requests.Claim
         [Required]
         [StringLength(500, ErrorMessage = "Remark cannot exceed 500 characters.")]
         public string Remark { get; set; }
-
     }
 }

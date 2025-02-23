@@ -98,7 +98,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-        
+
         public async Task<MemoryStream> DownloadClaimAsync(DownloadClaimRequest downloadClaimRequest)
         {
             try
@@ -320,7 +320,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-
         public async Task<ViewClaimResponse> GetClaimById(Guid id)
         {
             try
@@ -370,7 +369,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             throw new KeyNotFoundException($"Claim with ID {Id} not found.");
                         }
 
-                        if(pendingClaim.Status != ClaimStatus.Pending) 
+                        if (pendingClaim.Status != ClaimStatus.Pending)
                         {
                             throw new InvalidOperationException($"Claim with ID {Id} is not in pending.");
                         }
@@ -408,14 +407,15 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw;
                     }
                 });
-            } 
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error rejecting claim with ID {Id}: {Message}", Id, ex.Message);
                 throw;
             }
         }
-        public async Task<ApproveClaimResponse> ApproveClaim(Guid id, Guid approveId, ApproveClaimRequest approveClaimRequest)
+
+        public async Task<ApproveClaimResponse> ApproveClaim(Guid id, Guid approverId, ApproveClaimRequest approveClaimRequest)
         {
             var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
@@ -444,20 +444,15 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw new BadRequestException($"Claim with ID {id} is not in pending state.");
                     }
 
-                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approveId);
                     var existingApprover = pendingClaim.ClaimApprovers
-                        .FirstOrDefault(ca => ca.ApproverId == approveId);
+                        .FirstOrDefault(ca => ca.ApproverId == approverId);
 
                     if (existingApprover == null)
                     {
-                        var newApprover = new ClaimApprover
-                        {
-                            ClaimId = pendingClaim.Id,
-                            ApproverId = approveId
-                        };
-
-                        await approverRepo.InsertAsync(newApprover);
+                        throw new KeyNotFoundException("Approver does not exist.");
                     }
+
+                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approverId);
 
                     _mapper.Map(approveClaimRequest, pendingClaim);
                     pendingClaim.Status = ClaimStatus.Approved;
@@ -467,78 +462,14 @@ namespace ClaimRequest.BLL.Services.Implements
                     await transaction.CommitAsync();
                     await _unitOfWork.CommitAsync();
 
-                        return _mapper.Map<ApproveClaimResponse>(pendingClaim);
-                    }
-                    catch (Exception)
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
-                });
-            
-        }
-
-        public async Task<PaidClaimResponse> PaidClaimResponse(Guid Id , PaidClaimRequest paidClaimRequest)
-        {
-            try
-            {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-                return await executionStrategy.ExecuteAsync(async () =>
+                    return _mapper.Map<ApproveClaimResponse>(pendingClaim);
+                }
+                catch (Exception)
                 {
-                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
-                    try
-                    {
-                        var claim = await _unitOfWork.GetRepository<Claim>().SingleOrDefaultAsync(
-                            predicate: c => c.Id == paidClaimRequest.ClaimId,
-                            include: q => q.Include(c => c.ClaimApprovers)
-                        );
-
-                        if (claim == null)
-                        {
-                            throw new NotFoundException($"Claim with ID {paidClaimRequest.ClaimId} not found.");
-                        }
-
-                        if (claim.Status != ClaimStatus.Approved)
-                        {
-                            throw new InvalidOperationException($"Claim with ID {paidClaimRequest.ClaimId} is not approved.");
-                        }
-
-                        _logger.LogInformation("Processing paid claim response for claim ID: {ClaimId}", paidClaimRequest.ClaimId);
-
-                        claim.Status = ClaimStatus.Paid;
-                        claim.PaidAt = DateTime.UtcNow;
-                        claim.PaidBy = paidClaimRequest.PaidBy;
-                        claim.Remark = paidClaimRequest.Remark;
-
-                        _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
-
-                        await _unitOfWork.CommitAsync();
-                        await _unitOfWork.CommitTransactionAsync(transaction);
-
-                        _logger.LogInformation("Successfully processed paid claim for claim ID: {ClaimId}", paidClaimRequest.ClaimId);
-
-                        return _mapper.Map<PaidClaimResponse>(claim);
-                    }
-                    catch (Exception ex)
-                    {
-                        await _unitOfWork.RollbackTransactionAsync(transaction);
-                        _logger.LogError(ex, "Error processing paid claim response: {Message}", ex.Message);
-                        throw;
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in paid claim response: {Message}", ex.Message);
-                throw;
-            }
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
-
-        public Task<PaidClaimResponse?> PaidClaim(Guid claimId, PaidClaimRequest request)
-        {
-            throw new NotImplementedException();
-        }
-        
-        
     }
 }
