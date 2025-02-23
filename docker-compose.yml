@@ -69,3 +69,4 @@ services:
       - claimrequest_network
 
 volumes:
+  claimrequest.db_data:
