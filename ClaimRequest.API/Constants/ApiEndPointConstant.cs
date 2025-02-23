@@ -19,7 +19,7 @@ namespace ClaimRequest.API.Constants
             public const string ClaimEndpointById = ClaimsEndpoint + "/{id}";
             public const string CancelClaimEndpoint = ClaimsEndpoint + "/cancel";
             public const string RejectClaimEndpoint = ClaimEndpointById + "/reject";
-            public const string ApproveClaimEndpoint = ClaimsEndpoint + "/approve/{id}/approver/{approveId}";
+            public const string ApproveClaimEndpoint = ClaimsEndpoint + "/approve/{id}/approver/{approverId}";
             public const string DownloadClaimEndpoint = ClaimsEndpoint + "/download";
             public const string PaidClaimEndpoint = ClaimsEndpoint + "/paid/{id}";
         }
@@ -27,7 +27,6 @@ namespace ClaimRequest.API.Constants
         {
             public const string EmailEndpoint = ApiEndpoint + "/email";
             public const string SendEmail = EmailEndpoint + "/send";
-            public const string ApproveClaimEndpoint = Claim.ClaimEndpoint + "/approve";
 
         }
     }
