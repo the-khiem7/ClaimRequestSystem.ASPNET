@@ -112,10 +112,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 var currentYear = DateTime.UtcNow.Year;
 
                 var selectedClaims = await _unitOfWork.GetRepository<Claim>().GetListAsync(
-                    predicate: c => downloadClaimRequest.ClaimIds.Contains(c.Id) &&
-                        c.UpdateAt != null &&
-                        c.UpdateAt.Month == currentMonth &&
-                        c.UpdateAt.Year == currentYear,
+                    predicate: c => downloadClaimRequest.ClaimIds.Contains(c.Id),
                     include: c => c.Include(x => x.Claimer)
                         .Include(x => x.Project)
                         .Include(x => x.Finance)
@@ -127,11 +124,18 @@ namespace ClaimRequest.BLL.Services.Implements
                     throw new NotFoundException("No claims found for download.");
                 }
 
-                // Check if any claim has a status other than Paid
+                // Ensure all selected claims have Status == Paid
                 if (selectedClaims.Any(c => c.Status != ClaimStatus.Paid))
                 {
-                    _logger.LogError("Claim download process aborted. Some claims are not in 'Paid' status.");
-                    throw new InvalidOperationException("Claim download failed. All claims must have status 'Paid'.");
+                    _logger.LogWarning("Some claims have a status other than 'Paid'. Process aborted.");
+                    throw new InvalidOperationException("All selected claims must have status 'Paid'.");
+                }
+
+                // Ensure all selected claims are updated in the current month and year
+                if (selectedClaims.Any(c => c.UpdateAt == null || c.UpdateAt.Month != currentMonth || c.UpdateAt.Year != currentYear))
+                {
+                    _logger.LogWarning("Some claims are not from the current month. Process aborted.");
+                    throw new InvalidOperationException("All selected claims must be updated in the current month.");
                 }
 
                 foreach (var claim in selectedClaims)
