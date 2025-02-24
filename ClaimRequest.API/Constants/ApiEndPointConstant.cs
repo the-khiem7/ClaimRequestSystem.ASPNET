@@ -19,6 +19,8 @@ namespace ClaimRequest.API.Constants
             public const string ApproveClaimEndpoint = ClaimEndpointById + "/approve";
             public const string DownloadClaimEndpoint = ClaimsEndpoint + "/download";
             public const string PaidClaimEndpoint = ClaimEndpointById + "/paid";
+            public const string ReturnClaimEndpoint = ClaimEndpointById + "/return";
+
         }
         public static class Email
         {
