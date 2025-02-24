@@ -15,6 +15,5 @@ namespace ClaimRequest.DAL.Data.Requests.Claim
         [Required(ErrorMessage = "Claimer Id is required")]
         public Guid ClaimerId { get; set; }
 
-        public DateTime UpdateAt { get; set; } = DateTime.UtcNow;
     }
 }
