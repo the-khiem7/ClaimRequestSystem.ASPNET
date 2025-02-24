@@ -19,9 +19,6 @@ namespace ClaimRequest.API.Controllers
             _staffService = staffService;
         }
 
-        /// <summary>
-        /// Get all active staff members
-        /// </summary>
         [HttpGet(ApiEndPointConstant.Staffs.StaffsEndpoint)] 
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<CreateStaffResponse>>), StatusCodes.Status200OK)] // tra ve response 200 OK
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)] // tra ve response 500 neu co loi
@@ -35,9 +32,6 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
-        /// <summary>
-        /// Get staff by Id
-        /// </summary>
         [HttpGet(ApiEndPointConstant.Staffs.StaffEndpointById)]
         [ProducesResponseType(typeof(ApiResponse<CreateStaffResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -52,9 +46,6 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
-        /// <summary>
-        /// Update staff details
-        /// </summary>
         [HttpPut(ApiEndPointConstant.Staffs.UpdateStaffEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<UpdateStaffResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -69,9 +60,6 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
-        /// <summary>
-        /// Soft delete a staff member (set IsActive = false)
-        /// </summary>
         [HttpDelete(ApiEndPointConstant.Staffs.DeleteStaffEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -86,9 +74,6 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
-        /// <summary>
-        /// Create a new staff member
-        /// </summary>
         [HttpPost(ApiEndPointConstant.Staffs.StaffsEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<CreateStaffResponse>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
