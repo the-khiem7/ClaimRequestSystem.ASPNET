@@ -31,5 +31,8 @@ namespace ClaimRequest.DAL.Data.Requests.Project
 
         [Required(ErrorMessage = "Project Manager is required")]
         public Guid ProjectManagerId { get; set; }
+
+        [Required(ErrorMessage = "Project Status is required")]
+        public ProjectStatus Status { get; set; } = ProjectStatus.Draft;
     }
 }
