@@ -122,29 +122,6 @@ namespace ClaimRequest.BLL.Services.Implements
                         .Include(x => x.Finance)
                 );
 
-        public async Task<MemoryStream> DownloadClaimAsync(DownloadClaimRequest downloadClaimRequest)
-        {
-            try
-            {
-                if (_unitOfWork?.Context?.Database == null)
-                {
-                    throw new InvalidOperationException("Database context is not initialized.");
-                }
-
-                var currentMonth = DateTime.UtcNow.Month;
-                var currentYear = DateTime.UtcNow.Year;
-
-                var selectedClaims = await _unitOfWork.GetRepository<Claim>().GetListAsync(
-                    predicate: c => downloadClaimRequest.ClaimIds.Contains(c.Id) &&
-                        c.Status == ClaimStatus.Paid &&
-                        c.UpdateAt != null &&
-                        c.UpdateAt.Month == currentMonth &&
-                        c.UpdateAt.Year == currentYear,
-                    include: c => c.Include(x => x.Claimer)
-                        .Include(x => x.Project)
-                        .Include(x => x.Finance)
-                );
-
                 if (selectedClaims == null || !selectedClaims.Any())
                 {
                     _logger.LogWarning("No claims found for download.");
