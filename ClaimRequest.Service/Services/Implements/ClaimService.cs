@@ -15,6 +15,10 @@ using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
 using Microsoft.EntityFrameworkCore;
 using ClaimRequest.DAL.Data.Exceptions;
+using OfficeOpenXml;
+using ClaimRequest.DAL.Repositories.Implements;
+using OfficeOpenXml.Style;
+using System.Drawing;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -29,6 +33,7 @@ namespace ClaimRequest.BLL.Services.Implements
         {
         }
 
+        #region Nguyen_Anh_Quan
         public async Task<CancelClaimResponse> CancelClaim(CancelClaimRequest cancelClaimRequest)
         {
             try
@@ -94,8 +99,122 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
+        public async Task<MemoryStream> DownloadClaimAsync(DownloadClaimRequest downloadClaimRequest)
+        {
+            try
+            {
+                if (_unitOfWork?.Context?.Database == null)
+                {
+                    throw new InvalidOperationException("Database context is not initialized.");
+                }
 
+                var currentMonth = DateTime.UtcNow.Month;
+                var currentYear = DateTime.UtcNow.Year;
 
+                var selectedClaims = await _unitOfWork.GetRepository<Claim>().GetListAsync(
+                    predicate: c => downloadClaimRequest.ClaimIds.Contains(c.Id),
+                    include: c => c.Include(x => x.Claimer)
+                        .Include(x => x.Project)
+                        .Include(x => x.Finance)
+                );
+
+                if (selectedClaims == null || !selectedClaims.Any())
+                {
+                    _logger.LogWarning("No claims found for download.");
+                    throw new NotFoundException("No claims found for download.");
+                }
+
+                // Ensure all selected claims have Status == Paid
+                if (selectedClaims.Any(c => c.Status != ClaimStatus.Paid))
+                {
+                    _logger.LogWarning("Some claims have a status other than 'Paid'. Process aborted.");
+                    throw new InvalidOperationException("All selected claims must have status 'Paid'.");
+                }
+
+                // Ensure all selected claims are updated in the current month and year
+                if (selectedClaims.Any(c => c.UpdateAt == null || c.UpdateAt.Month != currentMonth || c.UpdateAt.Year != currentYear))
+                {
+                    _logger.LogWarning("Some claims are not from the current month. Process aborted.");
+                    throw new InvalidOperationException("All selected claims must be updated in the current month.");
+                }
+
+                foreach (var claim in selectedClaims)
+                {
+                    List<string> missingFields = new List<string>();
+                    if (claim.Claimer == null) missingFields.Add("Claimer");
+                    if (claim.Project == null) missingFields.Add("Project");
+                    if (claim.Finance == null) missingFields.Add("Finance");
+                    if (string.IsNullOrEmpty(claim.Name)) missingFields.Add("Name");
+
+                    if (missingFields.Any())
+                    {
+                        _logger.LogWarning($"Claim ID {claim.Id} has missing fields: {string.Join(", ", missingFields)}");
+                        claim.Claimer ??= new Staff { Name = "Unknown Claimer" };
+                        claim.Project ??= new Project { Name = "Unknown Project" };
+                        claim.Finance ??= new Staff { Name = "Unknown Finance Approver" };
+                    }
+                }
+
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+                using var package = new ExcelPackage();
+                var worksheet = package.Workbook.Worksheets.Add("Template Export Claim");
+
+                // Define column headers
+                var headers = new[] { "Claim ID", "Claimer Name", "Project Name", "Claim Type", "Status",
+                      "Amount", "Total Working Hours", "Start Date", "End Date", "Created At",
+                      "Finance Approver", "Remarks" };
+
+                for (int i = 0; i < headers.Length; i++)
+                {
+                    var cell = worksheet.Cells[1, i + 1];
+                    cell.Value = headers[i];
+                    cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                    cell.Style.Fill.BackgroundColor.SetColor(Color.Green);
+                    cell.Style.Font.Color.SetColor(Color.White);
+                    cell.Style.Font.Bold = true;
+                    cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                }
+
+                // Populate data rows
+                int row = 2;
+                foreach (var claim in selectedClaims)
+                {
+                    worksheet.Cells[row, 1].Value = claim.Id;
+                    worksheet.Cells[row, 2].Value = claim.Claimer?.Name;
+                    worksheet.Cells[row, 3].Value = claim.Project?.Name;
+                    worksheet.Cells[row, 4].Value = claim.ClaimType.ToString();
+                    worksheet.Cells[row, 5].Value = claim.Status.ToString();
+                    worksheet.Cells[row, 6].Style.Numberformat.Format = "$#,##0.00";
+                    worksheet.Cells[row, 6].Value = claim.Amount;
+                    worksheet.Cells[row, 7].Value = claim.TotalWorkingHours;
+                    worksheet.Cells[row, 8].Value = claim.StartDate.ToString("yyyy-MM-dd");
+                    worksheet.Cells[row, 9].Value = claim.EndDate.ToString("yyyy-MM-dd");
+                    worksheet.Cells[row, 10].Value = claim.CreateAt.ToString("yyyy-MM-dd HH:mm:ss");
+                    worksheet.Cells[row, 11].Value = claim.Finance?.Name;
+                    worksheet.Cells[row, 12].Value = claim.Remark ?? "N/A";
+                    row++;
+                }
+
+                // Auto-fit columns
+                worksheet.Cells.AutoFitColumns();
+
+                // Save the Excel file to a memory stream
+                var stream = new MemoryStream();
+                package.SaveAs(stream);
+                stream.Position = 0;
+
+                _logger.LogInformation("Successfully generated claims report for {Count} claims.", selectedClaims.Count);
+
+                return stream; // Return the file stream
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error downloading claim: {Message}", ex.Message);
+                throw;
+            }
+        }
+        #endregion
 
         public async Task<CreateClaimResponse> CreateClaim(CreateClaimRequest createClaimRequest)
         {
@@ -119,38 +238,117 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-        public async Task<IEnumerable<ViewClaimResponse>> GetClaimsAsync(ClaimStatus? status)
-        {
-            if (status.HasValue && !Enum.IsDefined(typeof(ClaimStatus), status.Value))
-            {
-                throw new BadRequestException("Invalid claim status!");
-            }
 
-            var claimRepository = _unitOfWork.GetRepository<Claim>();
-            var claims = await claimRepository.GetListAsync(
-                c => new { c, c.Claimer, c.Project },
-                c => !status.HasValue || c.Status == status.Value,
-                include: q => q.Include(c => c.Claimer).Include(c => c.Project)
-            );
-            return _mapper.Map<IEnumerable<ViewClaimResponse>>(claims.Select(c => c.c));
+        public async Task<UpdateClaimResponse> UpdateClaim(Guid Id, UpdateClaimRequest request)
+        {
+            try
+            {
+                var claimRepository = _unitOfWork.GetRepository<Claim>();
+                var claim = await claimRepository.GetByIdAsync(Id);
+
+                if (claim == null)
+                {
+                    return new UpdateClaimResponse
+                    {
+                        ClaimId = Id,
+                        Message = "Claim not found",
+                        Success = false
+                    };
+                }
+
+                if (request.StartDate >= request.EndDate)
+                {
+                    return new UpdateClaimResponse
+                    {
+                        ClaimId = Id,
+                        Message = "Start Date must be earlier than End Date",
+                        Success = false
+                    };
+                }
+
+                claim.StartDate = request.StartDate;
+                claim.EndDate = request.EndDate;
+                claim.TotalWorkingHours = request.TotalWorkingHours;
+                claim.UpdateAt = DateTime.UtcNow;
+
+                claimRepository.UpdateAsync(claim);
+                await _unitOfWork.CommitAsync();
+
+                return new UpdateClaimResponse
+                {
+                    ClaimId = claim.Id,
+                    StartDate = claim.StartDate,
+                    EndDate = claim.EndDate,
+                    TotalWorkingHours = claim.TotalWorkingHours,
+                    Success = true,
+                    Message = "Claim updated successfully"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating claim with ID {ClaimId}: {Message}", Id, ex.Message);
+                throw;
+            }
         }
 
-        public async Task<ViewClaimResponse> GetClaimByIdAsync(Guid id)
+        public async Task<IEnumerable<ViewClaimResponse>> GetClaims(ClaimStatus? status)
         {
-            var claimRepository = _unitOfWork.GetRepository<Claim>();
-            var claim = await claimRepository.SingleOrDefaultAsync(
-                c => new { c, c.Claimer, c.Project },
-                c => c.Id == id,
-                include: q => q.Include(c => c.Claimer).Include(c => c.Project)
-            );
-            if (claim == null)
+            try
             {
-                throw new NotFoundException($"Claim with ID {id} not found");
+                if (status.HasValue && !Enum.IsDefined(typeof(ClaimStatus), status.Value))
+                {
+                    throw new BadRequestException("Invalid claim status!");
+                }
+
+                var claimRepository = _unitOfWork.GetRepository<Claim>();
+                var claims = await claimRepository.GetListAsync(
+                    c => new { c, c.Claimer, c.Project },
+                    c => !status.HasValue || c.Status == status.Value,
+                    include: q => q.Include(c => c.Claimer).Include(c => c.Project)
+                );
+
+                return _mapper.Map<IEnumerable<ViewClaimResponse>>(claims.Select(c => c.c));
             }
-            return _mapper.Map<ViewClaimResponse>(claim.c);
+            catch (BadRequestException)
+            {
+                throw; // Rethrow known exception
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while retrieving claims.");
+                throw;
+            }
+        }
+        public async Task<ViewClaimResponse> GetClaimById(Guid id)
+        {
+            try
+            {
+                var claimRepository = _unitOfWork.GetRepository<Claim>();
+                var claim = await claimRepository.SingleOrDefaultAsync(
+                    c => new { c, c.Claimer, c.Project },
+                    c => c.Id == id,
+                    include: q => q.Include(c => c.Claimer).Include(c => c.Project)
+                );
+
+                if (claim == null)
+                {
+                    throw new NotFoundException($"Claim with ID {id} not found");
+                }
+
+                return _mapper.Map<ViewClaimResponse>(claim.c);
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while retrieving the claim.");
+                throw;
+            }
         }
 
-        public async Task<RejectClaimResponse> RejectClaim(Guid Id, RejectClaimRequest rejectClaimRequest)
+        public async Task<RejectClaimResponse> RejectClaim(Guid id, RejectClaimRequest rejectClaimRequest)
         {
             try
             {
@@ -160,23 +358,22 @@ namespace ClaimRequest.BLL.Services.Implements
                     await using var transaction = await _unitOfWork.BeginTransactionAsync();
                     try
                     {
-                        var pendingClaim = await _unitOfWork.GetRepository<Claim>()
+                        var pendingClaim = await _unitOfWork.GetRepository<Claim>() 
                         .SingleOrDefaultAsync(
-                            predicate: s => s.Id == Id,
+                            predicate: s => s.Id == id,
                             include: q => q.Include(c => c.ClaimApprovers)
                             );
-                        if (pendingClaim == null)
+                        if (pendingClaim == null) 
                         {
-                            throw new NotFoundException($"Claim with ID {Id} not found.");
+                            throw new KeyNotFoundException($"Claim with ID {id} not found.");
                         }
 
-                        if(pendingClaim.Status != ClaimStatus.Pending) 
+                        if (pendingClaim.Status != ClaimStatus.Pending)
                         {
-                            throw new BadRequestException($"Claim with ID {Id} is not in pending.");
+                            throw new InvalidOperationException($"Claim with ID {id} is not in pending.");
                         }
-                        _logger.LogInformation("Rejecting claim with ID: {Id} by approver: {ApproverId}", Id, rejectClaimRequest.ApproverId);
 
-
+                        //Find Approvers by Id
                         var existingApprover = pendingClaim.ClaimApprovers
                             .FirstOrDefault(ca => ca.ApproverId == rejectClaimRequest.ApproverId);
 
@@ -192,7 +389,7 @@ namespace ClaimRequest.BLL.Services.Implements
                         }
 
 
-                        _mapper.Map(rejectClaimRequest, pendingClaim);
+                        _mapper.Map(rejectClaimRequest, pendingClaim); 
 
                         pendingClaim.Status = ClaimStatus.Rejected;
 
@@ -208,14 +405,69 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw;
                     }
                 });
-            } 
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error rejecting claim with ID {Id}: {Message}", Id, ex.Message);
+                _logger.LogError(ex, "Error rejecting claim with ID {Id}: {Message}", id, ex.Message);
                 throw;
             }
         }
 
+        public async Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest)
+        {
+            var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
+            return await executionStrategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _unitOfWork.BeginTransactionAsync();
+                try
+                {
+                    var claimRepo = _unitOfWork.GetRepository<Claim>();
+                    var approverRepo = _unitOfWork.GetRepository<ClaimApprover>();
+
+                    var pendingClaim = await claimRepo.SingleOrDefaultAsync(
+                        predicate: s => s.Id == id,
+                        include: s => s.Include(c => c.ClaimApprovers)
+                    );
+
+                    if (pendingClaim == null)
+                    {
+                        _logger.LogWarning("Claim with ID {Id} not found.", id);
+                        throw new NotFoundException($"Claim with ID {id} not found.");
+                    }
+
+                    if (pendingClaim.Status != ClaimStatus.Pending)
+                    {
+                        _logger.LogWarning("Claim with ID {Id} is not in pending state.", id);
+                        throw new BadRequestException($"Claim with ID {id} is not in pending state.");
+                    }
+
+                    var existingApprover = pendingClaim.ClaimApprovers
+                        .FirstOrDefault(ca => ca.ApproverId == approveClaimRequest.ApproverId);
+
+                    if (existingApprover == null)
+                    {
+                        throw new KeyNotFoundException("Approver does not exist.");
+                    }
+
+                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approveClaimRequest.ApproverId);
+
+                    _mapper.Map(approveClaimRequest, pendingClaim);
+                    pendingClaim.Status = ClaimStatus.Approved;
+
+                    claimRepo.UpdateAsync(pendingClaim);
+
+                    await transaction.CommitAsync();
+                    await _unitOfWork.CommitAsync();
+
+                    return _mapper.Map<ApproveClaimResponse>(pendingClaim);
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+        }
     }
 }
