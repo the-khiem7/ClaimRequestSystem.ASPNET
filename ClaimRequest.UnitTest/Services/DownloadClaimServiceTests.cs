@@ -210,8 +210,6 @@ namespace ClaimRequest.Tests.Services
                 UpdateAt = DateTime.UtcNow
             };
 
-            var request = new DownloadClaimRequest { ClaimIds = new List<Guid> { unpaidClaim.Id, paidClaim.Id } };
-
             // Mock repository behavior
             _claimRepositoryMock.Setup(repo => repo.GetListAsync(
                 It.IsAny<Expression<Func<Claim, bool>>>(),
