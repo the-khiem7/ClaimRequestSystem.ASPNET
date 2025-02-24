@@ -8,27 +8,28 @@ namespace ClaimRequest.DAL.Data.Entities
         ProjectManager,
         Staff,
         Finance,
-        Admin
+        Admin,
+        Spyware
     }
 
     public enum Department
     {
-        //SoftwareDevelopment,   // Developers, engineers, and coders
+        SoftwareDevelopment,   // Developers, engineers, and coders
         QualityAssurance,      // Testers and QA engineers
-        //ITSupport,            // Helpdesk and infrastructure support
-        //ProjectManagement,    // Project managers and coordinators
-        //BusinessAnalysis,     // Business analysts and requirement gatherers
-        //UIUXDesign,           // UX/UI designers and front-end specialists
-        //DevOps,               // CI/CD, cloud engineers, and automation
-        //CyberSecurity,        // Security specialists and compliance officers
-        //DataScience,          // AI, machine learning, and big data analytics
-        //TechnicalWriting,     // Documentation and knowledge base maintenance
-        //HumanResources,       // Recruitment, employee relations, and training
-        //Finance,              // Budgeting, accounting, and financial planning
-        //SalesAndMarketing,    // Sales, marketing, and client relationship management
-        //CustomerSupport,      // Handling customer inquiries and support tickets
-        //ResearchAndInnovation,// Exploring new technologies and innovations
-        //LegalAndCompliance    // Handling legal, contracts, and policy enforcement
+        ITSupport,            // Helpdesk and infrastructure support
+        ProjectManagement,    // Project managers and coordinators
+        BusinessAnalysis,     // Business analysts and requirement gatherers
+        UIUXDesign,           // UX/UI designers and front-end specialists
+        DevOps,               // CI/CD, cloud engineers, and automation
+        CyberSecurity,        // Security specialists and compliance officers
+        DataScience,          // AI, machine learning, and big data analytics
+        TechnicalWriting,     // Documentation and knowledge base maintenance
+        HumanResources,       // Recruitment, employee relations, and training
+        Finance,              // Budgeting, accounting, and financial planning
+        SalesAndMarketing,    // Sales, marketing, and client relationship management
+        CustomerSupport,      // Handling customer inquiries and support tickets
+        ResearchAndInnovation,// Exploring new technologies and innovations
+        LegalAndCompliance,    // Handling legal, contracts, and policy enforcement
         // Software Development
         SoftwareEngineer,
         SeniorSoftwareEngineer,
@@ -106,6 +107,7 @@ namespace ClaimRequest.DAL.Data.Entities
         // Legal & Compliance
         LegalAdvisor,
         ComplianceManager
+
     }
 
 
@@ -143,5 +145,7 @@ namespace ClaimRequest.DAL.Data.Entities
         public bool IsActive { get; set; } = true;
 
         public virtual ICollection<ProjectStaff> ProjectStaffs { get; set; } = [];
+
+        //public string PasswordHash { get; set; }
     }
 }
