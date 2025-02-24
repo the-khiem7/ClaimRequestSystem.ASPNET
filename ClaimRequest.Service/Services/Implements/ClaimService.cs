@@ -405,7 +405,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task<ApproveClaimResponse> ApproveClaim(Guid id, Guid approverId, ApproveClaimRequest approveClaimRequest)
+        public async Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest)
         {
             var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
@@ -419,7 +419,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                     var pendingClaim = await claimRepo.SingleOrDefaultAsync(
                         predicate: s => s.Id == id,
-                        include: q => q.Include(c => c.ClaimApprovers)
+                        include: s => s.Include(c => c.ClaimApprovers)
                     );
 
                     if (pendingClaim == null)
@@ -435,14 +435,14 @@ namespace ClaimRequest.BLL.Services.Implements
                     }
 
                     var existingApprover = pendingClaim.ClaimApprovers
-                        .FirstOrDefault(ca => ca.ApproverId == approverId);
+                        .FirstOrDefault(ca => ca.ApproverId == approveClaimRequest.ApproverId);
 
                     if (existingApprover == null)
                     {
                         throw new KeyNotFoundException("Approver does not exist.");
                     }
 
-                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approverId);
+                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approveClaimRequest.ApproverId);
 
                     _mapper.Map(approveClaimRequest, pendingClaim);
                     pendingClaim.Status = ClaimStatus.Approved;

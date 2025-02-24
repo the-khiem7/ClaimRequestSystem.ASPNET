@@ -18,7 +18,6 @@ namespace ClaimRequest.API.Controllers
         private readonly IClaimService _claimService;
         #endregion
 
-
         #region Contructor
         public ClaimController(ILogger<ClaimController> logger, IClaimService claimService) : base(logger)
         {
@@ -104,11 +103,11 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
-        [HttpPut("reject/{Id}")]
+        [HttpPut(ApiEndPointConstant.Claim.RejectClaimEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> RejectClaim(Guid Id, [FromBody] RejectClaimRequest rejectClaimRequest)
+        public async Task<IActionResult> RejectClaim([FromRoute] Guid Id, [FromBody] RejectClaimRequest rejectClaimRequest)
         {
             var rejectClaim = await _claimService.RejectClaim(Id, rejectClaimRequest);
             if (rejectClaim == null)
@@ -124,7 +123,6 @@ namespace ClaimRequest.API.Controllers
             );
             return Ok(successResponse);
         }
-
 
         [HttpPut(ApiEndPointConstant.Claim.CancelClaimEndpoint)]
         [ProducesResponseType(typeof(CancelClaimResponse), StatusCodes.Status200OK)]
@@ -159,11 +157,11 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id, [FromRoute] Guid approverId, [FromBody] ApproveClaimRequest approveClaimRequest)
+        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id, [FromBody] ApproveClaimRequest approveClaimRequest)
         {
             try
             {
-                var response = await _claimService.ApproveClaim(id, approverId, approveClaimRequest);
+                var response = await _claimService.ApproveClaim(id, approveClaimRequest);
                 return Ok(response);
             }
             catch (NotFoundException ex)
@@ -184,4 +182,3 @@ namespace ClaimRequest.API.Controllers
         }
     }
 }
-

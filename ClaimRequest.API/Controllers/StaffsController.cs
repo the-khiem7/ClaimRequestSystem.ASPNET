@@ -1,4 +1,5 @@
-﻿using ClaimRequest.BLL.Services.Interfaces;
+﻿using ClaimRequest.API.Constants;
+using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Staff;
@@ -17,12 +18,11 @@ namespace ClaimRequest.API.Controllers
         {
             _staffService = staffService;
         }
-        // B1: tao cac endpoint cho CRUD staff
 
         /// <summary>
         /// Get all active staff members
         /// </summary>
-        [HttpGet] 
+        [HttpGet(ApiEndPointConstant.Staffs.StaffsEndpoint)] 
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<CreateStaffResponse>>), StatusCodes.Status200OK)] // tra ve response 200 OK
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)] // tra ve response 500 neu co loi
         public async Task<IActionResult> GetStaffs()
@@ -38,7 +38,7 @@ namespace ClaimRequest.API.Controllers
         /// <summary>
         /// Get staff by Id
         /// </summary>
-        [HttpGet("{id}")]
+        [HttpGet(ApiEndPointConstant.Staffs.StaffEndpointById)]
         [ProducesResponseType(typeof(ApiResponse<CreateStaffResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
@@ -55,7 +55,7 @@ namespace ClaimRequest.API.Controllers
         /// <summary>
         /// Update staff details
         /// </summary>
-        [HttpPut("{id}")]
+        [HttpPut(ApiEndPointConstant.Staffs.UpdateStaffEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<UpdateStaffResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
@@ -72,7 +72,7 @@ namespace ClaimRequest.API.Controllers
         /// <summary>
         /// Soft delete a staff member (set IsActive = false)
         /// </summary>
-        [HttpDelete("{id}")]
+        [HttpDelete(ApiEndPointConstant.Staffs.DeleteStaffEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
@@ -116,7 +116,7 @@ namespace ClaimRequest.API.Controllers
         /// <summary>
         /// Create a new staff member
         /// </summary>
-        [HttpPost]
+        [HttpPost(ApiEndPointConstant.Staffs.StaffsEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<CreateStaffResponse>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
