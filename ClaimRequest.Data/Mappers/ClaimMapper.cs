@@ -67,7 +67,7 @@ namespace ClaimRequest.DAL.Mappers
             .ForMember(dest => dest.Remark, opt => opt.MapFrom(src => src.Remark))
             .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(src => DateTime.UtcNow))
             .ForMember(dest => dest.ClaimerId, opt => opt.MapFrom(src => src.ClaimerId))
-            .ForMember(dest => dest.ApproverId, opt => opt.MapFrom(src => src.ClaimApprovers != null && src.ClaimApprovers.Any() ? src.ClaimApprovers.FirstOrDefault().ApproverId : (Guid?)null));
+            .ForMember(dest => dest.ApproverId, opt => opt.Ignore());
 
             CreateMap<ApproveClaimRequest, Claim>();
         }
