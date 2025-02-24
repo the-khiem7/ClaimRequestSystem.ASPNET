@@ -62,6 +62,7 @@ namespace ClaimRequest.BLL.Services.Implements
                         }
 
                         var newProject = _mapper.Map<Project>(createProjectRequest);
+                        newProject.Status = createProjectRequest.Status;  // Set status here
 
                         await _unitOfWork.GetRepository<Project>().InsertAsync(newProject);
                         await _unitOfWork.CommitAsync();
@@ -195,6 +196,42 @@ namespace ClaimRequest.BLL.Services.Implements
                         }
 
                         _mapper.Map(updateProjectRequest, existingProject);
+
+                        // If a new Project Manager is provided, update it
+                        if (updateProjectRequest.ProjectManagerId != Guid.Empty)
+                        {
+                            var newProjectManager = await _unitOfWork.GetRepository<Staff>()
+                                .SingleOrDefaultAsync(
+                                    predicate: s => s.Id == updateProjectRequest.ProjectManagerId,
+                                    orderBy: null,
+                                    include: null
+                                );
+
+                            if (newProjectManager == null)
+                            {
+                                throw new NotFoundException($"Staff with ID {updateProjectRequest.ProjectManagerId} not found");
+                            }
+
+                            if (newProjectManager.SystemRole != SystemRole.ProjectManager)
+                            {
+                                throw new InvalidOperationException("The specified staff member is not a Project Manager");
+                            }
+
+                            if (!newProjectManager.IsActive)
+                            {
+                                throw new InvalidOperationException("The specified Project Manager is not active");
+                            }
+
+                            // Assign the new Project Manager
+                            existingProject.ProjectManagerId = updateProjectRequest.ProjectManagerId;
+                            existingProject.ProjectManager = newProjectManager;
+                        }
+
+                        // Only update the status if provided
+                        if (updateProjectRequest.Status.HasValue)
+                        {
+                            existingProject.Status = updateProjectRequest.Status.Value;
+                        }
 
                         _unitOfWork.GetRepository<Project>().UpdateAsync(existingProject);
                         await _unitOfWork.CommitAsync();

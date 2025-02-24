@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ClaimRequest.DAL.Data.Entities;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -28,5 +29,8 @@ namespace ClaimRequest.DAL.Data.Requests.Project
 
         [Required(ErrorMessage = "Project Manager is required")]
         public Guid ProjectManagerId { get; set; }
+
+        [Required(ErrorMessage = "Project Status is required")]
+        public ProjectStatus? Status { get; set; }
     }
 }

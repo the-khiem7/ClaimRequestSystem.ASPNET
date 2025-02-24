@@ -1,9 +1,10 @@
-<<<<<<< HEAD
-﻿using ClaimRequest.BLL.Services.Interfaces;
-=======
+
+using ClaimRequest.API.Constants;
+using ClaimRequest.BLL.Services.Interfaces;
+
 ﻿using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
->>>>>>> b0dd1f18d3ebf62ef56899830d049038ca82a1e7
+
 using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Project;
@@ -95,11 +96,9 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
-<<<<<<< HEAD
-        [HttpDelete("{id}")]
-=======
+
+       
         [HttpDelete(ApiEndPointConstant.Projects.DeleteProjectEndpoint)]
->>>>>>> b0dd1f18d3ebf62ef56899830d049038ca82a1e7
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
