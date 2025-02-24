@@ -128,12 +128,6 @@ namespace ClaimRequest.BLL.Services.Implements
                     throw new NotFoundException("No claims found for download.");
                 }
 
-                if (selectedClaims == null || !selectedClaims.Any())
-                {
-                    _logger.LogWarning("No claims found for download.");
-                    throw new NotFoundException("No claims found for download.");
-                }
-
                 foreach (var claim in selectedClaims)
                 {
                     List<string> missingFields = new List<string>();
