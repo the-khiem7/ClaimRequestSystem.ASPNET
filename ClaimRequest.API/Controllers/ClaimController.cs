@@ -1,6 +1,8 @@
-﻿using ClaimRequest.API.Constants;
+﻿using System;
+using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
+using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
@@ -15,7 +17,6 @@ namespace ClaimRequest.API.Controllers
         #region Create Class Referrence
         private readonly IClaimService _claimService;
         #endregion
-
 
         #region Contructor
         public ClaimController(ILogger<ClaimController> logger, IClaimService claimService) : base(logger)
@@ -42,70 +43,85 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(IEnumerable<ViewClaimResponse>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status)
         {
-            var response = await _claimService.GetClaimsAsync(status);
+            var response = await _claimService.GetClaims(status);
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: "Get claims successfully!",
                 data: response,
                 statusCode: StatusCodes.Status200OK));
         }
 
-        [HttpGet(ApiEndPointConstant.Claim.ClaimsEndpoint + "/{id}")]
+        [HttpGet(ApiEndPointConstant.Claim.ClaimEndpointById)]
         [ProducesResponseType(typeof(ViewClaimResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetClaimById(Guid id)
         {
-            var response = await _claimService.GetClaimByIdAsync(id);
+            var response = await _claimService.GetClaimById(id);
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: $"Get claim with id {id} successfully!",
                 data: response,
                 statusCode: StatusCodes.Status200OK));
         }
 
-
-        //[HttpPut(ApiEndPointConstant.Claim.RejectClaimEndpoint)]
-        [HttpPut("reject/{Id}")] // Endpoint API
-        [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]   // Status codes
+        [HttpPut(ApiEndPointConstant.Claim.UpdateClaimEndpoint)]
+        [ProducesResponseType(typeof(UpdateClaimResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> RejectClaim(Guid Id, [FromBody] RejectClaimRequest rejectClaimRequest)
+        public async Task<IActionResult> UpdateClaim(Guid id, [FromBody] UpdateClaimRequest updateClaimRequest)
         {
             try
             {
-                // Gọi service để thực hiện logic reject
-                var rejectClaim = await _claimService.RejectClaim(Id, rejectClaimRequest);
-                if (rejectClaim == null)
+                var updatedClaim = await _claimService.UpdateClaim(id, updateClaimRequest);
+                if (updatedClaim == null)
                 {
                     var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
-                            null,
-                            StatusCodes.Status404NotFound,
-                            "Claim not found",
-                            "The claim ID provided does not exist or is not pending for rejection"
-                            );
+                        null,
+                        StatusCodes.Status404NotFound,
+                        "Claim not found",
+                        "The claim ID provided does not exist or could not be updated"
+                    );
                     return NotFound(errorResponse);
                 }
 
-
                 var successResponse = ApiResponseBuilder.BuildResponse(
                     StatusCodes.Status200OK,
-                    "Claim Rejected successfully",
-                    rejectClaim // Để show dự liệu khi response
+                    "Claim updated successfully",
+                    updatedClaim
                 );
                 return Ok(successResponse);
             }
             catch (Exception ex)
             {
-                // Hiện lỗi
-                _logger.LogError(ex, "Error rejecting claim with ID {ClaimId}", Id);
+                _logger.LogError(ex, "Error updating claim with ID {ClaimId}", id);
 
                 var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
                     null,
                     StatusCodes.Status500InternalServerError,
-                    "An error occurred while rejecting the claim",
+                    "An error occurred while updating the claim",
                     "Internal server error"
                 );
                 return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
             }
+        }
 
+        [HttpPut(ApiEndPointConstant.Claim.RejectClaimEndpoint)]
+        [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> RejectClaim([FromRoute] Guid id, [FromBody] RejectClaimRequest rejectClaimRequest)
+        {
+            var rejectClaim = await _claimService.RejectClaim(id, rejectClaimRequest);
+            if (rejectClaim == null)
+            {
+                _logger.LogError("Reject claim failed");
+                return Problem("Reject claim failed");
+            }
+
+            var successResponse = ApiResponseBuilder.BuildResponse(
+                StatusCodes.Status200OK,
+                "Claim Rejected successfully",
+                rejectClaim
+            );
+            return Ok(successResponse);
         }
 
         [HttpPut(ApiEndPointConstant.Claim.CancelClaimEndpoint)]
@@ -119,6 +135,91 @@ namespace ClaimRequest.API.Controllers
                 return Problem("Cancel claim failed");
             }
             return Ok(response);
+        }
+
+        [HttpGet(ApiEndPointConstant.Claim.DownloadClaimEndpoint)]
+        [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+        public async Task<IActionResult> DownloadClaim([FromQuery] DownloadClaimRequest downloadClaimRequest)
+        {
+            var stream = await _claimService.DownloadClaimAsync(downloadClaimRequest);
+
+            if (stream == null)
+            {
+                _logger.LogError("Download claim failed");
+                return Problem("Download claim failed");
+            }
+
+            var fileName = "Template_Export_Claim.xlsx";
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        }
+
+        [HttpPut(ApiEndPointConstant.Claim.ApproveClaimEndpoint)]
+        [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id, [FromBody] ApproveClaimRequest approveClaimRequest)
+        {
+            try
+            {
+                var response = await _claimService.ApproveClaim(id, approveClaimRequest);
+                return Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error approving claim with ID {Id}: {Message}", id, ex.Message);
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        [HttpPut(ApiEndPointConstant.Claim.ReturnClaimEndpoint)]
+        [ProducesResponseType(typeof(ApiResponse<ReturnClaimResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ReturnClaim(Guid id, [FromBody] ReturnClaimRequest returnClaimRequest)
+        {
+            try
+            {
+                var returnedClaim = await _claimService.ReturnClaim(id, returnClaimRequest);
+                if (returnedClaim == null)
+                {
+                    var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                        null,
+                        StatusCodes.Status404NotFound,
+                        "Claim not found",
+                        "The claim ID provided does not exist or is not pending for return"
+                    );
+                    return NotFound(errorResponse);
+                }
+
+                var successResponse = ApiResponseBuilder.BuildResponse(
+                    StatusCodes.Status200OK,
+                    "Claim returned successfully",
+                    returnedClaim
+                );
+                return Ok(successResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error returning claim with ID {ClaimId}", id);
+
+                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status500InternalServerError,
+                    "An error occurred while returning the claim",
+                    "Internal server error"
+                );
+                return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+            }
         }
     }
 }

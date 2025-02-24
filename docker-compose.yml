@@ -23,6 +23,19 @@ services:
     networks:
       - claimrequest_network
 
+  claimrequest.test:
+    container_name: claimrequest-test
+    image: ${DOCKER_REGISTRY-}claimrequesttest
+    build:
+      context: .
+      dockerfile: ClaimRequest.UnitTest/Dockerfile
+    volumes:
+      - ./TestResults:/TestResults
+    depends_on:
+      - claimrequest.api
+    networks:
+      - claimrequest_network
+
   claimrequest.db:
     container_name: claimrequest-db
     image: postgres:latest
@@ -31,8 +44,7 @@ services:
       POSTGRES_PASSWORD: Iloveyou3000!
       POSTGRES_DB: ClaimRequestDB
     ports:
-      # - "5432:5432"
-      - "2345:5432" 
+      - "8386:5432"
     networks:
       - claimrequest_network
     volumes:
@@ -58,4 +70,3 @@ services:
 
 volumes:
   claimrequest.db_data:
-

@@ -62,6 +62,7 @@ namespace ClaimRequest.BLL.Services.Implements
                         }
 
                         var newProject = _mapper.Map<Project>(createProjectRequest);
+                        newProject.Status = createProjectRequest.Status;  // Set status here
 
                         await _unitOfWork.GetRepository<Project>().InsertAsync(newProject);
                         await _unitOfWork.CommitAsync();
@@ -79,6 +80,47 @@ namespace ClaimRequest.BLL.Services.Implements
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating project: {Message}", ex.Message);
+                throw;
+            }
+        }
+
+        public async Task<bool> DeleteProject(Guid id)
+        {
+            try
+            {
+                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+
+                return await executionStrategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
+                    try
+                    {
+                        // Retrieve the project by ID
+                        var existingProject = await _unitOfWork.GetRepository<Project>()
+                            .SingleOrDefaultAsync(predicate: p => p.Id == id);
+
+                        if (existingProject == null)
+                        {
+                            return false; // Return false instead of throwing an exception
+                        }
+
+                        // Delete the project
+                        _unitOfWork.GetRepository<Project>().DeleteAsync(existingProject);
+                        await _unitOfWork.CommitAsync();
+                        await transaction.CommitAsync();
+
+                        return true;
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting project: {Message}", ex.Message);
                 throw;
             }
         }
@@ -155,6 +197,42 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         _mapper.Map(updateProjectRequest, existingProject);
 
+                        // If a new Project Manager is provided, update it
+                        if (updateProjectRequest.ProjectManagerId != Guid.Empty)
+                        {
+                            var newProjectManager = await _unitOfWork.GetRepository<Staff>()
+                                .SingleOrDefaultAsync(
+                                    predicate: s => s.Id == updateProjectRequest.ProjectManagerId,
+                                    orderBy: null,
+                                    include: null
+                                );
+
+                            if (newProjectManager == null)
+                            {
+                                throw new NotFoundException($"Staff with ID {updateProjectRequest.ProjectManagerId} not found");
+                            }
+
+                            if (newProjectManager.SystemRole != SystemRole.ProjectManager)
+                            {
+                                throw new InvalidOperationException("The specified staff member is not a Project Manager");
+                            }
+
+                            if (!newProjectManager.IsActive)
+                            {
+                                throw new InvalidOperationException("The specified Project Manager is not active");
+                            }
+
+                            // Assign the new Project Manager
+                            existingProject.ProjectManagerId = updateProjectRequest.ProjectManagerId;
+                            existingProject.ProjectManager = newProjectManager;
+                        }
+
+                        // Only update the status if provided
+                        if (updateProjectRequest.Status.HasValue)
+                        {
+                            existingProject.Status = updateProjectRequest.Status.Value;
+                        }
+
                         _unitOfWork.GetRepository<Project>().UpdateAsync(existingProject);
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();
@@ -174,5 +252,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
+
     }
 }
