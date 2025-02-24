@@ -339,43 +339,38 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        // Task<> is for async and await --> Performance
-        public async Task<RejectClaimResponse> RejectClaim(Guid Id, RejectClaimRequest rejectClaimRequest)
+        public async Task<RejectClaimResponse> RejectClaim(Guid id, RejectClaimRequest rejectClaimRequest)
         {
             try
             {
-                //Dùng Execution Strategy để tự động xử lý các lỗi tạm thời
-                //(như lỗi kết nối cơ sở dữ liệu) và thử lại giao dịch.
                 var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
                 return await executionStrategy.ExecuteAsync(async () =>
                 {
-                    //Bắt đầu một giao dịch (transaction). Nếu xảy ra lỗi, giao dịch sẽ bị hủy (Rollback).
                     await using var transaction = await _unitOfWork.BeginTransactionAsync();
                     try
                     {
-                        var pendingClaim = await _unitOfWork.GetRepository<Claim>() // Lấy dữ liệu của claim theo Id
+                        var pendingClaim = await _unitOfWork.GetRepository<Claim>() 
                         .SingleOrDefaultAsync(
-                            predicate: s => s.Id == Id,
+                            predicate: s => s.Id == id,
                             include: q => q.Include(c => c.ClaimApprovers)
                             );
-                        //Checking the Id and Status
-                        if (pendingClaim == null) // Không tìm thấy
+                        if (pendingClaim == null) 
                         {
-                            throw new KeyNotFoundException($"Claim with ID {Id} not found.");
+                            throw new KeyNotFoundException($"Claim with ID {id} not found.");
                         }
 
                         if (pendingClaim.Status != ClaimStatus.Pending)
                         {
-                            throw new InvalidOperationException($"Claim with ID {Id} is not in pending.");
+                            throw new InvalidOperationException($"Claim with ID {id} is not in pending.");
                         }
 
                         //Find Approvers by Id
                         var existingApprover = pendingClaim.ClaimApprovers
                             .FirstOrDefault(ca => ca.ApproverId == rejectClaimRequest.ApproverId);
 
-                        if (existingApprover == null) //Nếu claim cần reject chưa có approverId
+                        if (existingApprover == null)
                         {
-                            var newApprover = new ClaimApprover // Gán ApproverId cho claim đc reject
+                            var newApprover = new ClaimApprover
                             {
                                 ClaimId = pendingClaim.Id,
                                 ApproverId = rejectClaimRequest.ApproverId
@@ -385,9 +380,9 @@ namespace ClaimRequest.BLL.Services.Implements
                         }
 
 
-                        _mapper.Map(rejectClaimRequest, pendingClaim); // Auto Mapper ánh xạ dữ liệu
+                        _mapper.Map(rejectClaimRequest, pendingClaim); 
 
-                        pendingClaim.Status = ClaimStatus.Rejected; // Set status to rejected
+                        pendingClaim.Status = ClaimStatus.Rejected;
 
                         _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
                         await _unitOfWork.CommitAsync();
@@ -404,7 +399,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error rejecting claim with ID {Id}: {Message}", Id, ex.Message);
+                _logger.LogError(ex, "Error rejecting claim with ID {Id}: {Message}", id, ex.Message);
                 throw;
             }
         }
