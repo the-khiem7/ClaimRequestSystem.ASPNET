@@ -103,7 +103,7 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
-        [HttpPut(ApiEndPointConstant.Claim.RejectClaimEndpoint)]
+        [HttpPut("reject/{Id}")]
         [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
