@@ -396,7 +396,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                             var approverName = staff?.Name ?? "Unknown Approver";
 
-                            // Nếu claim chưa có approver --> tạo mới
+                            // Nếu claim chưa có approver thì tạo mới
                             var newApprover = new ClaimApprover
                             {
                                 ClaimId = pendingClaim.Id,
@@ -410,7 +410,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                             _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
 
-                            // Chỉ ghi changelog khi là lần đầu từ chối
+                            // Chỉ ghi changelog khi approver lần đầu reject
                             var changeLog = new ClaimChangeLog
                             {
                                 HistoryId = Guid.NewGuid(),
@@ -427,7 +427,6 @@ namespace ClaimRequest.BLL.Services.Implements
                             throw new InvalidOperationException($"Approver with ID {rejectClaimRequest.ApproverId} has already rejected this claim.");
                         }
 
-                        // Commit giao dịch
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();
 
