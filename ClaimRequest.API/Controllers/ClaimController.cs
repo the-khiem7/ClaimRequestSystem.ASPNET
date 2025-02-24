@@ -157,11 +157,11 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id, [FromRoute] Guid approverId, [FromBody] ApproveClaimRequest approveClaimRequest)
+        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id, [FromBody] ApproveClaimRequest approveClaimRequest)
         {
             try
             {
-                var response = await _claimService.ApproveClaim(id, approverId, approveClaimRequest);
+                var response = await _claimService.ApproveClaim(id, approveClaimRequest);
                 return Ok(response);
             }
             catch (NotFoundException ex)
@@ -178,6 +178,47 @@ namespace ClaimRequest.API.Controllers
             {
                 _logger.LogError(ex, "Unexpected error approving claim with ID {Id}: {Message}", id, ex.Message);
                 return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        [HttpPut(ApiEndPointConstant.Claim.ReturnClaimEndpoint)]
+        [ProducesResponseType(typeof(ApiResponse<ReturnClaimResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ReturnClaim(Guid id, [FromBody] ReturnClaimRequest returnClaimRequest)
+        {
+            try
+            {
+                var returnedClaim = await _claimService.ReturnClaim(id, returnClaimRequest);
+                if (returnedClaim == null)
+                {
+                    var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                        null,
+                        StatusCodes.Status404NotFound,
+                        "Claim not found",
+                        "The claim ID provided does not exist or is not pending for return"
+                    );
+                    return NotFound(errorResponse);
+                }
+
+                var successResponse = ApiResponseBuilder.BuildResponse(
+                    StatusCodes.Status200OK,
+                    "Claim returned successfully",
+                    returnedClaim
+                );
+                return Ok(successResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error returning claim with ID {ClaimId}", id);
+
+                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status500InternalServerError,
+                    "An error occurred while returning the claim",
+                    "Internal server error"
+                );
+                return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
             }
         }
     }
