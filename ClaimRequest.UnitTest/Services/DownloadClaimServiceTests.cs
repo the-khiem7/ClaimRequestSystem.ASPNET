@@ -23,19 +23,18 @@ namespace ClaimRequest.Tests.Services
         private readonly Mock<IHttpContextAccessor> _httpContextAccessorMock;
         private readonly Mock<IGenericRepository<Claim>> _claimRepositoryMock;
         private readonly ClaimService _claimService;
+        private readonly Claim _fakeClaim;
 
         public ClaimServiceTests()
         {
-            // Setup real DbContext with in-memory database
             var options = new DbContextOptionsBuilder<ClaimRequestDbContext>()
-                .UseInMemoryDatabase("TestDb")  // Use an in-memory database
+                .UseInMemoryDatabase("TestDb")   // Use an in-memory database
                 .Options;
 
             _realDbContext = new ClaimRequestDbContext(options);
             _realDbContext.Database.EnsureDeleted();  // Clean DB before each test
             _realDbContext.Database.EnsureCreated();  // Recreate DB before each test
 
-            // Initialize Mocks
             _unitOfWorkMock = new Mock<IUnitOfWork<ClaimRequestDbContext>>();
             _loggerMock = new Mock<ILogger<Claim>>();
             _mapperMock = new Mock<IMapper>();
@@ -46,12 +45,41 @@ namespace ClaimRequest.Tests.Services
             _unitOfWorkMock.Setup(u => u.GetRepository<Claim>()).Returns(_claimRepositoryMock.Object);
 
             _claimService = new ClaimService(_unitOfWorkMock.Object, _loggerMock.Object, _mapperMock.Object, _httpContextAccessorMock.Object);
+
+            _fakeClaim = new Claim
+            {
+                Id = Guid.NewGuid(),
+                Claimer = new Staff { Id = Guid.NewGuid(), Name = "John Doe", Email = "JohnDoe@gmail.com", Password = "1" },
+                Project = new Project { Id = Guid.NewGuid(), Name = "Project A", Description = "N/A", EndDate = DateOnly.MaxValue },
+                Finance = new Staff { Id = Guid.NewGuid(), Name = "Jane Doe", Email = "JaneDoe@gmail.com", Password = "2" },
+                Name = "Claim 1",
+                ClaimType = ClaimType.OvertimeCompensation,
+                Status = ClaimStatus.Paid,
+                Amount = 100,
+                TotalWorkingHours = 8,
+                StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                EndDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                CreateAt = DateTime.UtcNow,
+                UpdateAt = DateTime.UtcNow,
+                Remark = "N/A"
+            };
         }
 
         public void Dispose()
         {
             _realDbContext.Dispose();
+        }
 
+        [Theory]
+        [InlineData(null)] // Null request object
+        [InlineData("")] // Empty request
+        public async Task DownloadClaimAsync_ShouldThrowNotFoundException_WhenInvalidClaimsProvided(string caseType)
+        {
+            // Arrange
+            var request = caseType == null ? null : new DownloadClaimRequest { ClaimIds = new List<Guid>() };
+
+            // Act & Assert
+            await Assert.ThrowsAsync<NotFoundException>(() => _claimService.DownloadClaimAsync(request));
         }
 
         [Fact]
@@ -62,18 +90,7 @@ namespace ClaimRequest.Tests.Services
                 It.IsAny<Expression<Func<Claim, bool>>>(),
                 It.IsAny<Func<IQueryable<Claim>, IOrderedQueryable<Claim>>>(),
                 It.IsAny<Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>>>()
-            )).ReturnsAsync((Expression<Func<Claim, bool>> predicate,
-                             Func<IQueryable<Claim>, IOrderedQueryable<Claim>> orderBy,
-                             Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>> include) =>
-            {
-                var claims = _realDbContext.Claims.Include(c => c.Claimer)
-                                                  .Include(c => c.Project)
-                                                  .Include(c => c.Finance)
-                                                  .Where(predicate.Compile())
-                                                  .ToList();
-                return claims;
-            });
-
+            )).ReturnsAsync(new List<Claim>()); // Directly return an empty list
 
             var request = new DownloadClaimRequest { ClaimIds = new List<Guid> { Guid.NewGuid() } };
 
@@ -96,34 +113,13 @@ namespace ClaimRequest.Tests.Services
         public async Task DownloadClaimAsync_ShouldReturnMemoryStream_WhenClaimsFound()
         {
             // Arrange
-            var fakeClaim = new Claim
-            {
-                Id = Guid.NewGuid(),
-                Claimer = new Staff { Id = Guid.NewGuid(), Name = "John Doe", Email = "JohnDoe@gmail.com", Password = "1" },
-                Project = new Project { Id = Guid.NewGuid(), Name = "Project A", Description = "N/A", EndDate = DateOnly.MaxValue },
-                Finance = new Staff { Id = Guid.NewGuid(), Name = "Jane Doe", Email = "JaneDoe@gmail.com", Password = "2" },
-                Name = "Claim 1",
-                ClaimType = ClaimType.OvertimeCompensation,
-                Status = ClaimStatus.Paid,
-                Amount = 100,
-                TotalWorkingHours = 8,
-                StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
-                EndDate = DateOnly.FromDateTime(DateTime.UtcNow),
-                CreateAt = DateTime.UtcNow,
-                UpdateAt = DateTime.UtcNow,
-                Remark = "N/A"
-            };
-
-            var fakeClaims = new List<Claim> { fakeClaim };
-
-            // Mock GetListAsync to return fake claims
             _claimRepositoryMock.Setup(repo => repo.GetListAsync(
                 It.IsAny<Expression<Func<Claim, bool>>>(),
                 It.IsAny<Func<IQueryable<Claim>, IOrderedQueryable<Claim>>>(),
                 It.IsAny<Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>>>()
-            )).ReturnsAsync(fakeClaims);
+            )).ReturnsAsync(new List<Claim> { _fakeClaim });
 
-            var request = new DownloadClaimRequest { ClaimIds = new List<Guid> { fakeClaim.Id } };
+            var request = new DownloadClaimRequest { ClaimIds = new List<Guid> { _fakeClaim.Id } };
 
             // Act
             var result = await _claimService.DownloadClaimAsync(request);
@@ -149,7 +145,7 @@ namespace ClaimRequest.Tests.Services
             var exception = await Assert.ThrowsAsync<Exception>(() => _claimService.DownloadClaimAsync(request));
             Assert.Equal("Database error", exception.Message);
 
-            // Verify that error logging was called
+            // Verify logging
             _loggerMock.Verify(
                 log => log.Log(
                     LogLevel.Error,
@@ -164,46 +160,41 @@ namespace ClaimRequest.Tests.Services
         public async Task DownloadClaimAsync_ShouldExcludeUnpaidClaims()
         {
             // Arrange
-            var fakeClaim = new Claim
-            {
-                Id = Guid.NewGuid(),
-                Claimer = new Staff { Id = Guid.NewGuid(), Name = "John Doe", Email = "JohnDoe@gmail.com", Password = "1" },
-                Project = new Project { Id = Guid.NewGuid(), Name = "Project A", Description = "N/A", EndDate = DateOnly.MaxValue },
-                Finance = new Staff { Id = Guid.NewGuid(), Name = "Jane Doe", Email = "JaneDoe@gmail.com", Password = "2" },
-                Name = "Claim 1",
-                ClaimType = ClaimType.OvertimeCompensation,
-                Status = ClaimStatus.Paid,
-                Amount = 100,
-                TotalWorkingHours = 8,
-                StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
-                EndDate = DateOnly.FromDateTime(DateTime.UtcNow),
-                CreateAt = DateTime.UtcNow,
-                UpdateAt = DateTime.UtcNow,
-                Remark = "N/A"
-            };
+            var unpaidClaim = new Claim { Id = Guid.NewGuid(), Status = ClaimStatus.Pending };
+            var paidClaim = new Claim { Id = Guid.NewGuid(), Status = ClaimStatus.Paid };
 
+            var request = new DownloadClaimRequest { ClaimIds = new List<Guid> { unpaidClaim.Id, paidClaim.Id } };
+
+            // Mock repository behavior
             _claimRepositoryMock.Setup(repo => repo.GetListAsync(
                 It.IsAny<Expression<Func<Claim, bool>>>(),
                 It.IsAny<Func<IQueryable<Claim>, IOrderedQueryable<Claim>>>(),
                 It.IsAny<Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>>>()
-            )).ReturnsAsync(new List<Claim>());
+            )).ReturnsAsync(new List<Claim> { paidClaim }); // Ensure only the paid claim is returned
 
-            var request = new DownloadClaimRequest { ClaimIds = new List<Guid> { fakeClaim.Id } };
+            // Act
+            var result = await _claimService.DownloadClaimAsync(request);
 
-            // Act & Assert
-            await Assert.ThrowsAsync<NotFoundException>(() => _claimService.DownloadClaimAsync(request));
+            // Assert
+            Assert.NotNull(result);
+            Assert.IsType<MemoryStream>(result); 
+
+            // Verify the repository was queried
+            _claimRepositoryMock.Verify(repo => repo.GetListAsync(
+                It.IsAny<Expression<Func<Claim, bool>>>(),
+                It.IsAny<Func<IQueryable<Claim>, IOrderedQueryable<Claim>>>(),
+                It.IsAny<Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>>>()
+            ), Times.Once);
+
+            // Verify logging for "no claims found" did NOT trigger (since we have a paid claim)
+            _loggerMock.Verify(
+                log => log.Log(
+                    LogLevel.Warning,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("No claims found for download")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()
+                ), Times.Never);
         }
-
-        [Fact]
-        public async Task DownloadClaimAsync_ShouldThrowNotFoundException_WhenClaimIdsAreEmpty()
-        {
-            // Arrange
-            var request = new DownloadClaimRequest { ClaimIds = new List<Guid>() };
-
-            // Act & Assert
-            await Assert.ThrowsAsync<NotFoundException>(() => _claimService.DownloadClaimAsync(request));
-        }
-
-
     }
 }
