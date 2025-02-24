@@ -349,10 +349,13 @@ namespace ClaimRequest.BLL.Services.Implements
                     await using var transaction = await _unitOfWork.BeginTransactionAsync();
                     try
                     {
+
+                        // Truy vấn claim từ Id và các dữ liệu liên quan cần thiết
                         var pendingClaim = await _unitOfWork.GetRepository<Claim>() 
                         .SingleOrDefaultAsync(
                             predicate: s => s.Id == id,
                             include: q => q.Include(c => c.ClaimApprovers)
+                            .ThenInclude(ca => ca.Approver)
                             );
                         if (pendingClaim == null) 
                         {
@@ -364,7 +367,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             throw new InvalidOperationException($"Claim with ID {id} is not in pending.");
                         }
 
-                        //Find Approvers by Id
+                        // Truy vấn approver của claim
                         var existingApprover = pendingClaim.ClaimApprovers
                             .FirstOrDefault(ca => ca.ApproverId == rejectClaimRequest.ApproverId);
 
@@ -379,14 +382,28 @@ namespace ClaimRequest.BLL.Services.Implements
                             await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
                         }
 
-
-                        _mapper.Map(rejectClaimRequest, pendingClaim); 
-
                         pendingClaim.Status = ClaimStatus.Rejected;
+                        pendingClaim.UpdateAt = DateTime.UtcNow;
 
                         _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();
+
+                        // Thêm thông tin vào bảng changelog
+                        var changeLog = new ClaimChangeLog
+                        {
+                            HistoryId = Guid.NewGuid(),
+                            ClaimId = pendingClaim.Id,
+                            FieldChanged = "Claim Status",
+                            OldValue = "Pending",
+                            NewValue = pendingClaim.Status.ToString(),
+                            ChangedAt = DateTime.UtcNow,
+                            ChangedBy = existingApprover?.Approver?.Name ?? "Unknown Approver"
+                        };
+                        await _unitOfWork.GetRepository<ClaimChangeLog>().InsertAsync(changeLog);
+                        await _unitOfWork.CommitAsync();
+
+                        _mapper.Map(rejectClaimRequest, pendingClaim);                         
 
                         return _mapper.Map<RejectClaimResponse>(pendingClaim);
                     }
@@ -399,7 +416,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error rejecting claim with ID {Id}: {Message}", id, ex.Message);
+                _logger.LogError(ex, "Error rejecting claim with ID {id}: {Message} | StackTrace: {StackTrace}", id, ex.Message, ex.StackTrace);
                 throw;
             }
         }
