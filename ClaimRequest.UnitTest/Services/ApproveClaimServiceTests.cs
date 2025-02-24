@@ -108,7 +108,7 @@ namespace ClaimRequest.UnitTest.Services
             _mockMapper.Setup(m => m.Map<ApproveClaimResponse>(It.IsAny<Claim>()))
                 .Returns(approveResponse);
 
-            var result = await _claimService.ApproveClaim(claimId, approverId, approveRequest);
+            var result = await _claimService.ApproveClaim(claimId, approveRequest);
 
             Assert.NotNull(result);
             Assert.Equal(ClaimStatus.Approved, result.Status);
