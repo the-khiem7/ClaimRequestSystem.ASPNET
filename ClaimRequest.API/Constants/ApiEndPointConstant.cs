@@ -1,4 +1,4 @@
-﻿namespace ClaimRequest.API.Constants
+namespace ClaimRequest.API.Constants
 {
     public class ApiEndPointConstant
     {
@@ -11,25 +11,37 @@
 
         public static class Claim
         {
-            // Duoi co "s" danh cho nhung tac vu Create(POST) hoac GetALL (GET)
-            public const string ClaimsEndpoint = ApiEndpoint + "/claim";
-
-            // Duoi ko "s" danh cho cac tac vu chi dinh 1 doi tuong object: GetByID (GET), Update(PUT), Delete(DELETE)
+            public const string ClaimsEndpoint = ApiEndpoint + "/claims";
             public const string ClaimEndpointById = ClaimsEndpoint + "/{id}";
+            public const string UpdateClaimEndpoint = ClaimEndpointById + "/update";
             public const string CancelClaimEndpoint = ClaimsEndpoint + "/cancel";
             public const string RejectClaimEndpoint = ClaimEndpointById + "/reject";
-            public const string ApproveClaimEndpoint = ClaimsEndpoint + "/approve/{id}";
+            public const string ApproveClaimEndpoint = ClaimsEndpoint + "/approve/{id}/approver/{approverId}";
             public const string DownloadClaimEndpoint = ClaimsEndpoint + "/download";
-
+            public const string PaidClaimEndpoint = ClaimEndpointById + "/paid";
         }
         public static class Email
         {
             public const string EmailEndpoint = ApiEndpoint + "/email";
-
             public const string SendEmail = EmailEndpoint + "/send";
+            public const string ApproveClaimEndpoint = Claim.ClaimEndpointById + "/approve";
+        }
 
-            public const string ApproveClaimEndpoint = ClaimEndpoint + "/approve";
+        public static class Projects
+        {
+            public const string ProjectsEndpoint = ApiEndpoint + "/projects";
+            public const string ProjectEndpointById = ProjectsEndpoint + "/{id}";
+            public const string UpdateProjectEndpoint = ProjectEndpointById + "/update";
+            public const string DeleteProjectEndpoint = ProjectEndpointById + "/delete";
 
+        }
+
+        public static class Staffs
+        {
+            public const string StaffsEndpoint = ApiEndpoint + "/staffs";
+            public const string StaffEndpointById = StaffsEndpoint + "/{id}";
+            public const string UpdateStaffEndpoint = StaffEndpointById + "/update";
+            public const string DeleteStaffEndpoint = StaffEndpointById + "/delete";
         }
     }
 }
