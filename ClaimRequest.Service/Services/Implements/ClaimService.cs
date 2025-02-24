@@ -58,7 +58,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                     if (claim.ClaimerId != cancelClaimRequest.ClaimerId)
                     {
-                        throw new UnauthorizedAccessException("Claim cannot be cancelled as you are not the claimer.");
+                        throw new InvalidOperationException("Claim cannot be cancelled as you are not the claimer.");
                     }
 
                     // Begin transaction only after all validation checks have passed
