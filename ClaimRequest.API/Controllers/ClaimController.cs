@@ -18,7 +18,6 @@ namespace ClaimRequest.API.Controllers
         private readonly IClaimService _claimService;
         #endregion
 
-
         #region Contructor
         public ClaimController(ILogger<ClaimController> logger, IClaimService claimService) : base(logger)
         {
@@ -104,7 +103,7 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
-        [HttpPut("reject/{Id}")]
+        [HttpPut(ApiEndPointConstant.Claim.RejectClaimEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
@@ -124,7 +123,6 @@ namespace ClaimRequest.API.Controllers
             );
             return Ok(successResponse);
         }
-
 
         [HttpPut(ApiEndPointConstant.Claim.CancelClaimEndpoint)]
         [ProducesResponseType(typeof(CancelClaimResponse), StatusCodes.Status200OK)]
@@ -184,4 +182,3 @@ namespace ClaimRequest.API.Controllers
         }
     }
 }
-
