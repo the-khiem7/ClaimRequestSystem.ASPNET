@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
@@ -348,7 +348,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task<RejectClaimResponse> RejectClaim(Guid Id, RejectClaimRequest rejectClaimRequest)
+        public async Task<RejectClaimResponse> RejectClaim(Guid id, RejectClaimRequest rejectClaimRequest)
         {
             try
             {
@@ -358,23 +358,22 @@ namespace ClaimRequest.BLL.Services.Implements
                     await using var transaction = await _unitOfWork.BeginTransactionAsync();
                     try
                     {
-                        var pendingClaim = await _unitOfWork.GetRepository<Claim>()
+                        var pendingClaim = await _unitOfWork.GetRepository<Claim>() 
                         .SingleOrDefaultAsync(
-                            predicate: s => s.Id == Id,
+                            predicate: s => s.Id == id,
                             include: q => q.Include(c => c.ClaimApprovers)
                             );
-                        if (pendingClaim == null)
+                        if (pendingClaim == null) 
                         {
-                            throw new KeyNotFoundException($"Claim with ID {Id} not found.");
+                            throw new KeyNotFoundException($"Claim with ID {id} not found.");
                         }
 
                         if (pendingClaim.Status != ClaimStatus.Pending)
                         {
-                            throw new InvalidOperationException($"Claim with ID {Id} is not in pending.");
+                            throw new InvalidOperationException($"Claim with ID {id} is not in pending.");
                         }
-                        _logger.LogInformation("Rejecting claim with ID: {Id} by approver: {ApproverId}", Id, rejectClaimRequest.ApproverId);
 
-
+                        //Find Approvers by Id
                         var existingApprover = pendingClaim.ClaimApprovers
                             .FirstOrDefault(ca => ca.ApproverId == rejectClaimRequest.ApproverId);
 
@@ -390,7 +389,7 @@ namespace ClaimRequest.BLL.Services.Implements
                         }
 
 
-                        _mapper.Map(rejectClaimRequest, pendingClaim);
+                        _mapper.Map(rejectClaimRequest, pendingClaim); 
 
                         pendingClaim.Status = ClaimStatus.Rejected;
 
@@ -409,12 +408,12 @@ namespace ClaimRequest.BLL.Services.Implements
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error rejecting claim with ID {Id}: {Message}", Id, ex.Message);
+                _logger.LogError(ex, "Error rejecting claim with ID {Id}: {Message}", id, ex.Message);
                 throw;
             }
         }
 
-        public async Task<ApproveClaimResponse> ApproveClaim(Guid id, Guid approverId, ApproveClaimRequest approveClaimRequest)
+        public async Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest)
         {
             var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
@@ -428,7 +427,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                     var pendingClaim = await claimRepo.SingleOrDefaultAsync(
                         predicate: s => s.Id == id,
-                        include: q => q.Include(c => c.ClaimApprovers)
+                        include: s => s.Include(c => c.ClaimApprovers)
                     );
 
                     if (pendingClaim == null)
@@ -444,14 +443,14 @@ namespace ClaimRequest.BLL.Services.Implements
                     }
 
                     var existingApprover = pendingClaim.ClaimApprovers
-                        .FirstOrDefault(ca => ca.ApproverId == approverId);
+                        .FirstOrDefault(ca => ca.ApproverId == approveClaimRequest.ApproverId);
 
                     if (existingApprover == null)
                     {
                         throw new KeyNotFoundException("Approver does not exist.");
                     }
 
-                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approverId);
+                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approveClaimRequest.ApproverId);
 
                     _mapper.Map(approveClaimRequest, pendingClaim);
                     pendingClaim.Status = ClaimStatus.Approved;
