@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 ﻿using ClaimRequest.BLL.Services.Interfaces;
+=======
+﻿using ClaimRequest.API.Constants;
+using ClaimRequest.BLL.Services.Interfaces;
+>>>>>>> b0dd1f18d3ebf62ef56899830d049038ca82a1e7
 using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Project;
@@ -7,7 +12,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ClaimRequest.API.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
     public class ProjectsController : BaseController<ProjectsController>
     {
@@ -19,7 +23,7 @@ namespace ClaimRequest.API.Controllers
             _projectService = projectService;
         }
 
-        [HttpGet]
+        [HttpGet(ApiEndPointConstant.Projects.ProjectsEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<CreateProjectResponse>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetProjects()
@@ -32,7 +36,7 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
-        [HttpGet("{id}")]
+        [HttpGet(ApiEndPointConstant.Projects.ProjectEndpointById)]
         [ProducesResponseType(typeof(ApiResponse<CreateProjectResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
@@ -46,7 +50,7 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
-        [HttpPost]
+        [HttpPost(ApiEndPointConstant.Projects.ProjectsEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<CreateProjectResponse>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
@@ -77,7 +81,7 @@ namespace ClaimRequest.API.Controllers
             );
         }
 
-        [HttpPut("{id}")]
+        [HttpPut(ApiEndPointConstant.Projects.UpdateProjectEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<CreateProjectResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
@@ -91,7 +95,11 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
+<<<<<<< HEAD
         [HttpDelete("{id}")]
+=======
+        [HttpDelete(ApiEndPointConstant.Projects.DeleteProjectEndpoint)]
+>>>>>>> b0dd1f18d3ebf62ef56899830d049038ca82a1e7
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
