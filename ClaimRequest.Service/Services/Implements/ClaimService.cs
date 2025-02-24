@@ -112,21 +112,30 @@ namespace ClaimRequest.BLL.Services.Implements
                 var currentYear = DateTime.UtcNow.Year;
 
                 var selectedClaims = await _unitOfWork.GetRepository<Claim>().GetListAsync(
-                    predicate: c => downloadClaimRequest.ClaimIds.Contains(c.Id) &&
-                        c.Status == ClaimStatus.Paid &&
-                        c.UpdateAt != null &&
-                        c.UpdateAt.Month == currentMonth &&
-                        c.UpdateAt.Year == currentYear,
+                    predicate: c => downloadClaimRequest.ClaimIds.Contains(c.Id),
                     include: c => c.Include(x => x.Claimer)
                         .Include(x => x.Project)
                         .Include(x => x.Finance)
                 );
 
-
                 if (selectedClaims == null || !selectedClaims.Any())
                 {
                     _logger.LogWarning("No claims found for download.");
                     throw new NotFoundException("No claims found for download.");
+                }
+
+                // Ensure all selected claims have Status == Paid
+                if (selectedClaims.Any(c => c.Status != ClaimStatus.Paid))
+                {
+                    _logger.LogWarning("Some claims have a status other than 'Paid'. Process aborted.");
+                    throw new InvalidOperationException("All selected claims must have status 'Paid'.");
+                }
+
+                // Ensure all selected claims are updated in the current month and year
+                if (selectedClaims.Any(c => c.UpdateAt == null || c.UpdateAt.Month != currentMonth || c.UpdateAt.Year != currentYear))
+                {
+                    _logger.LogWarning("Some claims are not from the current month. Process aborted.");
+                    throw new InvalidOperationException("All selected claims must be updated in the current month.");
                 }
 
                 foreach (var claim in selectedClaims)
@@ -153,8 +162,8 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 // Define column headers
                 var headers = new[] { "Claim ID", "Claimer Name", "Project Name", "Claim Type", "Status",
-                              "Amount", "Total Working Hours", "Start Date", "End Date", "Created At",
-                              "Finance Approver", "Remarks" };
+                      "Amount", "Total Working Hours", "Start Date", "End Date", "Created At",
+                      "Finance Approver", "Remarks" };
 
                 for (int i = 0; i < headers.Length; i++)
                 {
