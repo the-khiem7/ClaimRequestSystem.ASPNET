@@ -98,7 +98,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-        
+
         public async Task<MemoryStream> DownloadClaimAsync(DownloadClaimRequest downloadClaimRequest)
         {
             try
@@ -113,7 +113,6 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 var selectedClaims = await _unitOfWork.GetRepository<Claim>().GetListAsync(
                     predicate: c => downloadClaimRequest.ClaimIds.Contains(c.Id) &&
-                        c.Status == ClaimStatus.Paid &&
                         c.UpdateAt != null &&
                         c.UpdateAt.Month == currentMonth &&
                         c.UpdateAt.Year == currentYear,
@@ -126,6 +125,13 @@ namespace ClaimRequest.BLL.Services.Implements
                 {
                     _logger.LogWarning("No claims found for download.");
                     throw new NotFoundException("No claims found for download.");
+                }
+
+                // Check if any claim has a status other than Paid
+                if (selectedClaims.Any(c => c.Status != ClaimStatus.Paid))
+                {
+                    _logger.LogError("Claim download process aborted. Some claims are not in 'Paid' status.");
+                    throw new InvalidOperationException("Claim download failed. All claims must have status 'Paid'.");
                 }
 
                 foreach (var claim in selectedClaims)
@@ -152,8 +158,8 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 // Define column headers
                 var headers = new[] { "Claim ID", "Claimer Name", "Project Name", "Claim Type", "Status",
-                              "Amount", "Total Working Hours", "Start Date", "End Date", "Created At",
-                              "Finance Approver", "Remarks" };
+                      "Amount", "Total Working Hours", "Start Date", "End Date", "Created At",
+                      "Finance Approver", "Remarks" };
 
                 for (int i = 0; i < headers.Length; i++)
                 {
