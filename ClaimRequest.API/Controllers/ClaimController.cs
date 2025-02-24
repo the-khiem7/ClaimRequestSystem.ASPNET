@@ -107,9 +107,9 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> RejectClaim(Guid Id, [FromBody] RejectClaimRequest rejectClaimRequest)
+        public async Task<IActionResult> RejectClaim([FromRoute] Guid id, [FromBody] RejectClaimRequest rejectClaimRequest)
         {
-            var rejectClaim = await _claimService.RejectClaim(Id, rejectClaimRequest);
+            var rejectClaim = await _claimService.RejectClaim(id, rejectClaimRequest);
             if (rejectClaim == null)
             {
                 _logger.LogError("Reject claim failed");

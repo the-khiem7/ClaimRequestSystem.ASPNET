@@ -74,6 +74,7 @@ namespace ClaimRequest.UnitTest.Services
                 _mockMapper.Object,
                 _mockHttpContextAccessor.Object
             );
+
         }
 
         // Begin test here
@@ -142,6 +143,7 @@ namespace ClaimRequest.UnitTest.Services
                 It.Is<It.IsAnyType>((v, t) => true),
                 It.IsAny<Exception>(),
                 (Func<It.IsAnyType, Exception, string>)It.IsAny<object>()), Times.Once);
+
         }
 
 
