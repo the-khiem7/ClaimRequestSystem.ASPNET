@@ -1,8 +1,8 @@
-﻿using ClaimRequest.DAL.Data.MetaDatas;
-using ClaimRequest.DAL.Data.Exceptions;
+﻿using ClaimRequest.API.Data.MetaDatas;
+using ClaimRequest.API.Exceptions;
 using System.Net;
 
-namespace ClaimRequest.API.Middlewares
+namespace ClaimRequest.API.Extensions
 {
     public class ExceptionHandlerMiddleware
     {
@@ -31,82 +31,29 @@ namespace ClaimRequest.API.Middlewares
             catch (Exception exception)
             {
                 var errorId = Guid.NewGuid().ToString();
-                LogError(errorId, context, exception);
+                LogError(errorId, exception);
                 await HandleExceptionAsync(context, errorId, exception);
             }
         }
 
-        private void LogError(string errorId, HttpContext context, Exception exception)
+        private void LogError(string errorId, Exception exception)
         {
             var error = new
             {
                 ErrorId = errorId,
-                Timestamp = DateTime.UtcNow,
-                RequestPath = context.Request.Path,
-                RequestMethod = context.Request.Method,
                 ExceptionType = exception.GetType().Name,
                 ExceptionMessage = exception.Message,
-                StackTrace = exception.StackTrace,
-                InnerException = exception.InnerException?.Message,
-                User = context.User?.Identity?.Name ?? "Anonymous",
-                AdditionalInfo = GetAdditionalInfo(exception)
+                StackTrace = exception.StackTrace
             };
 
-            var logLevel = exception switch
-            {
-                BusinessException => LogLevel.Warning,
-                ValidationException => LogLevel.Warning,
-                NotFoundException => LogLevel.Information,
-                _ => LogLevel.Error
-            };
-
-            _logger.Log(logLevel, exception,
-                "Error ID: {ErrorId} - Path: {Path} - Method: {Method} - {@error}",
-                errorId,
-                context.Request.Path,
-                context.Request.Method,
-                error);
-        }
-
-        private object GetAdditionalInfo(Exception exception)
-        {
-            return exception switch
-            {
-                ValidationException valEx => new
-                {
-                    ValidationDetails = valEx.Message
-                },
-                BusinessException busEx => new
-                {
-                    BusinessRule = busEx.Message
-                },
-                _ => new { }
-            };
+            _logger.LogError(exception, "{@error}", error);
         }
 
         private async Task HandleExceptionAsync(HttpContext context, string errorId, Exception exception)
         {
-            var (statusCode, message, reason) = exception switch
-            {
-                ValidationException validationEx =>
-                    (HttpStatusCode.BadRequest, "Validation failed", validationEx.Message),
-
-                NotFoundException notFoundEx =>
-                    (HttpStatusCode.NotFound, "Resource not found", notFoundEx.Message),
-
-                BusinessException businessEx =>
-                    (HttpStatusCode.BadRequest, "Business rule violation", businessEx.Message),
-
-                UnauthorizedAccessException =>
-                    (HttpStatusCode.Unauthorized, "Unauthorized access", "You don't have permission to perform this action"),
-
-                InvalidOperationException =>
-                    (HttpStatusCode.BadRequest, "Invalid operation", exception.Message),
-
-                _ => (HttpStatusCode.InternalServerError,
-                    "An unexpected error occurred",
-                    _env.IsDevelopment() ? exception.Message : "Internal server error")
-            };
+            var statusCode = GetStatusCode(exception);
+            var message = GetMessage(exception);
+            var reason = GetReason(exception);
 
             var response = new ApiResponse<object>
             {
@@ -126,6 +73,46 @@ namespace ClaimRequest.API.Middlewares
 
             await context.Response.WriteAsJsonAsync(response);
         }
+
+        private string GetReason(Exception exception)
+        {
+            return exception switch
+            {
+                ApiException apiException => $"Error occurred in {apiException.GetType().Name.Replace("Exception", "")}",
+                UnauthorizedAccessException => "Unauthorized access to resource",
+                KeyNotFoundException => "Requested resource was not found",
+                ArgumentException => "Invalid argument provided to operation",
+                InvalidOperationException => "Invalid operation attempted",
+                _ => _env.IsDevelopment() ? exception.Message : "Internal Server Error"
+            };
+        }
+
+        private static string GetMessage(Exception exception)
+        {
+            return exception switch
+            {
+                ApiException apiException => apiException.Message,
+                UnauthorizedAccessException => "Unauthorized access",
+                KeyNotFoundException => "Resource not found",
+                ArgumentException => "Invalid argument provided",
+                InvalidOperationException => "Invalid operation",
+                _ => "An unexpected error occurred"
+            };
+        }
+
+        private static HttpStatusCode GetStatusCode(Exception exception)
+        {
+            return exception switch
+            {
+                ApiException apiException => apiException.StatusCode,
+                UnauthorizedAccessException => HttpStatusCode.Unauthorized,
+                KeyNotFoundException => HttpStatusCode.NotFound,
+                ArgumentException => HttpStatusCode.BadRequest,
+                InvalidOperationException => HttpStatusCode.BadRequest,
+                _ => HttpStatusCode.InternalServerError
+            };
+        }
     }
+
 }
 
