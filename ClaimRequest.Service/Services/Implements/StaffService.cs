@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using ClaimRequest.DAL.Data.Exceptions;
+using System.Security.Cryptography;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -211,16 +212,16 @@ namespace ClaimRequest.BLL.Services.Implements
         }
 
 
-        //public static class PasswordHasher
-        //{
-        //    public static string HashPassword(string password)
-        //    {
-        //        using (SHA256 sha256 = SHA256.Create())
-        //        {
-        //            byte[] hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-        //            return BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
-        //        }
-        //    }
-        //}
+        public static class PasswordHasher
+        {
+            public static string HashPassword(string password)
+            {
+                using (SHA256 sha256 = SHA256.Create())
+                {
+                    byte[] hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+                    return BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
+                }
+            }
+        }
     }
 }
