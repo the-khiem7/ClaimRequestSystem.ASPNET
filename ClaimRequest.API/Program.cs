@@ -1,4 +1,4 @@
-using ClaimRequest.API.Data;
+using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.API.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
@@ -6,14 +6,19 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using ClaimRequest.DAL.Repositories.Interfaces;
+using ClaimRequest.DAL.Repositories.Implements;
+using ClaimRequest.BLL.Services.Interfaces;
+using ClaimRequest.BLL.Services.Implements;
+using ClaimRequest.API.Middlewares;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -53,7 +58,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// add db context
+// Add DbContext connect to Postgres
 builder.Services.AddDbContext<ClaimRequestDbContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("PostgresConnection"),
@@ -67,13 +72,45 @@ builder.Services.AddDbContext<ClaimRequestDbContext>(options =>
 });
 
 // Add services to the container.
-builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
+//builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
+// tat ca cac service implement tu Profile cuar AutoMapperProfile se duoc tu dong add vao
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
+// Add IUnitOfWork and UnitOfWork
+builder.Services.AddScoped<IUnitOfWork<ClaimRequestDbContext>, UnitOfWork<ClaimRequestDbContext>>();
+
+// Add this line before registering your services
+builder.Services.AddHttpContextAccessor();
+
+// Dependency Injection for Repositories and Services
+builder.Services.AddScoped<IClaimService, ClaimService>();
+builder.Services.AddScoped<IStaffService, StaffService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+
+//Serilize enum to string
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
+
+
+
+//Serilize enum to string
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
+
 
 // disable the default ModelStateInvalidFilter => to use the custom ExceptionHandlerMiddleware
-builder.Services.Configure<ApiBehaviorOptions>(options =>
-{
-    options.SuppressModelStateInvalidFilter = true;
-});
+// neu dinh chuong khong doc duoc loi tu swagger => comment lai doan code phia duoi
+// ===============================================
+//builder.Services.Configure<ApiBehaviorOptions>(options =>
+//{
+//    options.SuppressModelStateInvalidFilter = true;
+//});
+// ===============================================
 
 // Add authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -118,7 +155,10 @@ if (app.Environment.IsDevelopment())
 }
 
 // Add the ExceptionHandlerMiddleware to the pipeline
-app.UseMiddleware<ExceptionHandlerMiddleware>();
+// comment lai doan code phia duoi neu chuong khong doc duoc loi tu swagger
+// ===============================================
+app.UseMiddleware<ExceptionHandlerMiddleware>(); //comment lai de bat loi 500 
+// ===============================================
 
 //app.UseHttpsRedirection();
 
