@@ -1,0 +1,72 @@
+networks:
+    claimrequest_network:
+        driver: bridge
+
+services:
+  claimrequest.api:
+    container_name: claimrequest-api
+    image: ${DOCKER_REGISTRY-}claimrequestapi
+    build:
+      context: .
+      dockerfile: ClaimRequest.API/Dockerfile
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+    depends_on:
+      claimrequest.db:
+        condition: service_healthy  
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5000;http://+:5001
+      - ConnectionStrings__PostgresConnection=Host=claimrequest.db;Database=ClaimRequestDB;Username=db_user;Password=Iloveyou3000!;Port=5432
+      - EXTERNAL_API_HOST=localhost:5000  
+    networks:
+      - claimrequest_network
+
+  claimrequest.test:
+    container_name: claimrequest-test
+    image: ${DOCKER_REGISTRY-}claimrequesttest
+    build:
+      context: .
+      dockerfile: ClaimRequest.UnitTest/Dockerfile
+    volumes:
+      - ./TestResults:/TestResults
+    depends_on:
+      - claimrequest.api
+    networks:
+      - claimrequest_network
+
+  claimrequest.db:
+    container_name: claimrequest-db
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: db_user
+      POSTGRES_PASSWORD: Iloveyou3000!
+      POSTGRES_DB: ClaimRequestDB
+    ports:
+      - "8386:5432"
+    networks:
+      - claimrequest_network
+    volumes:
+      - claimrequest.db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U db_user -d ClaimRequestDB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    container_name: pgadmin_claimrequest
+    image: dpage/pgadmin4
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    depends_on:
+      - claimrequest.db
+    networks:
+      - claimrequest_network
+
+volumes:
+  claimrequest.db_data:

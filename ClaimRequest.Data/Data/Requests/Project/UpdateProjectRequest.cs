@@ -1,0 +1,36 @@
+﻿using ClaimRequest.DAL.Data.Entities;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ClaimRequest.DAL.Data.Requests.Project
+{
+    public class UpdateProjectRequest
+    {
+        [Required(ErrorMessage = "Project Name is required")]
+        [MaxLength(100, ErrorMessage = "Project Name must not exceed 100 characters")]
+        public string Name { get; set; }
+
+        [MaxLength(1000, ErrorMessage = "Description must not exceed 1000 characters")]
+        [Required(ErrorMessage = "Description is required")]
+        public string Description { get; set; }
+
+        [Required(ErrorMessage = "StartDate is required")]
+        public DateOnly StartDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+
+        public DateOnly? EndDate { get; set; }
+
+        [Required(ErrorMessage = "Budget is required")]
+        [Range(0, double.MaxValue, ErrorMessage = "Budget must be greater than 0")]
+        public decimal Budget { get; set; }
+
+        [Required(ErrorMessage = "Project Manager is required")]
+        public Guid ProjectManagerId { get; set; }
+
+        [Required(ErrorMessage = "Project Status is required")]
+        public ProjectStatus? Status { get; set; }
+    }
+}
