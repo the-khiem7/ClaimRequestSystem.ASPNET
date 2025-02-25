@@ -557,6 +557,83 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
+        public async Task<bool> SubmitClaim(Guid id, Guid claimerId)
+        {
+            try
+            {
+                if (_unitOfWork?.Context?.Database == null)
+                {
+                    throw new InvalidOperationException("Database context is not initialized.");
+                }
 
+                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+                return await executionStrategy.ExecuteAsync(async () =>
+                {
+                    // Get claim
+                    var claim = await _unitOfWork.GetRepository<Claim>()
+                        .GetByIdAsync(id)
+                        ?? throw new KeyNotFoundException("Claim not found.");
+
+                    // Validate claim status
+                    if (claim.Status != ClaimStatus.Draft)
+                    {
+                        throw new InvalidOperationException("Claim cannot be submitted as it is not in Draft status.");
+                    }
+
+                    // Get the approver (Project Manager)
+                    var project = await _unitOfWork.GetRepository<Project>()
+                        .GetByIdAsync(claim.ProjectId)
+                        ?? throw new KeyNotFoundException("Project not found.");
+
+                    var approver = await _unitOfWork.GetRepository<Staff>()
+                        .GetByIdAsync(project.ProjectManagerId)
+                        ?? throw new KeyNotFoundException("Project Manager not found.");
+
+                    // Begin transaction
+                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
+                    try
+                    {
+                        // Update claim status
+                        claim.Status = ClaimStatus.Pending;
+                        claim.UpdateAt = DateTime.UtcNow;
+
+                        // Save updated claim
+                        _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
+
+                        // Create new ClaimApprover entry
+                        var claimApprover = new ClaimApprover
+                        {
+                            ClaimId = claim.Id,
+                            ApproverId = approver.Id
+                        };
+
+                        // Save claim approver record
+                        await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(claimApprover);
+
+                        // Commit transaction
+                        await _unitOfWork.CommitAsync();
+                        await _unitOfWork.CommitTransactionAsync(transaction);
+
+                        // Log the change of claim status
+                        _logger.LogInformation("Submitted claim {ClaimId} by {ClaimerId} on {Time}. Approver: {ApproverId}",
+                            id, claimerId, claim.UpdateAt, approver.Id);
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        // Rollback transaction
+                        await _unitOfWork.RollbackTransactionAsync(transaction);
+                        _logger.LogError(ex, "Error occurred during claim submission.");
+                        throw;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error submitting claim: {Message}", ex.Message);
+                throw;
+            }
+        }
     }
 }
