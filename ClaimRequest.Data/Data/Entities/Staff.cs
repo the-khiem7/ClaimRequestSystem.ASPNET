@@ -8,7 +8,8 @@ namespace ClaimRequest.DAL.Data.Entities
         ProjectManager,
         Staff,
         Finance,
-        Admin
+        Admin,
+        Spyware
     }
 
     public enum Department
@@ -29,6 +30,7 @@ namespace ClaimRequest.DAL.Data.Entities
         CustomerSupport,      // Handling customer inquiries and support tickets
         ResearchAndInnovation,// Exploring new technologies and innovations
         LegalAndCompliance,    // Handling legal, contracts, and policy enforcement
+        // Software Development
         SoftwareEngineer,
         SeniorSoftwareEngineer,
         TechLead,
@@ -105,6 +107,7 @@ namespace ClaimRequest.DAL.Data.Entities
         // Legal & Compliance
         LegalAdvisor,
         ComplianceManager
+
     }
 
 
@@ -142,5 +145,7 @@ namespace ClaimRequest.DAL.Data.Entities
         public bool IsActive { get; set; } = true;
 
         public virtual ICollection<ProjectStaff> ProjectStaffs { get; set; } = [];
+
+        //public string PasswordHash { get; set; }
     }
 }

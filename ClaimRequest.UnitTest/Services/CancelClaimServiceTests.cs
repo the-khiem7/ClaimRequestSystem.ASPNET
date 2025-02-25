@@ -164,7 +164,7 @@ namespace ClaimRequest.UnitTest.Services
                 .ReturnsAsync(claim);
 
             // Act & Assert
-            var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _claimService.CancelClaim(cancelRequest));
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _claimService.CancelClaim(cancelRequest));
             Assert.Equal("Claim cannot be cancelled as you are not the claimer.", exception.Message);
 
             // Ensure transaction is not started if claimerId does not match
