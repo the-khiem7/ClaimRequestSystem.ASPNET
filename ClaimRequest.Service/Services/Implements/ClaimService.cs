@@ -19,6 +19,7 @@ using OfficeOpenXml;
 using ClaimRequest.DAL.Repositories.Implements;
 using OfficeOpenXml.Style;
 using System.Drawing;
+using ClaimRequest.BLL.Extension;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -324,16 +325,11 @@ namespace ClaimRequest.BLL.Services.Implements
             try
             {
                 var claimRepository = _unitOfWork.GetRepository<Claim>();
-                var claim = await claimRepository.SingleOrDefaultAsync(
+                var claim = (await claimRepository.SingleOrDefaultAsync(
                     c => new { c, c.Claimer, c.Project },
                     c => c.Id == id,
                     include: q => q.Include(c => c.Claimer).Include(c => c.Project)
-                );
-
-                if (claim == null)
-                {
-                    throw new NotFoundException($"Claim with ID {id} not found");
-                }
+                )).ValidateExists(id);
 
                 return _mapper.Map<ViewClaimResponse>(claim.c);
             }
@@ -359,17 +355,11 @@ namespace ClaimRequest.BLL.Services.Implements
                     try
                     {
                         // Truy vấn claim từ Id và các dữ liệu liên quan cần thiết
-                        var pendingClaim = await _unitOfWork.GetRepository<Claim>()
+                        var pendingClaim = (await _unitOfWork.GetRepository<Claim>()
                             .SingleOrDefaultAsync(
                                 predicate: s => s.Id == id,
                                 include: q => q.Include(c => c.ClaimApprovers)
-                                    //.ThenInclude(ca => ca.Approver)
-                            );
-
-                        if (pendingClaim == null)
-                        {
-                            throw new KeyNotFoundException($"Claim with ID {id} not found.");
-                        }
+                            )).ValidateExists(id);
 
                         if (pendingClaim.Status != ClaimStatus.Pending)
                         {
