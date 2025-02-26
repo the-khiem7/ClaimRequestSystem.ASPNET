@@ -379,10 +379,7 @@ namespace ClaimRequest.BLL.Services.Implements
                                     predicate: s => s.Id == rejectClaimRequest.ApproverId
                                 );
 
-                            if (staff == null)
-                            {
-                                throw new KeyNotFoundException($"Approver with ID {rejectClaimRequest.ApproverId} not found.");
-                            }
+                            staff.ValidateExists(rejectClaimRequest.ApproverId, "Approver");
 
                             var approverName = staff?.Name ?? "Unknown Approver";
 
@@ -505,12 +502,9 @@ namespace ClaimRequest.BLL.Services.Implements
                         var pendingClaim = await _unitOfWork.GetRepository<Claim>()
                             .SingleOrDefaultAsync(
                                 predicate: s => s.Id == id,
-                                include: q => q.Include(c => c.ClaimApprovers)
-                            );
-                        if (pendingClaim == null)
-                        {
-                            throw new NotFoundException($"Claim with ID {id} not found.");
-                        }
+                                include: q => q.Include(c => c.ClaimApprovers));
+
+                        pendingClaim.ValidateExists(id);
 
                         if (pendingClaim.Status != ClaimStatus.Pending)
                         {
