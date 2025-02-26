@@ -44,14 +44,11 @@ namespace ClaimRequest.DAL.Data.Entities
         [Required]
         [Column("name")]
         [StringLength(100)]
-
-
-
-        public string? Name { get; set; }
+        public string Name { get; set; }
 
         [Column("remark")]
         [StringLength(1000)]
-        public string? Remark { get; set; }
+        public string Remark { get; set; }
 
         [Column("amount", TypeName = "numeric")]
         [Required]
@@ -81,16 +78,12 @@ namespace ClaimRequest.DAL.Data.Entities
         [ForeignKey(nameof(Project))]
         [Column("project_id")]
         public Guid ProjectId { get; set; }
-        public virtual Project? Project { get; set; }
+        public virtual Project Project { get; set; }
 
         [ForeignKey(nameof(Claimer))]
         [Column("claimer_id")]
         public Guid ClaimerId { get; set; }
-
-
-
-        public virtual Staff? Claimer { get; set; }
-
+        public virtual Staff Claimer { get; set; }
 
         [ForeignKey(nameof(Finance))]
         [Column("finance_id")]
@@ -98,12 +91,6 @@ namespace ClaimRequest.DAL.Data.Entities
         public virtual Staff? Finance { get; set; }
 
         public virtual ICollection<ClaimApprover>? ClaimApprovers { get; set; }
-
-
-        public virtual ICollection<ClaimChangeLog>? ChangeHistory { get; set; }
-        public bool IsPaid { get; internal set; }
-        public DateTime PaidDate { get; internal set; }
-        public decimal PaidAmount { get; internal set; }
-
+        public virtual ICollection<ClaimChangeLog> ChangeHistory { get; set; }
     }
 }

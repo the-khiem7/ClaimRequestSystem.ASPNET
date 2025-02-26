@@ -35,7 +35,6 @@ namespace ClaimRequest.UnitTest.Services
         private readonly IMapper _mapper;
         private readonly ClaimService _claimService;
         private readonly Mock<IGenericRepository<Claim>> _mockClaimRepository;
-        private readonly Mock<IClaimRepository> _mockIClaimRepository;
         private readonly TestClaimRequestDbContext _dbContext;
 
         public CreateClaimServiceTests()
@@ -45,7 +44,6 @@ namespace ClaimRequest.UnitTest.Services
             _mockLogger = new Mock<ILogger<Claim>>();
             _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
             _mockClaimRepository = new Mock<IGenericRepository<Claim>>();
-            _mockIClaimRepository = new Mock<IClaimRepository>();
             _dbContext = new TestClaimRequestDbContext();
 
             // Setup mapper
@@ -68,8 +66,7 @@ namespace ClaimRequest.UnitTest.Services
                 _mockUnitOfWork.Object,
                 _mockLogger.Object,
                 _mapper,
-                _mockHttpContextAccessor.Object,
-                _mockIClaimRepository.Object
+                _mockHttpContextAccessor.Object
             );
         }
 

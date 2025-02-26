@@ -24,7 +24,6 @@ namespace ClaimRequest.Tests.Services
         private readonly Mock<IMapper> _mapperMock;
         private readonly Mock<IHttpContextAccessor> _httpContextAccessorMock;
         private readonly Mock<IGenericRepository<Claim>> _claimRepositoryMock;
-        private readonly Mock<IClaimRepository> _mockIClaimRepository;
         private readonly ClaimService _claimService;
         private readonly Claim _fakeClaim;
 
@@ -43,12 +42,11 @@ namespace ClaimRequest.Tests.Services
             _mapperMock = new Mock<IMapper>();
             _httpContextAccessorMock = new Mock<IHttpContextAccessor>();
             _claimRepositoryMock = new Mock<IGenericRepository<Claim>>();
-            _mockIClaimRepository = new Mock<IClaimRepository>();
 
             _unitOfWorkMock.Setup(u => u.Context).Returns(_realDbContext);
             _unitOfWorkMock.Setup(u => u.GetRepository<Claim>()).Returns(_claimRepositoryMock.Object);
 
-            _claimService = new ClaimService(_unitOfWorkMock.Object, _loggerMock.Object, _mapperMock.Object, _httpContextAccessorMock.Object , _mockIClaimRepository.Object);
+            _claimService = new ClaimService(_unitOfWorkMock.Object, _loggerMock.Object, _mapperMock.Object, _httpContextAccessorMock.Object);
 
             _fakeClaim = new Claim
             {
