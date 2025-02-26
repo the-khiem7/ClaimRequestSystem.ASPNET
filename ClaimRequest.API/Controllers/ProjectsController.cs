@@ -2,10 +2,6 @@
 using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
 
-﻿using ClaimRequest.API.Constants;
-using ClaimRequest.BLL.Services.Interfaces;
-
-using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Project;
 using ClaimRequest.DAL.Data.Responses.Project;
