@@ -375,6 +375,16 @@ namespace ClaimRequest.BLL.Services.Implements
                             throw new InvalidOperationException($"Claim with ID {id} is not in pending status.");
                         }
 
+                        // Truy vấn approver của claim
+                        var existingApprover = pendingClaim.ClaimApprovers
+                            .FirstOrDefault(ca => ca.ApproverId == rejectClaimRequest.ApproverId);
+
+                        // Chỉ xử lý nếu approver chưa tồn tại
+                        if (existingApprover != null)
+                        {
+                            throw new BadRequestException($"Approver with ID {rejectClaimRequest.ApproverId} has already rejected this claim.");
+                        }
+
                         var project = await _unitOfWork.GetRepository<Project>()
                     .SingleOrDefaultAsync(
                             predicate : s => s.Id == pendingClaim.ProjectId,
@@ -390,17 +400,7 @@ namespace ClaimRequest.BLL.Services.Implements
                         if (project.ProjectManagerId != rejectClaimRequest.ApproverId)
                         {
                             throw new UnauthorizedAccessException($"Approver with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
-                        }
-
-                        // Truy vấn approver của claim
-                        var existingApprover = pendingClaim.ClaimApprovers
-                            .FirstOrDefault(ca => ca.ApproverId == rejectClaimRequest.ApproverId);
-
-                        // Chỉ xử lý nếu approver chưa tồn tại
-                        if (existingApprover != null)
-                        {
-                            throw new BadRequestException($"Approver with ID {rejectClaimRequest.ApproverId} has already rejected this claim.");
-                        }
+                        }                        
 
                         var approverName = project?.ProjectManager?.Name ?? "Unknown Approver";
 
@@ -412,13 +412,10 @@ namespace ClaimRequest.BLL.Services.Implements
                             };
                             await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
 
-                            // Cập nhật trạng thái claim
-                            pendingClaim.Status = ClaimStatus.Rejected;
-                            pendingClaim.UpdateAt = DateTime.UtcNow;
-
-                            _mapper.Map(rejectClaimRequest, pendingClaim);
-
-                            _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
+                        // Cập nhật trạng thái claim
+                        _mapper.Map(rejectClaimRequest, pendingClaim);
+                        
+                        _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
 
                             // Chỉ ghi changelog khi approver lần đầu reject (Audit Trails)
                             var changeLog = new ClaimChangeLog
