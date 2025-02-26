@@ -523,13 +523,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         if (existingApprover == null)
                         {
-                            var newApprover = new ClaimApprover
-                            {
-                                ClaimId = pendingClaim.Id,
-                                ApproverId = returnClaimRequest.ApproverId
-                            };
-
-                            await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
+                            throw new UnauthorizedAccessException($"Approver with ID {returnClaimRequest.ApproverId} does not have permission to return claim ID {id}.");
                         }
 
                         _mapper.Map(returnClaimRequest, pendingClaim);
