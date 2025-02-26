@@ -25,13 +25,18 @@ namespace ClaimRequest.BLL.Services.Implements
 {
     public class ClaimService : BaseService<Claim>, IClaimService
     {
+
+        private readonly IClaimRepository _claimRepository;
         public ClaimService(
             IUnitOfWork<ClaimRequestDbContext> unitOfWork,
             ILogger<Claim> logger,
             IMapper mapper,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            IClaimRepository claimRepository)
             : base(unitOfWork, logger, mapper, httpContextAccessor)
         {
+            _claimRepository = claimRepository;
+
         }
 
         #region Nguyen_Anh_Quan
@@ -557,6 +562,34 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
+
+
+        public async Task<PaidClaimResponse> PaidClaim(Guid claimId, PaidClaimRequest request)
+        {
+            var claim = await _claimRepository.GetClaimByIdAsync(claimId);
+            if (claim == null)
+            {
+                throw new NotFoundException("Claim not found.");
+            }
+
+            bool isPaid = await _claimRepository.IsClaimPaidAsync(claimId);
+            if (isPaid)
+            {
+                throw new BadRequestException("Claim has already been paid.");
+            }
+
+            await _claimRepository.MarkClaimAsPaidAsync(claimId, request.PaidDate, request.PaidAmount);
+
+            return new PaidClaimResponse
+            {
+                ClaimId = claim.Id,
+                PaidDate = request.PaidDate,
+                PaidAmount = request.PaidAmount,
+                Status = "Paid"
+            };
+        }
+
+
 
 
     }
