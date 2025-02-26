@@ -29,6 +29,7 @@ namespace ClaimRequest.UnitTest.Services
         private readonly Mock<IDbContextTransaction> _mockTransaction;
         private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
         private readonly Mock<IGenericRepository<Claim>> _mockClaimRepository;
+        private readonly Mock<IClaimRepository> _mockIClaimRepository;
         private readonly ClaimService _claimService;
         private readonly ClaimRequestDbContext _realDbContext;
 
@@ -42,6 +43,8 @@ namespace ClaimRequest.UnitTest.Services
             _mockTransaction = new Mock<IDbContextTransaction>();
             _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
             _mockClaimRepository = new Mock<IGenericRepository<Claim>>();
+            _mockIClaimRepository = new Mock<IClaimRepository>();
+
 
             // Setup real DbContext with in-memory database
             var options = new DbContextOptionsBuilder<ClaimRequestDbContext>()
@@ -72,7 +75,8 @@ namespace ClaimRequest.UnitTest.Services
                 _mockUnitOfWork.Object,
                 _mockLogger.Object,
                 _mockMapper.Object,
-                _mockHttpContextAccessor.Object
+                _mockHttpContextAccessor.Object,
+                _mockIClaimRepository.Object
             );
 
         }
