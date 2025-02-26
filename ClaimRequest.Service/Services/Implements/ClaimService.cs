@@ -365,16 +365,11 @@ namespace ClaimRequest.BLL.Services.Implements
                     try
                     {
                         // Truy vấn claim từ Id và các dữ liệu liên quan cần thiết
-                        var pendingClaim = await _unitOfWork.GetRepository<Claim>()
+                        var pendingClaim = (await _unitOfWork.GetRepository<Claim>()
                             .SingleOrDefaultAsync(
                                 predicate: s => s.Id == id,
                                 include: q => q.Include(c => c.ClaimApprovers)
-                            );
-
-                        if (pendingClaim == null)
-                        {
-                            throw new KeyNotFoundException($"Claim with ID {id} not found.");
-                        }
+                            )).ValidateExists(id);
 
                         if (pendingClaim.Status != ClaimStatus.Pending)
                         {
@@ -386,10 +381,13 @@ namespace ClaimRequest.BLL.Services.Implements
                             .FirstOrDefault(ca => ca.ApproverId == rejectClaimRequest.ApproverId);
 
                         // Chỉ xử lý nếu approver chưa tồn tại
-                        if (existingApprover != null)
+                        if (existingApprover == null)
                         {
-                            throw new BadRequestException($"Approver with ID {rejectClaimRequest.ApproverId} has already rejected this claim.");
-                        }
+                            // Truy vấn dữ liệu staff theo approverId
+                            var staff = await _unitOfWork.GetRepository<Staff>()
+                                .SingleOrDefaultAsync(
+                                    predicate: s => s.Id == rejectClaimRequest.ApproverId
+                                );
 
                         var project = await _unitOfWork.GetRepository<Project>()
                     .SingleOrDefaultAsync(
@@ -430,6 +428,7 @@ namespace ClaimRequest.BLL.Services.Implements
                         await transaction.CommitAsync();
 
                         // Ánh xạ dữ liệu trả về
+                        _mapper.Map(rejectClaimRequest, pendingClaim);
                         return _mapper.Map<RejectClaimResponse>(pendingClaim);
                     }
                     catch (Exception)
@@ -445,7 +444,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-
 
         public async Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest)
         {

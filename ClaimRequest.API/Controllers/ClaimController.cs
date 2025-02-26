@@ -220,15 +220,15 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
-        [HttpPost("api/claims/{id}/submit")]
+        [HttpPut(ApiEndPointConstant.Claim.SubmitClaimEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> SubmitClaim(Guid id, [FromBody] Guid claimerId)
+        public async Task<IActionResult> SubmitClaim(Guid id, [FromBody] SubmitClaimRequest submitClaimRequest)
         {
             try
             {
-                var result = await _claimService.SubmitClaim(id, claimerId);
+                var result = await _claimService.SubmitClaim(id, submitClaimRequest.ClaimerId);
                 if (!result)
                 {
                     _logger.LogError("Submit claim failed");
