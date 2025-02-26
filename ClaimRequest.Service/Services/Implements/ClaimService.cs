@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
@@ -19,6 +19,7 @@ using OfficeOpenXml;
 using ClaimRequest.DAL.Repositories.Implements;
 using OfficeOpenXml.Style;
 using System.Drawing;
+using ClaimRequest.BLL.Extension;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -58,7 +59,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                     if (claim.ClaimerId != cancelClaimRequest.ClaimerId)
                     {
-                        throw new UnauthorizedAccessException("Claim cannot be cancelled as you are not the claimer.");
+                        throw new InvalidOperationException("Claim cannot be cancelled as you are not the claimer.");
                     }
 
                     // Begin transaction only after all validation checks have passed
@@ -112,21 +113,30 @@ namespace ClaimRequest.BLL.Services.Implements
                 var currentYear = DateTime.UtcNow.Year;
 
                 var selectedClaims = await _unitOfWork.GetRepository<Claim>().GetListAsync(
-                    predicate: c => downloadClaimRequest.ClaimIds.Contains(c.Id) &&
-                        c.Status == ClaimStatus.Paid &&
-                        c.UpdateAt != null &&
-                        c.UpdateAt.Month == currentMonth &&
-                        c.UpdateAt.Year == currentYear,
+                    predicate: c => downloadClaimRequest.ClaimIds.Contains(c.Id),
                     include: c => c.Include(x => x.Claimer)
                         .Include(x => x.Project)
                         .Include(x => x.Finance)
                 );
 
-
                 if (selectedClaims == null || !selectedClaims.Any())
                 {
                     _logger.LogWarning("No claims found for download.");
                     throw new NotFoundException("No claims found for download.");
+                }
+
+                // Ensure all selected claims have Status == Paid
+                if (selectedClaims.Any(c => c.Status != ClaimStatus.Paid))
+                {
+                    _logger.LogWarning("Some claims have a status other than 'Paid'. Process aborted.");
+                    throw new InvalidOperationException("All selected claims must have status 'Paid'.");
+                }
+
+                // Ensure all selected claims are updated in the current month and year
+                if (selectedClaims.Any(c => c.UpdateAt == null || c.UpdateAt.Month != currentMonth || c.UpdateAt.Year != currentYear))
+                {
+                    _logger.LogWarning("Some claims are not from the current month. Process aborted.");
+                    throw new InvalidOperationException("All selected claims must be updated in the current month.");
                 }
 
                 foreach (var claim in selectedClaims)
@@ -153,8 +163,8 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 // Define column headers
                 var headers = new[] { "Claim ID", "Claimer Name", "Project Name", "Claim Type", "Status",
-                              "Amount", "Total Working Hours", "Start Date", "End Date", "Created At",
-                              "Finance Approver", "Remarks" };
+                      "Amount", "Total Working Hours", "Start Date", "End Date", "Created At",
+                      "Finance Approver", "Remarks" };
 
                 for (int i = 0; i < headers.Length; i++)
                 {
@@ -281,6 +291,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
+
         public async Task<IEnumerable<ViewClaimResponse>> GetClaims(ClaimStatus? status)
         {
             try
@@ -314,16 +325,11 @@ namespace ClaimRequest.BLL.Services.Implements
             try
             {
                 var claimRepository = _unitOfWork.GetRepository<Claim>();
-                var claim = await claimRepository.SingleOrDefaultAsync(
+                var claim = (await claimRepository.SingleOrDefaultAsync(
                     c => new { c, c.Claimer, c.Project },
                     c => c.Id == id,
                     include: q => q.Include(c => c.Claimer).Include(c => c.Project)
-                );
-
-                if (claim == null)
-                {
-                    throw new NotFoundException($"Claim with ID {id} not found");
-                }
+                )).ValidateExists(id);
 
                 return _mapper.Map<ViewClaimResponse>(claim.c);
             }
@@ -338,7 +344,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task<RejectClaimResponse> RejectClaim(Guid Id, RejectClaimRequest rejectClaimRequest)
+        public async Task<RejectClaimResponse> RejectClaim(Guid id, RejectClaimRequest rejectClaimRequest)
         {
             try
             {
@@ -348,46 +354,82 @@ namespace ClaimRequest.BLL.Services.Implements
                     await using var transaction = await _unitOfWork.BeginTransactionAsync();
                     try
                     {
+                        // Truy vấn claim từ Id và các dữ liệu liên quan cần thiết
                         var pendingClaim = await _unitOfWork.GetRepository<Claim>()
-                        .SingleOrDefaultAsync(
-                            predicate: s => s.Id == Id,
-                            include: q => q.Include(c => c.ClaimApprovers)
+                            .SingleOrDefaultAsync(
+                                predicate: s => s.Id == id,
+                                include: q => q.Include(c => c.ClaimApprovers)
                             );
+
                         if (pendingClaim == null)
                         {
-                            throw new KeyNotFoundException($"Claim with ID {Id} not found.");
+                            throw new KeyNotFoundException($"Claim with ID {id} not found.");
                         }
 
                         if (pendingClaim.Status != ClaimStatus.Pending)
                         {
-                            throw new InvalidOperationException($"Claim with ID {Id} is not in pending.");
+                            throw new InvalidOperationException($"Claim with ID {id} is not in pending status.");
                         }
-                        _logger.LogInformation("Rejecting claim with ID: {Id} by approver: {ApproverId}", Id, rejectClaimRequest.ApproverId);
 
-
+                        // Truy vấn approver của claim
                         var existingApprover = pendingClaim.ClaimApprovers
                             .FirstOrDefault(ca => ca.ApproverId == rejectClaimRequest.ApproverId);
 
-                        if (existingApprover == null)
+                        // Chỉ xử lý nếu approver chưa tồn tại
+                        if (existingApprover != null)
                         {
+                            throw new BadRequestException($"Approver with ID {rejectClaimRequest.ApproverId} has already rejected this claim.");
+                        }
+
+                        var project = await _unitOfWork.GetRepository<Project>()
+                    .SingleOrDefaultAsync(
+                            predicate : s => s.Id == pendingClaim.ProjectId,
+                            include: q => q.Include(p => p.ProjectManager)
+                            );
+
+                        if (project == null)
+                        {
+                            throw new NotFoundException($"Project for claim with ID {id} not found.");
+                        }
+
+                        // Kiểm tra xem Approver có phải Project Manager của dự án đó không
+                        if (project.ProjectManagerId != rejectClaimRequest.ApproverId)
+                        {
+                            throw new UnauthorizedAccessException($"Approver with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
+                        }                        
+
+                        var approverName = project?.ProjectManager?.Name ?? "Unknown Approver";
+
+                            // Nếu claim chưa có approver thì tạo mới
                             var newApprover = new ClaimApprover
                             {
                                 ClaimId = pendingClaim.Id,
-                                ApproverId = rejectClaimRequest.ApproverId
+                                ApproverId = rejectClaimRequest.ApproverId,
                             };
-
                             await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
-                        }
 
-
+                        // Cập nhật trạng thái claim
                         _mapper.Map(rejectClaimRequest, pendingClaim);
-
-                        pendingClaim.Status = ClaimStatus.Rejected;
-
+                        
                         _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
+
+                            // Chỉ ghi changelog khi approver lần đầu reject (Audit Trails)
+                            var changeLog = new ClaimChangeLog
+                            {
+                                HistoryId = Guid.NewGuid(),
+                                ClaimId = pendingClaim.Id,
+                                FieldChanged = "Claim Status",
+                                OldValue = "Pending",
+                                NewValue = pendingClaim.Status.ToString(),
+                                ChangedAt = DateTime.UtcNow,
+                                ChangedBy = approverName
+                            };
+                        await _unitOfWork.GetRepository<ClaimChangeLog>().InsertAsync(changeLog);
+
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();
 
+                        // Ánh xạ dữ liệu trả về
                         return _mapper.Map<RejectClaimResponse>(pendingClaim);
                     }
                     catch (Exception)
@@ -399,12 +441,13 @@ namespace ClaimRequest.BLL.Services.Implements
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error rejecting claim with ID {Id}: {Message}", Id, ex.Message);
+                _logger.LogError(ex, "Error rejecting claim with ID {id}: {Message} | StackTrace: {StackTrace}", id, ex.Message, ex.StackTrace);
                 throw;
             }
         }
 
-        public async Task<ApproveClaimResponse> ApproveClaim(Guid id, Guid approverId, ApproveClaimRequest approveClaimRequest)
+
+        public async Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest)
         {
             var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
@@ -414,44 +457,40 @@ namespace ClaimRequest.BLL.Services.Implements
                 try
                 {
                     var claimRepo = _unitOfWork.GetRepository<Claim>();
-                    var approverRepo = _unitOfWork.GetRepository<ClaimApprover>();
+                    var claimApproverRepo = _unitOfWork.GetRepository<ClaimApprover>();
 
-                    var pendingClaim = await claimRepo.SingleOrDefaultAsync(
+                    var pendingClaim = (await claimRepo.SingleOrDefaultAsync(
                         predicate: s => s.Id == id,
-                        include: q => q.Include(c => c.ClaimApprovers)
-                    );
+                        include: s => s.Include(c => c.ClaimApprovers)
+                    )).ValidateExists(id, "Claim"); ;
 
-                    if (pendingClaim == null)
-                    {
-                        _logger.LogWarning("Claim with ID {Id} not found.", id);
-                        throw new NotFoundException($"Claim with ID {id} not found.");
-                    }
 
                     if (pendingClaim.Status != ClaimStatus.Pending)
                     {
-                        _logger.LogWarning("Claim with ID {Id} is not in pending state.", id);
                         throw new BadRequestException($"Claim with ID {id} is not in pending state.");
                     }
 
-                    var existingApprover = pendingClaim.ClaimApprovers
-                        .FirstOrDefault(ca => ca.ApproverId == approverId);
+                    var isApproverAllowed = pendingClaim.ClaimApprovers
+                        .Any(ca => ca.ApproverId == approveClaimRequest.ApproverId);
 
-                    if (existingApprover == null)
+                    if (!isApproverAllowed)
                     {
-                        throw new KeyNotFoundException("Approver does not exist.");
+                        throw new UnauthorizedAccessException($"Approver with ID {approveClaimRequest.ApproverId} does not have permission to approve claim ID {id}.");
                     }
 
-                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approverId);
+                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approveClaimRequest.ApproverId);
 
                     _mapper.Map(approveClaimRequest, pendingClaim);
                     pendingClaim.Status = ClaimStatus.Approved;
 
                     claimRepo.UpdateAsync(pendingClaim);
 
-                    await transaction.CommitAsync();
                     await _unitOfWork.CommitAsync();
+                    await transaction.CommitAsync();
 
-                    return _mapper.Map<ApproveClaimResponse>(pendingClaim);
+                    var response = _mapper.Map<ApproveClaimResponse>(pendingClaim);
+                    response.ApproverId = approveClaimRequest.ApproverId;
+                    return response;
                 }
                 catch (Exception)
                 {
@@ -460,5 +499,64 @@ namespace ClaimRequest.BLL.Services.Implements
                 }
             });
         }
+
+        public async Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest)
+        {
+            try
+            {
+                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+                return await executionStrategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
+                    try
+                    {
+                        var pendingClaim = await _unitOfWork.GetRepository<Claim>()
+                            .SingleOrDefaultAsync(
+                                predicate: s => s.Id == id,
+                                include: q => q.Include(c => c.ClaimApprovers));
+
+                        pendingClaim.ValidateExists(id);
+
+                        if (pendingClaim.Status != ClaimStatus.Pending)
+                        {
+                            throw new BadRequestException($"Claim with ID {id} is not pending for approval.");
+                        }
+
+                        _logger.LogInformation("Returning claim with ID: {id} by approver: {Approverid}", id, returnClaimRequest.ApproverId);
+
+                        var existingApprover = pendingClaim.ClaimApprovers
+                            .FirstOrDefault(ca => ca.ApproverId == returnClaimRequest.ApproverId);
+
+                        if (existingApprover == null)
+                        {
+                            throw new UnauthorizedAccessException($"Approver with ID {returnClaimRequest.ApproverId} does not have permission to return claim ID {id}.");
+                        }
+
+                        _mapper.Map(returnClaimRequest, pendingClaim);
+
+                        pendingClaim.Status = ClaimStatus.Draft;
+                        pendingClaim.UpdateAt = DateTime.UtcNow;
+
+                        _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
+                        await _unitOfWork.CommitAsync();
+                        await transaction.CommitAsync();
+
+                        return _mapper.Map<ReturnClaimResponse>(pendingClaim);
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error returning claim with ID {Id}: {Message}", id, ex.Message);
+                throw;
+            }
+        }
+
+
     }
 }

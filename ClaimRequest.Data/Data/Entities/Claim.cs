@@ -18,11 +18,11 @@ namespace ClaimRequest.DAL.Data.Entities
     public enum ClaimType
     {
         HardwareRequest,        // Requesting laptops, monitors, or peripherals
-        OvertimeCompensation,   // Claiming extra payment for overtime work
         SoftwareLicense,        // Claiming a license or software subscription
+        OvertimeCompensation,   // Claiming extra payment for overtime work
         ProjectBudgetIncrease,  // Requesting additional budget for a project
         EquipmentRepair,        // Claiming repairs or replacements for broken equipment
-        Miscellaneous           // Any other claim that doesn't fit predefined types 
+        Miscellaneous           // Any other claim that doesn't fit predefined types
     }
 
     [Table("Claims")]
