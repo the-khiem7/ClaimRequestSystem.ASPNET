@@ -160,7 +160,7 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<ExceptionHandlerMiddleware>(); //comment lai de bat loi 500 
 // ===============================================
 
-//app.UseHttpsRedirection();
+app.UseHttpsRedirection();
 
 app.UseCors(options =>
 {
