@@ -1,19 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq.Expressions;
 using AutoMapper;
+using ClaimRequest.BLL.Extension;
+using ClaimRequest.BLL.Services.Interfaces;
+using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Requests;
 using ClaimRequest.DAL.Data.Responses;
-using ClaimRequest.DAL.Repositories.Implements;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using System.Linq.Expressions;
-using ClaimRequest.BLL.Extension;
-using ClaimRequest.BLL.Utils;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -36,7 +31,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 .SingleOrDefaultAsync(predicate: searchEmailAddress))
                 .ValidateExists(customMessage: $"User with email {loginRequest.Email} not found.");
 
-            bool PasswordVerify = await PasswordUtil.VerifyPassword(loginRequest.Password, staff.Password)
+            bool passwordVerify = await PasswordUtil.VerifyPassword(loginRequest.Password, staff.Password)
                 ? true
                 : throw new UnauthorizedAccessException("Invalid password");
 

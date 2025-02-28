@@ -1,14 +1,9 @@
 ﻿using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Requests.Email;
-using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MimeKit;
-using System;
-using System.IO;
-using System.Net.Mail;
-using System.Threading.Tasks;
 using SmtpClient = MailKit.Net.Smtp.SmtpClient;
 
 namespace ClaimRequest.BLL.Services.Implements

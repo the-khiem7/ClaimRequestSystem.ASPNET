@@ -1,8 +1,8 @@
-﻿using ClaimRequest.DAL.Data.MetaDatas;
-using ClaimRequest.DAL.Data.Exceptions;
-using System.Net;
-using Microsoft.IdentityModel.Tokens;
+﻿using System.Net;
 using System.Security;
+using ClaimRequest.DAL.Data.Exceptions;
+using ClaimRequest.DAL.Data.MetaDatas;
+using Microsoft.IdentityModel.Tokens;
 
 namespace ClaimRequest.API.Middlewares
 {
@@ -93,7 +93,7 @@ namespace ClaimRequest.API.Middlewares
                 #region 400 Bad Request
 
                 ValidationException validationEx =>
-            (HttpStatusCode.BadRequest, "Validation failed", validationEx.Message),
+                    (HttpStatusCode.BadRequest, "Validation failed", validationEx.Message),
                 BusinessException businessEx =>
                     (HttpStatusCode.BadRequest, "Business rule violation", businessEx.Message),
                 InvalidOperationException =>
@@ -131,12 +131,13 @@ namespace ClaimRequest.API.Middlewares
 
                 _ => (HttpStatusCode.InternalServerError,
             "An unexpected error occurred",
-            _env.IsDevelopment() ? exception.Message : "Internal server error") 
+            _env.IsDevelopment() ? exception.Message : "Internal server error")
 
                 #endregion
 
             };
 
+            #region Json Response Message Format
             var response = new ApiResponse<object>
             {
                 StatusCode = (int)statusCode,
@@ -149,15 +150,16 @@ namespace ClaimRequest.API.Middlewares
                     Timestamp = DateTime.UtcNow,
                     // Details = new
                     // {
-                        ExceptionType = exception.GetType().Name,
-                        ExceptionMessage = exception.Message,
-                        StackTrace = _env.IsDevelopment() ? exception.StackTrace : null,
-                        InnerException = exception.InnerException?.Message,
-                        Path = context.Request.Path,
-                        Method = context.Request.Method
+                    ExceptionType = exception.GetType().Name,
+                    ExceptionMessage = exception.Message,
+                    StackTrace = _env.IsDevelopment() ? exception.StackTrace : null,
+                    InnerException = exception.InnerException?.Message,
+                    Path = context.Request.Path,
+                    Method = context.Request.Method
                     // }
                 }
             };
+            #endregion
 
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)statusCode;
