@@ -1,6 +1,8 @@
 ﻿using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Exceptions;
 using System.Net;
+using Microsoft.IdentityModel.Tokens;
+using System.Security;
 
 namespace ClaimRequest.API.Middlewares
 {
@@ -88,24 +90,51 @@ namespace ClaimRequest.API.Middlewares
         {
             var (statusCode, message, reason) = exception switch
             {
+                #region 400 Bad Request
+
                 ValidationException validationEx =>
-                    (HttpStatusCode.BadRequest, "Validation failed", validationEx.Message),
-
-                NotFoundException notFoundEx =>
-                    (HttpStatusCode.NotFound, "Resource not found", notFoundEx.Message),
-
+            (HttpStatusCode.BadRequest, "Validation failed", validationEx.Message),
                 BusinessException businessEx =>
                     (HttpStatusCode.BadRequest, "Business rule violation", businessEx.Message),
-
-                UnauthorizedAccessException =>
-                    (HttpStatusCode.Unauthorized, "Unauthorized access", "You don't have permission to perform this action"),
-
                 InvalidOperationException =>
                     (HttpStatusCode.BadRequest, "Invalid operation", exception.Message),
+                ArgumentException =>
+                    (HttpStatusCode.BadRequest, "Invalid argument", exception.Message),
+
+                #endregion
+
+                #region 401 Unauthorized
+
+                UnauthorizedAccessException =>
+                            (HttpStatusCode.Unauthorized, "Unauthorized access", "You don't have permission to perform this action"),
+                SecurityTokenException =>
+                    (HttpStatusCode.Unauthorized, "Invalid token", "Authentication token is invalid or expired"),
+
+                #endregion
+
+                #region 403 Forbidden
+
+                SecurityException =>
+                            (HttpStatusCode.Forbidden, "Access forbidden", "You don't have sufficient permissions"),
+                #endregion
+
+                #region 404 Not Found
+
+                NotFoundException =>
+                            (HttpStatusCode.NotFound, "Resource not found", exception.Message),
+                KeyNotFoundException =>
+                    (HttpStatusCode.NotFound, "Resource not found", exception.Message),
+
+                #endregion
+
+                #region 500 Internal Server Error
 
                 _ => (HttpStatusCode.InternalServerError,
-                    "An unexpected error occurred",
-                    _env.IsDevelopment() ? exception.Message : "Internal server error")
+            "An unexpected error occurred",
+            _env.IsDevelopment() ? exception.Message : "Internal server error") 
+
+                #endregion
+
             };
 
             var response = new ApiResponse<object>
