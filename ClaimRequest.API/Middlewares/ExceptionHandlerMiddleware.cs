@@ -146,7 +146,16 @@ namespace ClaimRequest.API.Middlewares
                 Data = new
                 {
                     ErrorId = errorId,
-                    Timestamp = DateTime.UtcNow
+                    Timestamp = DateTime.UtcNow,
+                    // Details = new
+                    // {
+                        ExceptionType = exception.GetType().Name,
+                        ExceptionMessage = exception.Message,
+                        StackTrace = _env.IsDevelopment() ? exception.StackTrace : null,
+                        InnerException = exception.InnerException?.Message,
+                        Path = context.Request.Path,
+                        Method = context.Request.Method
+                    // }
                 }
             };
 
