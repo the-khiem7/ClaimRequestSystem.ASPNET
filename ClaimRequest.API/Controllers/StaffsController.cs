@@ -1,10 +1,8 @@
 ﻿using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
-using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Staff;
 using ClaimRequest.DAL.Data.Responses.Staff;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClaimRequest.API.Controllers
@@ -19,7 +17,7 @@ namespace ClaimRequest.API.Controllers
             _staffService = staffService;
         }
 
-        [HttpGet(ApiEndPointConstant.Staffs.StaffsEndpoint)] 
+        [HttpGet(ApiEndPointConstant.Staffs.StaffsEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<CreateStaffResponse>>), StatusCodes.Status200OK)] // tra ve response 200 OK
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)] // tra ve response 500 neu co loi
         public async Task<IActionResult> GetStaffs()

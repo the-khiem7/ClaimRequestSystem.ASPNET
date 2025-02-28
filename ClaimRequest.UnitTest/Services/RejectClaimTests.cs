@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using System.Linq.Expressions;
+using AutoMapper;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Requests.Claim;
@@ -7,16 +8,9 @@ using ClaimRequest.DAL.Repositories.Implements;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace ClaimRequest.UnitTest.Services
@@ -33,7 +27,7 @@ namespace ClaimRequest.UnitTest.Services
         private readonly ClaimRequestDbContext _realDbContext;
 
 
-        public RejectClaimTests() 
+        public RejectClaimTests()
         {
             // Initialize mocks
             _mockUnitOfWork = new Mock<IUnitOfWork<ClaimRequestDbContext>>();

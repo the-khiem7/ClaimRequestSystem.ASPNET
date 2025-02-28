@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using AutoMapper;
+﻿using AutoMapper;
+using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Requests.Project;
 using ClaimRequest.DAL.Data.Responses.Project;
-using ClaimRequest.DAL.Data.Entities;
 
 namespace ClaimRequest.DAL.Mappers
 {

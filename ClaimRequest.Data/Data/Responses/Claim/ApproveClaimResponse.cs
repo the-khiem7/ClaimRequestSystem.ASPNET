@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ClaimRequest.DAL.Data.Entities;
+﻿using ClaimRequest.DAL.Data.Entities;
 
 namespace ClaimRequest.DAL.Data.Responses.Claim
 {
@@ -12,8 +7,8 @@ namespace ClaimRequest.DAL.Data.Responses.Claim
         public Guid Id { get; set; }
         public string Remark { get; set; }
         public ClaimStatus Status { get; set; }
-        public Guid ClaimerId { get; set; } 
-        public DateTime UpdateAt { get; set; } 
+        public Guid ClaimerId { get; set; }
+        public DateTime UpdateAt { get; set; }
         public Guid ApproverId { get; set; }
     }
 }

@@ -1,17 +1,16 @@
-using ClaimRequest.DAL.Data.Entities;
+using System.Text;
+using System.Text.Json.Serialization;
 using ClaimRequest.API.Extensions;
+using ClaimRequest.API.Middlewares;
+using ClaimRequest.BLL.Services.Implements;
+using ClaimRequest.BLL.Services.Interfaces;
+using ClaimRequest.DAL.Data.Entities;
+using ClaimRequest.DAL.Repositories.Implements;
+using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Text;
-using ClaimRequest.DAL.Repositories.Interfaces;
-using ClaimRequest.DAL.Repositories.Implements;
-using ClaimRequest.BLL.Services.Interfaces;
-using ClaimRequest.BLL.Services.Implements;
-using ClaimRequest.API.Middlewares;
-using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,7 +60,7 @@ builder.Services.AddSwaggerGen(options =>
 // Add DbContext connect to Postgres
 builder.Services.AddDbContext<ClaimRequestDbContext>(options =>
 {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgresConnection"),
+    options.UseNpgsql(builder.Configuration.GetConnectionString("SupaBaseConnection"),
         npgsqlOptionsAction: sqlOptions =>
         {
             sqlOptions.EnableRetryOnFailure(
@@ -129,15 +128,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // Update the Kestrel configuration
-builder.WebHost.ConfigureKestrel(serverOptions =>
-{
-    serverOptions.ListenAnyIP(5000); // HTTP
-    serverOptions.ListenAnyIP(5001, listenOptions =>
-    {
-        // In development/docker, we'll use HTTP instead of HTTPS
-        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
-    });
-});
+//builder.WebHost.ConfigureKestrel(serverOptions =>
+//{
+//    serverOptions.ListenAnyIP(5000); // HTTP
+//    serverOptions.ListenAnyIP(5001, listenOptions =>
+//    {
+//        // In development/docker, we'll use HTTP instead of HTTPS
+//        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+//    });
+//});
 
 var app = builder.Build();
 
