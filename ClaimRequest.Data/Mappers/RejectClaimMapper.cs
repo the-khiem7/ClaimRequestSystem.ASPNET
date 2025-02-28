@@ -2,11 +2,6 @@
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ClaimRequest.DAL.Mappers
 {
@@ -14,7 +9,7 @@ namespace ClaimRequest.DAL.Mappers
     {
         public RejectClaimMapper()
         {
-            CreateMap<RejectClaimRequest, Claim>() 
+            CreateMap<RejectClaimRequest, Claim>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.ProjectId, opt => opt.Ignore())
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(_ => ClaimStatus.Rejected))
