@@ -9,6 +9,15 @@ namespace ClaimRequest.API.Constants
         public const string ApiVersion = "/v1";
         public const string ApiEndpoint = RootEndpoint + ApiVersion;
 
+        public static class Auth
+        {
+            public const string AuthEndpoint = ApiEndpoint + "/auth";
+            public const string LoginEndpoint = AuthEndpoint + "/login";
+            public const string RegisterEndpoint = AuthEndpoint + "/register";
+            public const string RefreshTokenEndpoint = AuthEndpoint + "/refresh-token";
+            public const string LogoutEndpoint = AuthEndpoint + "/logout";
+        }
+
         public static class Claim
         {
             public const string ClaimsEndpoint = ApiEndpoint + "/claims";
@@ -26,7 +35,6 @@ namespace ClaimRequest.API.Constants
         {
             public const string EmailEndpoint = ApiEndpoint + "/email";
             public const string SendEmail = EmailEndpoint + "/send";
-            public const string ApproveClaimEndpoint = Claim.ClaimEndpointById + "/approve";
         }
 
         public static class Projects

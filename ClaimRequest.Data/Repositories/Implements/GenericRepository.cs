@@ -1,7 +1,7 @@
-﻿using ClaimRequest.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore.Query;
+﻿using System.Linq.Expressions;
+using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore.Query;
 
 namespace ClaimRequest.DAL.Repositories.Implements
 {
