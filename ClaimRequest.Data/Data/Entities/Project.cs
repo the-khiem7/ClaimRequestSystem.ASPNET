@@ -44,6 +44,10 @@ namespace ClaimRequest.DAL.Data.Entities
         public decimal Budget { get; set; }
 
         [Required]
+        [Column("is_active")]
+        public bool IsActive { get; set; } = true;
+
+        [Required]
         [ForeignKey("ProjectManager")]
         [Column("project_manager_id")]
         public Guid ProjectManagerId { get; set; }
