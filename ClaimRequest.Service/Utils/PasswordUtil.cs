@@ -2,10 +2,10 @@
 {
     public static class PasswordUtil
     {
-        private const int WorkFactor = 12;
+        private const int HashingRound = 10;
         public static async Task<string> HashPassword(string rawPassword)
         {
-            return await Task.Run(() => BCrypt.Net.BCrypt.HashPassword(rawPassword, workFactor: WorkFactor));
+            return await Task.Run(() => BCrypt.Net.BCrypt.HashPassword(rawPassword, workFactor: HashingRound));
         }
 
         public static async Task<bool> VerifyPassword(string rawPassword, string hashedPassword)

@@ -5,13 +5,17 @@
 namespace ClaimRequest.DAL.Migrations
 {
     /// <inheritdoc />
-    public partial class InitDb : Migration
+    public partial class initDB : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.EnsureSchema(
+                name: "ClaimRequest");
+
             migrationBuilder.CreateTable(
                 name: "Staffs",
+                schema: "ClaimRequest",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -30,6 +34,7 @@ namespace ClaimRequest.DAL.Migrations
 
             migrationBuilder.CreateTable(
                 name: "Projects",
+                schema: "ClaimRequest",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -39,6 +44,7 @@ namespace ClaimRequest.DAL.Migrations
                     start_date = table.Column<DateTime>(type: "date", nullable: false),
                     end_date = table.Column<DateTime>(type: "date", nullable: false),
                     budget = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
                     project_manager_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
@@ -47,6 +53,7 @@ namespace ClaimRequest.DAL.Migrations
                     table.ForeignKey(
                         name: "FK_Projects_Staffs_project_manager_id",
                         column: x => x.project_manager_id,
+                        principalSchema: "ClaimRequest",
                         principalTable: "Staffs",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -54,6 +61,7 @@ namespace ClaimRequest.DAL.Migrations
 
             migrationBuilder.CreateTable(
                 name: "Claims",
+                schema: "ClaimRequest",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -77,18 +85,21 @@ namespace ClaimRequest.DAL.Migrations
                     table.ForeignKey(
                         name: "FK_Claims_Projects_project_id",
                         column: x => x.project_id,
+                        principalSchema: "ClaimRequest",
                         principalTable: "Projects",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Claims_Staffs_claimer_id",
                         column: x => x.claimer_id,
+                        principalSchema: "ClaimRequest",
                         principalTable: "Staffs",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Claims_Staffs_finance_id",
                         column: x => x.finance_id,
+                        principalSchema: "ClaimRequest",
                         principalTable: "Staffs",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
@@ -96,6 +107,7 @@ namespace ClaimRequest.DAL.Migrations
 
             migrationBuilder.CreateTable(
                 name: "ProjectStaffs",
+                schema: "ClaimRequest",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -109,12 +121,14 @@ namespace ClaimRequest.DAL.Migrations
                     table.ForeignKey(
                         name: "FK_ProjectStaffs_Projects_project_id",
                         column: x => x.project_id,
+                        principalSchema: "ClaimRequest",
                         principalTable: "Projects",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_ProjectStaffs_Staffs_staff_id",
                         column: x => x.staff_id,
+                        principalSchema: "ClaimRequest",
                         principalTable: "Staffs",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -122,6 +136,7 @@ namespace ClaimRequest.DAL.Migrations
 
             migrationBuilder.CreateTable(
                 name: "ClaimApprovers",
+                schema: "ClaimRequest",
                 columns: table => new
                 {
                     claim_id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -133,12 +148,14 @@ namespace ClaimRequest.DAL.Migrations
                     table.ForeignKey(
                         name: "FK_ClaimApprovers_Claims_claim_id",
                         column: x => x.claim_id,
+                        principalSchema: "ClaimRequest",
                         principalTable: "Claims",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_ClaimApprovers_Staffs_approver_id",
                         column: x => x.approver_id,
+                        principalSchema: "ClaimRequest",
                         principalTable: "Staffs",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -146,6 +163,7 @@ namespace ClaimRequest.DAL.Migrations
 
             migrationBuilder.CreateTable(
                 name: "ClaimChangeLogs",
+                schema: "ClaimRequest",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -162,6 +180,7 @@ namespace ClaimRequest.DAL.Migrations
                     table.ForeignKey(
                         name: "FK_ClaimChangeLogs_Claims_claim_id",
                         column: x => x.claim_id,
+                        principalSchema: "ClaimRequest",
                         principalTable: "Claims",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -169,41 +188,49 @@ namespace ClaimRequest.DAL.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_ClaimApprovers_approver_id",
+                schema: "ClaimRequest",
                 table: "ClaimApprovers",
                 column: "approver_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ClaimChangeLogs_claim_id",
+                schema: "ClaimRequest",
                 table: "ClaimChangeLogs",
                 column: "claim_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Claims_claimer_id",
+                schema: "ClaimRequest",
                 table: "Claims",
                 column: "claimer_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Claims_finance_id",
+                schema: "ClaimRequest",
                 table: "Claims",
                 column: "finance_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Claims_project_id",
+                schema: "ClaimRequest",
                 table: "Claims",
                 column: "project_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Projects_project_manager_id",
+                schema: "ClaimRequest",
                 table: "Projects",
                 column: "project_manager_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ProjectStaffs_project_id",
+                schema: "ClaimRequest",
                 table: "ProjectStaffs",
                 column: "project_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ProjectStaffs_staff_id",
+                schema: "ClaimRequest",
                 table: "ProjectStaffs",
                 column: "staff_id");
         }
@@ -212,22 +239,28 @@ namespace ClaimRequest.DAL.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "ClaimApprovers");
+                name: "ClaimApprovers",
+                schema: "ClaimRequest");
 
             migrationBuilder.DropTable(
-                name: "ClaimChangeLogs");
+                name: "ClaimChangeLogs",
+                schema: "ClaimRequest");
 
             migrationBuilder.DropTable(
-                name: "ProjectStaffs");
+                name: "ProjectStaffs",
+                schema: "ClaimRequest");
 
             migrationBuilder.DropTable(
-                name: "Claims");
+                name: "Claims",
+                schema: "ClaimRequest");
 
             migrationBuilder.DropTable(
-                name: "Projects");
+                name: "Projects",
+                schema: "ClaimRequest");
 
             migrationBuilder.DropTable(
-                name: "Staffs");
+                name: "Staffs",
+                schema: "ClaimRequest");
         }
     }
 }
