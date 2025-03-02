@@ -14,28 +14,34 @@ namespace ClaimRequest.BLL.Services.Implements
 {
     public class AuthService : BaseService<AuthService>, IAuthService
     {
+        private readonly JwtUtil _jwtUtil;
+
         public AuthService(
              IUnitOfWork<ClaimRequestDbContext> unitOfWork,
              ILogger<AuthService> logger,
              IMapper mapper,
-             IHttpContextAccessor httpContextAccessor)
+             IHttpContextAccessor httpContextAccessor,
+             JwtUtil jwtUtil)
              : base(unitOfWork, logger, mapper, httpContextAccessor)
         {
+            _jwtUtil = jwtUtil;
         }
 
         public async Task<LoginResponse> Login(LoginRequest loginRequest)
         {
             Expression<Func<Staff, bool>> searchEmailAddress = p => p.Email.Equals(loginRequest.Email);
 
-            var staff = (await _unitOfWork.GetRepository<Staff>()
-                .SingleOrDefaultAsync(predicate: searchEmailAddress))
+            var staff = (await _unitOfWork.GetRepository<Staff>().SingleOrDefaultAsync(predicate: searchEmailAddress))
                 .ValidateExists(customMessage: $"User with email {loginRequest.Email} not found.");
 
             bool passwordVerify = await PasswordUtil.VerifyPassword(loginRequest.Password, staff.Password)
                 ? true
                 : throw new UnauthorizedAccessException("Invalid password");
 
-            var loginResponse = new LoginResponse(staff);
+            LoginResponse loginResponse = new LoginResponse(staff);
+            Tuple<string, Guid> guidSecurityClaim = new Tuple<string, Guid>("StaffId", staff.Id);
+            var token = _jwtUtil.GenerateJwtToken(staff, guidSecurityClaim);
+            loginResponse.AccessToken = token;
             return loginResponse;
         }
     }

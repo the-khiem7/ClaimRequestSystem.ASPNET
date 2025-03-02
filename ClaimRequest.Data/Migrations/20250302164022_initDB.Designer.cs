@@ -12,14 +12,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ClaimRequest.DAL.Migrations
 {
     [DbContext(typeof(ClaimRequestDbContext))]
-    [Migration("20250213154901_InitDb")]
-    partial class InitDb
+    [Migration("20250302164022_initDB")]
+    partial class initDB
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("ClaimRequest")
                 .HasAnnotation("ProductVersion", "8.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -98,7 +99,7 @@ namespace ClaimRequest.DAL.Migrations
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("Claims");
+                    b.ToTable("Claims", "ClaimRequest");
                 });
 
             modelBuilder.Entity("ClaimRequest.DAL.Data.Entities.ClaimApprover", b =>
@@ -115,7 +116,7 @@ namespace ClaimRequest.DAL.Migrations
 
                     b.HasIndex("ApproverId");
 
-                    b.ToTable("ClaimApprovers");
+                    b.ToTable("ClaimApprovers", "ClaimRequest");
                 });
 
             modelBuilder.Entity("ClaimRequest.DAL.Data.Entities.ClaimChangeLog", b =>
@@ -157,7 +158,7 @@ namespace ClaimRequest.DAL.Migrations
 
                     b.HasIndex("ClaimId");
 
-                    b.ToTable("ClaimChangeLogs");
+                    b.ToTable("ClaimChangeLogs", "ClaimRequest");
                 });
 
             modelBuilder.Entity("ClaimRequest.DAL.Data.Entities.Project", b =>
@@ -180,6 +181,10 @@ namespace ClaimRequest.DAL.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("date")
                         .HasColumnName("end_date");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -204,7 +209,7 @@ namespace ClaimRequest.DAL.Migrations
 
                     b.HasIndex("ProjectManagerId");
 
-                    b.ToTable("Projects");
+                    b.ToTable("Projects", "ClaimRequest");
                 });
 
             modelBuilder.Entity("ClaimRequest.DAL.Data.Entities.ProjectStaff", b =>
@@ -233,7 +238,7 @@ namespace ClaimRequest.DAL.Migrations
 
                     b.HasIndex("StaffId");
 
-                    b.ToTable("ProjectStaffs");
+                    b.ToTable("ProjectStaffs", "ClaimRequest");
                 });
 
             modelBuilder.Entity("ClaimRequest.DAL.Data.Entities.Staff", b =>
@@ -280,7 +285,7 @@ namespace ClaimRequest.DAL.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Staffs");
+                    b.ToTable("Staffs", "ClaimRequest");
                 });
 
             modelBuilder.Entity("ClaimRequest.DAL.Data.Entities.Claim", b =>
