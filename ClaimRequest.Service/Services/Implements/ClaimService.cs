@@ -565,7 +565,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 return await executionStrategy.ExecuteAsync(async () =>
                 {
                     var claim = await _unitOfWork.GetRepository<Claim>()
-                        .GetByIdAsync(id).ValidateExists(id);
+                        .GetByIdAsync(id) ?? throw new NotFoundException($"Claim with ID {id} not found.");
 
                     if (claim.Status != ClaimStatus.Draft)
                     {
@@ -618,10 +618,10 @@ namespace ClaimRequest.BLL.Services.Implements
         private async Task<ClaimApprover> AssignApproverForClaim(Guid claimId)
         {
             var claim = await _unitOfWork.GetRepository<Claim>()
-                .SingleOrDefaultAsync(predicate: c => c.Id == claimId).ValidateExists(claimId);
+                .SingleOrDefaultAsync(predicate: c => c.Id == claimId) ?? throw new NotFoundException($"Claim with ID {claimId} not found.");
 
             var project = await _unitOfWork.GetRepository<Project>()
-                .SingleOrDefaultAsync(predicate: p => p.Id == claim.ProjectId).ValidateExists(claim.ProjectId);
+                .SingleOrDefaultAsync(predicate: p => p.Id == claim.ProjectId) ?? throw new NotFoundException($"Project for claim with ID {claimId} not found.");
 
             var projectStaffs = await _unitOfWork.GetRepository<ProjectStaff>()
                 .GetListAsync(
