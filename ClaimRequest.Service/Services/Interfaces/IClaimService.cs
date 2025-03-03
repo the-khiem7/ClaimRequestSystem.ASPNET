@@ -16,6 +16,6 @@ namespace ClaimRequest.BLL.Services.Interfaces
         Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest);
         Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest);
 
-        Task<bool> SubmitClaim(Guid id, Guid claimerId);
+        Task<bool> SubmitClaim(Guid id);
     }
 }

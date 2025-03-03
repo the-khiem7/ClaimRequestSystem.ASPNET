@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using System.Security.Claims;
 using AutoMapper;
 using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
@@ -556,61 +557,51 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task<bool> SubmitClaim(Guid id, Guid claimerId)
+        public async Task<bool> SubmitClaim(Guid id)
         {
             try
             {
                 var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
                 return await executionStrategy.ExecuteAsync(async () =>
                 {
-                    // Get claim
                     var claim = await _unitOfWork.GetRepository<Claim>()
-                        .GetByIdAsync(id)
-                        ?? throw new KeyNotFoundException("Claim not found.");
-
+                        .GetByIdAsync(id).ValidateExists(id);
 
                     if (claim.Status != ClaimStatus.Draft)
                     {
-                        throw new InvalidOperationException("Claim cannot be submitted as it is not in Draft status.");
+                        throw new BusinessException("Claim cannot be submitted as it is not in Draft status.");
                     }
 
-                    // Get approvers using the new method
-                    var approvers = await AssignApproverForClaim(id);
-                    if (approvers == null || !approvers.Any())
+                    var approver = await AssignApproverForClaim(id);
+                    if (approver == null)
                     {
-                        throw new InvalidOperationException("No eligible approvers found for this claim.");
+                        throw new BusinessException("No eligible approver found for this claim.");
                     }
 
-                    // Begin transaction
                     await using var transaction = await _unitOfWork.BeginTransactionAsync();
                     try
                     {
-                        // Update claim status
                         claim.Status = ClaimStatus.Pending;
                         claim.UpdateAt = DateTime.UtcNow;
 
-                        // Save updated claim
                         _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
 
-                        // Insert approvers
-                        foreach (var approver in approvers)
-                        {
-                            await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(approver);
-                        }
+                        await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(approver);
 
-                        // Commit transaction
                         await _unitOfWork.CommitAsync();
                         await _unitOfWork.CommitTransactionAsync(transaction);
 
-                        // Log the change of claim status
-                        _logger.LogInformation("Submitted claim {ClaimId} by {ClaimerId} on {Time}. Approvers: {Approvers}",
-                            id, claimerId, claim.UpdateAt, string.Join(", ", approvers.Select(a => a.ApproverId)));
+                        _logger.LogInformation("Submitted claim {ClaimId} by {ClaimerId} on {Time}. Approver: {ApproverId}",
+                            id, claim.ClaimerId, claim.UpdateAt, approver.ApproverId);
+
+                        await AddChangeLog(id, "Claim Status", "Draft", "Pending", "Claimer");
+
+                        // Send email to approver and CC to claimer
 
                         return true;
                     }
                     catch (Exception ex)
                     {
-                        // Rollback transaction
                         await _unitOfWork.RollbackTransactionAsync(transaction);
                         _logger.LogError(ex, "Error occurred during claim submission.");
                         throw;
@@ -624,15 +615,13 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        private async Task<List<ClaimApprover>> AssignApproverForClaim(Guid claimId)
+        private async Task<ClaimApprover> AssignApproverForClaim(Guid claimId)
         {
             var claim = await _unitOfWork.GetRepository<Claim>()
-                .SingleOrDefaultAsync(predicate: c => c.Id == claimId)
-                ?? throw new KeyNotFoundException($"Claim with ID {claimId} not found.");
+                .SingleOrDefaultAsync(predicate: c => c.Id == claimId).ValidateExists(claimId);
 
             var project = await _unitOfWork.GetRepository<Project>()
-                .SingleOrDefaultAsync(predicate: p => p.Id == claim.ProjectId)
-                ?? throw new KeyNotFoundException($"Project with ID {claim.ProjectId} not found.");
+                .SingleOrDefaultAsync(predicate: p => p.Id == claim.ProjectId).ValidateExists(claim.ProjectId);
 
             var projectStaffs = await _unitOfWork.GetRepository<ProjectStaff>()
                 .GetListAsync(
@@ -642,37 +631,43 @@ namespace ClaimRequest.BLL.Services.Implements
 
             if (!projectStaffs.Any())
             {
-                throw new BusinessException($"No active staff members found for project with ID {project.Id}");
+                throw new NotFoundException($"No active staff members found for project with ID {project.Id}");
             }
 
-            var approverCandidates = projectStaffs
+            var potentialApprover = projectStaffs
                 .Select(ps => ps.Staff)
-                .Where(staff => staff.SystemRole == SystemRole.Approver)
+                .Where(staff => staff.SystemRole == SystemRole.Approver && staff.Id != claim.ClaimerId)
                 .ToList();
 
-            var approvers = approverCandidates
-                .Where(s => s.Department == Department.ProjectManagement && s.Id != claim.ClaimerId)
-                .ToList();
+            var approver = potentialApprover
+                .OrderBy(s => s.Department == Department.ProjectManagement ? 0 : 1)  // Prioritize ProjectManagement
+                .FirstOrDefault();
 
-            if (!approvers.Any())
+            if (approver == null)
             {
-                approvers = approverCandidates
-                    .Where(s => s.Department == Department.BusinessOperations && s.Id != claim.ClaimerId)
-                    .ToList();
+                throw new NotFoundException($"No eligible approvers found for claim {claimId}");
             }
 
-            if (!approvers.Any())
-            {
-                throw new BusinessException($"No eligible approvers found for claim {claimId}");
-            }
-
-            var claimApprovers = approvers.Select(a => new ClaimApprover
+            return new ClaimApprover
             {
                 ClaimId = claim.Id,
-                ApproverId = a.Id
-            }).ToList();
+                ApproverId = approver.Id
+            };
+        }
 
-            return claimApprovers;
+        private async Task AddChangeLog(Guid claimId, string fieldChanged, string oldValue, string newValue, string changedBy)
+        {
+            var changeLog = new ClaimChangeLog
+            {
+                HistoryId = Guid.NewGuid(),
+                ClaimId = claimId,
+                FieldChanged = fieldChanged,
+                OldValue = oldValue,
+                NewValue = newValue,
+                ChangedAt = DateTime.UtcNow,
+                ChangedBy = changedBy
+            };
+            await _unitOfWork.GetRepository<ClaimChangeLog>().InsertAsync(changeLog);
         }
     }
 }

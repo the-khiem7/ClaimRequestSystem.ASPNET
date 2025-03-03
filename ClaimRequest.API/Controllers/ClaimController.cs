@@ -224,11 +224,11 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> SubmitClaim(Guid id, [FromBody] SubmitClaimRequest submitClaimRequest)
+        public async Task<IActionResult> SubmitClaim(Guid id)
         {
             try
             {
-                var result = await _claimService.SubmitClaim(id, submitClaimRequest.ClaimerId);
+                var result = await _claimService.SubmitClaim(id);
                 if (!result)
                 {
                     _logger.LogError("Submit claim failed");
