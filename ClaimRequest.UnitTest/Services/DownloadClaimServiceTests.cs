@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
 using Moq;
+using OfficeOpenXml;
 using Xunit;
 
 namespace ClaimRequest.Tests.Services
@@ -155,46 +156,120 @@ namespace ClaimRequest.Tests.Services
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()
                 ), Times.Once);
         }
-
         [Fact]
-        public async Task DownloadClaimAsync_ShouldExcludeUnpaidClaims()
+        public async Task DownloadClaimAsync_ShouldThrowInvalidOperationException_WhenClaimStatusIsNotPaid()
         {
             // Arrange
-            var unpaidClaim = new Claim { Id = Guid.NewGuid(), Status = ClaimStatus.Pending };
-            var paidClaim = new Claim { Id = Guid.NewGuid(), Status = ClaimStatus.Paid };
+            var claimWithDifferentStatus = _fakeClaim;
+            claimWithDifferentStatus.Status = ClaimStatus.Pending;
 
-            var request = new DownloadClaimRequest { ClaimIds = new List<Guid> { unpaidClaim.Id, paidClaim.Id } };
+            _claimRepositoryMock.Setup(repo => repo.GetListAsync(
+                It.IsAny<Expression<Func<Claim, bool>>>(),
+                It.IsAny<Func<IQueryable<Claim>, IOrderedQueryable<Claim>>>(),
+                It.IsAny<Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>>>()
+            )).ReturnsAsync(new List<Claim> { claimWithDifferentStatus });
+
+            var request = new DownloadClaimRequest { ClaimIds = new List<Guid> { claimWithDifferentStatus.Id } };
+
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _claimService.DownloadClaimAsync(request));
+        }
+
+        [Fact]
+        public async Task DownloadClaimAsync_ShouldThrowInvalidOperationException_WhenClaimIsNotFromCurrentMonth()
+        {
+            // Arrange
+            var outdatedClaim = _fakeClaim;
+            outdatedClaim.UpdateAt = DateTime.UtcNow.AddMonths(-1); // Previous month
+
+            _claimRepositoryMock.Setup(repo => repo.GetListAsync(
+                It.IsAny<Expression<Func<Claim, bool>>>(),
+                It.IsAny<Func<IQueryable<Claim>, IOrderedQueryable<Claim>>>(),
+                It.IsAny<Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>>>()
+            )).ReturnsAsync(new List<Claim> { outdatedClaim });
+
+            var request = new DownloadClaimRequest { ClaimIds = new List<Guid> { outdatedClaim.Id } };
+
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _claimService.DownloadClaimAsync(request));
+        }
+
+        [Fact]
+        public async Task DownloadClaimAsync_ShouldFillMissingFields_WhenClaimsHaveNullValues()
+        {
+            // Arrange
+            var claimWithMissingFields = new Claim
+            {
+                Id = Guid.NewGuid(),
+                Claimer = null,
+                Project = null,
+                Finance = null,
+                Name = null,
+                Status = ClaimStatus.Paid,
+                UpdateAt = DateTime.UtcNow
+            };
 
             // Mock repository behavior
             _claimRepositoryMock.Setup(repo => repo.GetListAsync(
                 It.IsAny<Expression<Func<Claim, bool>>>(),
                 It.IsAny<Func<IQueryable<Claim>, IOrderedQueryable<Claim>>>(),
                 It.IsAny<Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>>>()
-            )).ReturnsAsync(new List<Claim> { paidClaim }); // Ensure only the paid claim is returned
+            )).ReturnsAsync(new List<Claim> { claimWithMissingFields });
+
+            var request = new DownloadClaimRequest { ClaimIds = new List<Guid> { claimWithMissingFields.Id } };
 
             // Act
             var result = await _claimService.DownloadClaimAsync(request);
 
             // Assert
             Assert.NotNull(result);
-            Assert.IsType<MemoryStream>(result); 
-
-            // Verify the repository was queried
-            _claimRepositoryMock.Verify(repo => repo.GetListAsync(
-                It.IsAny<Expression<Func<Claim, bool>>>(),
-                It.IsAny<Func<IQueryable<Claim>, IOrderedQueryable<Claim>>>(),
-                It.IsAny<Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>>>()
-            ), Times.Once);
-
-            // Verify logging for "no claims found" did NOT trigger (since we have a paid claim)
             _loggerMock.Verify(
                 log => log.Log(
                     LogLevel.Warning,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("No claims found for download")),
-                    It.IsAny<Exception>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("has missing fields")),
+                    null,
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()
-                ), Times.Never);
+                ), Times.Once);
+        }
+
+        [Fact]
+        public async Task DownloadClaimAsync_ShouldGenerateValidExcelFile_WhenClaimsAreValid()
+        {
+            // Arrange
+            _claimRepositoryMock.Setup(repo => repo.GetListAsync(
+                It.IsAny<Expression<Func<Claim, bool>>>(),
+                It.IsAny<Func<IQueryable<Claim>, IOrderedQueryable<Claim>>>(),
+                It.IsAny<Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>>>()
+            )).ReturnsAsync(new List<Claim> { _fakeClaim });
+
+            var request = new DownloadClaimRequest { ClaimIds = new List<Guid> { _fakeClaim.Id } };
+
+            // Act
+            var result = await _claimService.DownloadClaimAsync(request);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.IsType<MemoryStream>(result);
+
+            // Verify Excel content
+            result.Position = 0;
+            using var package = new ExcelPackage(result);
+            var worksheet = package.Workbook.Worksheets["Template Export Claim"];
+
+            Assert.NotNull(worksheet);
+            Assert.Equal("Claim ID", worksheet.Cells[1, 1].Value.ToString());
+            Assert.Equal(_fakeClaim.Claimer.Name, worksheet.Cells[2, 2].Value.ToString());
+            Assert.Equal(_fakeClaim.Project.Name, worksheet.Cells[2, 3].Value.ToString());
+            Assert.Equal(_fakeClaim.ClaimType.ToString(), worksheet.Cells[2, 4].Value.ToString());
+            Assert.Equal(_fakeClaim.Status.ToString(), worksheet.Cells[2, 5].Value.ToString());
+            Assert.Equal(_fakeClaim.Amount, worksheet.Cells[2, 6].GetValue<decimal>());
+            Assert.Equal(_fakeClaim.TotalWorkingHours, worksheet.Cells[2, 7].GetValue<int>());
+            Assert.Equal(_fakeClaim.StartDate.ToString("yyyy-MM-dd"), worksheet.Cells[2, 8].Value.ToString());
+            Assert.Equal(_fakeClaim.EndDate.ToString("yyyy-MM-dd"), worksheet.Cells[2, 9].Value.ToString());
+            Assert.Equal(_fakeClaim.CreateAt.ToString("yyyy-MM-dd HH:mm:ss"), worksheet.Cells[2, 10].Value.ToString());
+            Assert.Equal(_fakeClaim.Finance.Name, worksheet.Cells[2, 11].Value.ToString());
+            Assert.Equal(_fakeClaim.Remark ?? "N/A", worksheet.Cells[2, 12].Value.ToString());
         }
     }
 }

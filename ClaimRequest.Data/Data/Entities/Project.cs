@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ClaimRequest.DAL.Data.Entities
@@ -44,6 +42,10 @@ namespace ClaimRequest.DAL.Data.Entities
 
         [Column("budget", TypeName = "numeric")]
         public decimal Budget { get; set; }
+
+        [Required]
+        [Column("is_active")]
+        public bool IsActive { get; set; } = true;
 
         [Required]
         [ForeignKey("ProjectManager")]

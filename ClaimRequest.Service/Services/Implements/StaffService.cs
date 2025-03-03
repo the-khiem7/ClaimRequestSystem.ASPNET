@@ -1,18 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using AutoMapper;
+using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Requests.Staff;
 using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
-using ClaimRequest.DAL.Data.Exceptions;
+using Microsoft.Extensions.Logging;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -75,16 +72,11 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var staff = await _unitOfWork.GetRepository<Staff>()
+                var staff = (await _unitOfWork.GetRepository<Staff>()
                     .SingleOrDefaultAsync(
                         predicate: s => s.Id == id && s.IsActive,
                         include: q => q.Include(s => s.ProjectStaffs)
-                    );
-
-                if (staff == null)
-                {
-                    throw new NotFoundException($"Staff with ID {id} not found");
-                }
+                    )).ValidateExists(id, "Can't find because this staff");
 
                 return _mapper.Map<CreateStaffResponse>(staff);
             }
@@ -129,17 +121,12 @@ namespace ClaimRequest.BLL.Services.Implements
                     await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
                     try
                     {
-                        var existingStaff = await _unitOfWork.GetRepository<Staff>()
+                        var existingStaff = (await _unitOfWork.GetRepository<Staff>()
                             .SingleOrDefaultAsync(
                                 predicate: s => s.Id == id && s.IsActive,
                                 orderBy: null,
                                 include: null
-                            );
-
-                        if (existingStaff == null)
-                        {
-                            throw new NotFoundException($"Staff with ID {id} not found");
-                        }
+                            )).ValidateExists(id, "Can't update because this staff");
 
                         // Update properties
                         _mapper.Map(updateStaffRequest, existingStaff);
@@ -175,17 +162,12 @@ namespace ClaimRequest.BLL.Services.Implements
                     await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
                     try
                     {
-                        var staff = await _unitOfWork.GetRepository<Staff>()
+                        var staff = (await _unitOfWork.GetRepository<Staff>()
                             .SingleOrDefaultAsync(
                                 predicate: s => s.Id == id && s.IsActive,
                                 orderBy: null,
                                 include: null
-                            );
-
-                        if (staff == null)
-                        {
-                            throw new NotFoundException($"Staff with ID {id} not found");
-                        }
+                            )).ValidateExists(id, "Can't delete because this staff");
 
                         // Soft delete
                         staff.IsActive = false;
@@ -211,16 +193,16 @@ namespace ClaimRequest.BLL.Services.Implements
         }
 
 
-        //public static class PasswordHasher
-        //{
-        //    public static string HashPassword(string password)
-        //    {
-        //        using (SHA256 sha256 = SHA256.Create())
-        //        {
-        //            byte[] hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-        //            return BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
-        //        }
-        //    }
-        //}
+        public static class PasswordHasher
+        {
+            public static string HashPassword(string password)
+            {
+                using (SHA256 sha256 = SHA256.Create())
+                {
+                    byte[] hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+                    return BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
+                }
+            }
+        }
     }
 }

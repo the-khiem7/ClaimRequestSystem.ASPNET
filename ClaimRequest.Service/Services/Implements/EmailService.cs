@@ -1,5 +1,8 @@
-﻿using ClaimRequest.DAL.Data.Entities;
-using Microsoft.Extensions.Configuration;
+﻿using ClaimRequest.BLL.Services.Interfaces;
+using ClaimRequest.DAL.Data.Requests.Email;
+using MailKit.Security;
+using ClaimRequest.DAL.Data.Entities;
+using MailKit.Security;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,6 +15,7 @@ using ClaimRequest.DAL.Data.Responses.Project;
 using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.DAL.Data.Exceptions;
 using Microsoft.Extensions.Logging;
+using SmtpClient = MailKit.Net.Smtp.SmtpClient;
 
 namespace ClaimRequest.BLL.Services.Implements
 {

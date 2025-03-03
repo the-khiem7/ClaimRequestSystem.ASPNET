@@ -1,5 +1,4 @@
 ﻿using ClaimRequest.API.Constants;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClaimRequest.API.Controllers

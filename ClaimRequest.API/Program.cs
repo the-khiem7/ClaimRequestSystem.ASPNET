@@ -1,17 +1,17 @@
-using ClaimRequest.DAL.Data.Entities;
+using System.Text;
+using System.Text.Json.Serialization;
 using ClaimRequest.API.Extensions;
+using ClaimRequest.API.Middlewares;
+using ClaimRequest.BLL.Services.Implements;
+using ClaimRequest.BLL.Services.Interfaces;
+using ClaimRequest.BLL.Utils;
+using ClaimRequest.DAL.Data.Entities;
+using ClaimRequest.DAL.Repositories.Implements;
+using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Text;
-using ClaimRequest.DAL.Repositories.Interfaces;
-using ClaimRequest.DAL.Repositories.Implements;
-using ClaimRequest.BLL.Services.Interfaces;
-using ClaimRequest.BLL.Services.Implements;
-using ClaimRequest.API.Middlewares;
-using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,7 +61,7 @@ builder.Services.AddSwaggerGen(options =>
 // Add DbContext connect to Postgres
 builder.Services.AddDbContext<ClaimRequestDbContext>(options =>
 {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgresConnection"),
+    options.UseNpgsql(builder.Configuration.GetConnectionString("SupaBaseConnection"),
         npgsqlOptionsAction: sqlOptions =>
         {
             sqlOptions.EnableRetryOnFailure(
@@ -82,11 +82,17 @@ builder.Services.AddScoped<IUnitOfWork<ClaimRequestDbContext>, UnitOfWork<ClaimR
 // Add this line before registering your services
 builder.Services.AddHttpContextAccessor();
 
+// Registing some utils class
+builder.Services.AddSingleton<JwtUtil>();
+
+
 // Dependency Injection for Repositories and Services
 builder.Services.AddScoped<IClaimService, ClaimService>();
 builder.Services.AddScoped<IStaffService, StaffService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+
 
 //Serilize enum to string
 builder.Services.AddControllers().AddJsonOptions(options =>
@@ -122,22 +128,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidIssuer = builder.Configuration.GetSection("Jwt:Issuer").Get<string>(),
+            ValidAudience = builder.Configuration.GetSection("Jwt:Audience").Get<string>(),
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
         };
     });
 
 // Update the Kestrel configuration
-builder.WebHost.ConfigureKestrel(serverOptions =>
-{
-    serverOptions.ListenAnyIP(5000); // HTTP
-    serverOptions.ListenAnyIP(5001, listenOptions =>
-    {
-        // In development/docker, we'll use HTTP instead of HTTPS
-        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
-    });
-});
+//builder.WebHost.ConfigureKestrel(serverOptions =>
+//{
+//    serverOptions.ListenAnyIP(5000); // HTTP
+//    serverOptions.ListenAnyIP(5001, listenOptions =>
+//    {
+//        // In development/docker, we'll use HTTP instead of HTTPS
+//        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+//    });
+//});
 
 var app = builder.Build();
 
@@ -157,10 +163,10 @@ if (app.Environment.IsDevelopment())
 // Add the ExceptionHandlerMiddleware to the pipeline
 // comment lai doan code phia duoi neu chuong khong doc duoc loi tu swagger
 // ===============================================
-app.UseMiddleware<ExceptionHandlerMiddleware>();
+app.UseMiddleware<ExceptionHandlerMiddleware>(); //comment lai de bat loi 500 
 // ===============================================
 
-//app.UseHttpsRedirection();
+app.UseHttpsRedirection();
 
 app.UseCors(options =>
 {
