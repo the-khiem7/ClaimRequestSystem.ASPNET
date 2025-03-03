@@ -31,5 +31,22 @@ namespace ClaimRequest.API.Controllers
 
             return Ok("Email sent successfully.");
         }
+
+        [HttpPost(ApiEndPointConstant.Email.SendOtp)]
+        public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = await _emailService.SendOtpEmailAsync(request);
+            if (!result.Success)
+            {
+                return StatusCode(500, result.Message);
+            }
+
+            return Ok(result.Message);
+        }
     }
 }

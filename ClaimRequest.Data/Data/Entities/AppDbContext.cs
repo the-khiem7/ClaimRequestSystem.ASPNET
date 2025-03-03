@@ -17,6 +17,7 @@ namespace ClaimRequest.DAL.Data.Entities
         public DbSet<ProjectStaff> ProjectStaffs { get; set; }
         public DbSet<Claim> Claims { get; set; }
         public DbSet<ClaimApprover> ClaimApprovers { get; set; }
+        public DbSet<Otp> Otps { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
