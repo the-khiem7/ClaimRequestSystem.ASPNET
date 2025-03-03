@@ -1,12 +1,10 @@
-﻿using System;
-using ClaimRequest.API.Constants;
+﻿using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClaimRequest.API.Controllers

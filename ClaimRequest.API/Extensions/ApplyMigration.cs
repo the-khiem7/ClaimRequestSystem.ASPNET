@@ -1,5 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
-using ClaimRequest.DAL.Data.Entities;
+﻿using ClaimRequest.DAL.Data.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace ClaimRequest.API.Extensions
 {
