@@ -8,6 +8,7 @@ using AutoMapper;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
+using ClaimRequest.DAL.Data.Responses.Staff;
 using Claim = ClaimRequest.DAL.Data.Entities.Claim;
 
 namespace ClaimRequest.DAL.Mappers
@@ -41,6 +42,10 @@ namespace ClaimRequest.DAL.Mappers
                 .ForMember(dest => dest.TotalWorkingHours, opt => opt.MapFrom(src => src.TotalWorkingHours))
                 .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(_ => DateTime.UtcNow));
 
+            // mapper cho list staff
+            CreateMap<Staff, GetStaffResponse>()
+                .ForMember(dest => dest.SystemRole, opt => opt.MapFrom(src => src.SystemRole))
+                .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.Department));
             // CancelClaimRequest -> Claim
             CreateMap<CancelClaimRequest, Claim>()
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(_ => ClaimStatus.Cancelled))

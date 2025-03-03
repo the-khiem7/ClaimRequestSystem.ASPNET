@@ -26,6 +26,6 @@ namespace ClaimRequest.DAL.Data.Responses.Project
 
         public decimal Budget { get; set; }
 
-        public CreateStaffResponse ProjectManager { get; set; }
+        public GetStaffResponse ProjectManager { get; set; }
     }
 }

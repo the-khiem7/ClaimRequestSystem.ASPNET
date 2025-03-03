@@ -14,5 +14,6 @@ namespace ClaimRequest.DAL.Data.Responses.Claim
         public DateOnly ProjectStartDate { get; set; }
         public DateOnly ProjectEndDate { get; set; }
         public decimal TotalWorkingHours { get; set; }
+
     }
 }

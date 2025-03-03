@@ -9,6 +9,9 @@ namespace ClaimRequest.BLL.Services.Interfaces
 {
     public interface IEmailService
     {
-        Task<bool> SendEmailAsync(SendMailRequest request);
+        Task SendClaimApprovedEmail(Guid claimId);
+        Task SendClaimReturnedEmail(Guid claimId);
+        Task SendClaimSubmittedEmail(Guid claimId);
+        Task SendManagerApprovedEmail(Guid claimId);
     }
 }

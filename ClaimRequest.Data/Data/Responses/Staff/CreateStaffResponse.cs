@@ -23,5 +23,8 @@ namespace ClaimRequest.DAL.Data.Responses.Staff
         public decimal Salary { get; set; }
 
         public bool IsActive { get; set; }
+
+        
+
     }
 }
