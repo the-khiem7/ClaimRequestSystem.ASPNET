@@ -128,9 +128,13 @@ namespace ClaimRequest.DAL.Data.Entities
                 .Property(p => p.EndDate)
                 .HasColumnType("date")
                 .HasConversion<DateTime?>(
-        dateOnly => dateOnly.HasValue ? dateOnly.Value.ToDateTime(TimeOnly.MinValue) : null,
-        dateTime => dateTime.HasValue ? DateOnly.FromDateTime(dateTime.Value) : null
-    );
+                    dateOnly => dateOnly.HasValue ? dateOnly.Value.ToDateTime(TimeOnly.MinValue) : null,
+                    dateTime => dateTime.HasValue ? DateOnly.FromDateTime(dateTime.Value) : null
+                );
+
+            // Configure Otp entity to use Redis schema
+            modelBuilder.Entity<Otp>()
+                .ToTable("Otps", "redis");
         }
 
         public override int SaveChanges()
