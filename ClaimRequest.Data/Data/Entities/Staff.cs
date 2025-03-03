@@ -8,8 +8,7 @@ namespace ClaimRequest.DAL.Data.Entities
         Approver,
         Staff,
         Finance,
-        Admin,
-        Spyware
+        Admin
     }
 
     public enum Department
