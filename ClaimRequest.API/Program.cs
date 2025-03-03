@@ -4,6 +4,7 @@ using ClaimRequest.API.Extensions;
 using ClaimRequest.API.Middlewares;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.BLL.Services.Interfaces;
+using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Repositories.Implements;
 using ClaimRequest.DAL.Repositories.Interfaces;
@@ -81,11 +82,18 @@ builder.Services.AddScoped<IUnitOfWork<ClaimRequestDbContext>, UnitOfWork<ClaimR
 // Add this line before registering your services
 builder.Services.AddHttpContextAccessor();
 
+// Registing some utils class
+builder.Services.AddSingleton<JwtUtil>();
+
+
 // Dependency Injection for Repositories and Services
 builder.Services.AddScoped<IClaimService, ClaimService>();
 builder.Services.AddScoped<IStaffService, StaffService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+
+
 builder.Services.AddScoped<ClaimRequest.BLL.Utils.OtpUtil>();
 //Serilize enum to string
 builder.Services.AddControllers().AddJsonOptions(options =>
@@ -121,8 +129,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidIssuer = builder.Configuration.GetSection("Jwt:Issuer").Get<string>(),
+            ValidAudience = builder.Configuration.GetSection("Jwt:Audience").Get<string>(),
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
         };
     });
