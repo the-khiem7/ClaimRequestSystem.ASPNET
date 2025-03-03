@@ -1,18 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using AutoMapper;
+using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
-using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Project;
 using ClaimRequest.DAL.Data.Responses.Project;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
-using AutoMapper;
+using Microsoft.Extensions.Logging;
 
 
 namespace ClaimRequest.BLL.Services.Implements
@@ -39,19 +34,14 @@ namespace ClaimRequest.BLL.Services.Implements
                     try
                     {
                         // Verify Project Manager exists and is valid
-                        var projectManager = await _unitOfWork.GetRepository<Staff>()
+                        var projectManager = (await _unitOfWork.GetRepository<Staff>()
                             .SingleOrDefaultAsync(
                                 predicate: s => s.Id == createProjectRequest.ProjectManagerId,
                                 orderBy: null,
                                 include: null
-                            );
+                            )).ValidateExists(createProjectRequest.ProjectManagerId, "Can't create project because of invalid project manager");
 
-                        if (projectManager == null)
-                        {
-                            throw new NotFoundException($"Project Manager with ID {createProjectRequest.ProjectManagerId} not found");
-                        }
-
-                        if (projectManager.SystemRole != SystemRole.ProjectManager)
+                        if (projectManager.SystemRole != SystemRole.Approver)
                         {
                             throw new InvalidOperationException("The specified staff member is not a Project Manager");
                         }
@@ -129,18 +119,13 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var project = await _unitOfWork.GetRepository<Project>()
+                var project = (await _unitOfWork.GetRepository<Project>()
                     .SingleOrDefaultAsync(
                         predicate: p => p.Id == id,
                         include: q => q
                             .Include(p => p.ProjectManager)
                             .Include(p => p.ProjectStaffs)
-                    );
-
-                if (project == null)
-                {
-                    throw new NotFoundException($"Project with ID {id} not found");
-                }
+                    )).ValidateExists(id);
 
                 return _mapper.Map<CreateProjectResponse>(project);
             }
@@ -182,18 +167,13 @@ namespace ClaimRequest.BLL.Services.Implements
                     await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
                     try
                     {
-                        var existingProject = await _unitOfWork.GetRepository<Project>()
+                        var existingProject = (await _unitOfWork.GetRepository<Project>()
                             .SingleOrDefaultAsync(
                                 predicate: p => p.Id == id,
                                 include: q => q
                                     .Include(p => p.ProjectManager)
                                     .Include(p => p.ProjectStaffs)
-                            );
-
-                        if (existingProject == null)
-                        {
-                            throw new NotFoundException($"Project with ID {id} not found");
-                        }
+                            )).ValidateExists(id, "Can't update becase this project ");
 
                         _mapper.Map(updateProjectRequest, existingProject);
 
@@ -205,14 +185,9 @@ namespace ClaimRequest.BLL.Services.Implements
                                     predicate: s => s.Id == updateProjectRequest.ProjectManagerId,
                                     orderBy: null,
                                     include: null
-                                );
+                                ).ValidateExists(updateProjectRequest.ProjectManagerId, "Can't update becase this project because your ProjectManager ");
 
-                            if (newProjectManager == null)
-                            {
-                                throw new NotFoundException($"Staff with ID {updateProjectRequest.ProjectManagerId} not found");
-                            }
-
-                            if (newProjectManager.SystemRole != SystemRole.ProjectManager)
+                            if (newProjectManager.SystemRole != SystemRole.Approver)
                             {
                                 throw new InvalidOperationException("The specified staff member is not a Project Manager");
                             }

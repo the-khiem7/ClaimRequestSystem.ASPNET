@@ -1,15 +1,11 @@
-using System.Linq.Expressions;
 using AutoMapper;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Requests.Claim;
-using ClaimRequest.DAL.Data.Responses.Claim;
 using ClaimRequest.DAL.Mappers;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -19,7 +15,7 @@ namespace ClaimRequest.UnitTest.Services
 {
     public class TestClaimRequestDbContext : ClaimRequestDbContext
     {
-        public TestClaimRequestDbContext() 
+        public TestClaimRequestDbContext()
             : base(new DbContextOptionsBuilder<ClaimRequestDbContext>()
                 .UseInMemoryDatabase(databaseName: "TestDb")
                 .Options)
@@ -137,4 +133,4 @@ namespace ClaimRequest.UnitTest.Services
             return await operation(null!, state, cancellationToken);
         }
     }
-} 
+}

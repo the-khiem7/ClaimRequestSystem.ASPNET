@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ClaimRequest.DAL.Data.Exceptions;
+﻿using ClaimRequest.DAL.Data.Exceptions;
 
 namespace ClaimRequest.BLL.Extension
 {
@@ -24,14 +19,14 @@ namespace ClaimRequest.BLL.Extension
         public static TEntity ValidateExists<TEntity>(
             this TEntity? entity,           // dua entity can check vao
             Guid? id = null,                // neu muon output hien id của entity
-            string? entityName = null,      // tu dat entity neu can, neu ko truyen thi lay ten cua entity
+            string? entityName = null,      // tu dat Ten object neu can, neu ko truyen thi lay ten cua entity
             string? customMessage = null)   // chen thong bao loi hoac bo trong neu muon xai thong bao tui tao san o duoi 
-            where TEntity : class 
+            where TEntity : class
         {
-            if(entity == null)
+            if (entity == null)
             {
                 var typeName = entityName ?? typeof(TEntity).Name; //tu dong get ten cua entity neu ko truyen vao
-                var message = customMessage ?? $"{typeName}{(id.HasValue ? $" with ID {id}" : "")} not found";
+                var message = customMessage ?? $"{typeName}{(id.HasValue ? $" with ID {id}" : "")} are not found";
                 throw new NotFoundException(message);
             }
             return entity;
