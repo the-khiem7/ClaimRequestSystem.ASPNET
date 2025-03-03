@@ -5,7 +5,6 @@ using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Repositories.Interfaces;
-using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
@@ -162,7 +161,7 @@ namespace ClaimRequest.Tests.Services
         {
             // Arrange
             var claimWithDifferentStatus = _fakeClaim;
-            claimWithDifferentStatus.Status = ClaimStatus.Pending; 
+            claimWithDifferentStatus.Status = ClaimStatus.Pending;
 
             _claimRepositoryMock.Setup(repo => repo.GetListAsync(
                 It.IsAny<Expression<Func<Claim, bool>>>(),
@@ -202,10 +201,10 @@ namespace ClaimRequest.Tests.Services
             var claimWithMissingFields = new Claim
             {
                 Id = Guid.NewGuid(),
-                Claimer = null, 
-                Project = null, 
-                Finance = null, 
-                Name = null, 
+                Claimer = null,
+                Project = null,
+                Finance = null,
+                Name = null,
                 Status = ClaimStatus.Paid,
                 UpdateAt = DateTime.UtcNow
             };

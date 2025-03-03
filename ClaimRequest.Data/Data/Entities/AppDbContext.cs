@@ -1,9 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace ClaimRequest.DAL.Data.Entities
 {
@@ -25,6 +20,7 @@ namespace ClaimRequest.DAL.Data.Entities
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.HasDefaultSchema("ClaimRequest"); // Chi dinh Schema mac dinh cho DbContext
             base.OnModelCreating(modelBuilder);
 
             // Configure enum conversions to store their string representations.

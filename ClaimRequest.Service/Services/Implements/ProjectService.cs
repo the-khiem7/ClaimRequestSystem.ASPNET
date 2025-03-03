@@ -1,19 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using AutoMapper;
+using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
-using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Project;
 using ClaimRequest.DAL.Data.Responses.Project;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
-using AutoMapper;
-using ClaimRequest.BLL.Extension;
+using Microsoft.Extensions.Logging;
 
 
 namespace ClaimRequest.BLL.Services.Implements
@@ -47,7 +41,7 @@ namespace ClaimRequest.BLL.Services.Implements
                                 include: null
                             )).ValidateExists(createProjectRequest.ProjectManagerId, "Can't create project because of invalid project manager");
 
-                        if (projectManager.SystemRole != SystemRole.ProjectManager)
+                        if (projectManager.SystemRole != SystemRole.Approver)
                         {
                             throw new InvalidOperationException("The specified staff member is not a Project Manager");
                         }
@@ -193,7 +187,7 @@ namespace ClaimRequest.BLL.Services.Implements
                                     include: null
                                 ).ValidateExists(updateProjectRequest.ProjectManagerId, "Can't update becase this project because your ProjectManager ");
 
-                            if (newProjectManager.SystemRole != SystemRole.ProjectManager)
+                            if (newProjectManager.SystemRole != SystemRole.Approver)
                             {
                                 throw new InvalidOperationException("The specified staff member is not a Project Manager");
                             }

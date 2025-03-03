@@ -1,20 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using AutoMapper;
+using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Requests.Staff;
 using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
-using ClaimRequest.DAL.Data.Exceptions;
-using System.Security.Cryptography;
-using ClaimRequest.BLL.Extension;
+using Microsoft.Extensions.Logging;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -172,7 +167,7 @@ namespace ClaimRequest.BLL.Services.Implements
                                 predicate: s => s.Id == id && s.IsActive,
                                 orderBy: null,
                                 include: null
-                            )).ValidateExists(id,"Can't delete because this staff");
+                            )).ValidateExists(id, "Can't delete because this staff");
 
                         // Soft delete
                         staff.IsActive = false;

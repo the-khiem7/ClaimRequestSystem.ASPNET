@@ -1,25 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Drawing;
 using AutoMapper;
+using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
-using ClaimRequest.DAL.Repositories.Interfaces;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using Claim = ClaimRequest.DAL.Data.Entities.Claim;
+using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
+using ClaimRequest.DAL.Repositories.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using ClaimRequest.DAL.Data.Exceptions;
+using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
-using ClaimRequest.DAL.Repositories.Implements;
 using OfficeOpenXml.Style;
-using System.Drawing;
-using ClaimRequest.BLL.Extension;
+using Claim = ClaimRequest.DAL.Data.Entities.Claim;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -33,6 +26,23 @@ namespace ClaimRequest.BLL.Services.Implements
             : base(unitOfWork, logger, mapper, httpContextAccessor)
         {
         }
+
+        private async Task LogChangeAsync(Guid claimId, string field, string oldValue, string newValue, string changedBy)
+        {
+            var changeLog = new ClaimChangeLog
+            {
+                HistoryId = Guid.NewGuid(),
+                ClaimId = claimId,
+                FieldChanged = field,
+                OldValue = oldValue,
+                NewValue = newValue,
+                ChangedAt = DateTime.UtcNow,
+                ChangedBy = changedBy
+            };
+
+            await _unitOfWork.GetRepository<ClaimChangeLog>().InsertAsync(changeLog);
+        }
+
 
         #region Nguyen_Anh_Quan
         public async Task<CancelClaimResponse> CancelClaim(CancelClaimRequest cancelClaimRequest)
@@ -383,7 +393,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         var project = await _unitOfWork.GetRepository<Project>()
                     .SingleOrDefaultAsync(
-                            predicate : s => s.Id == pendingClaim.ProjectId,
+                            predicate: s => s.Id == pendingClaim.ProjectId,
                             include: q => q.Include(p => p.ProjectManager)
                             );
 
@@ -396,35 +406,25 @@ namespace ClaimRequest.BLL.Services.Implements
                         if (project.ProjectManagerId != rejectClaimRequest.ApproverId)
                         {
                             throw new UnauthorizedAccessException($"Approver with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
-                        }                        
+                        }
 
                         var approverName = project?.ProjectManager?.Name ?? "Unknown Approver";
 
-                            // Nếu claim chưa có approver thì tạo mới
-                            var newApprover = new ClaimApprover
-                            {
-                                ClaimId = pendingClaim.Id,
-                                ApproverId = rejectClaimRequest.ApproverId,
-                            };
-                            await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
+                        // Nếu claim chưa có approver thì tạo mới
+                        var newApprover = new ClaimApprover
+                        {
+                            ClaimId = pendingClaim.Id,
+                            ApproverId = rejectClaimRequest.ApproverId,
+                        };
+                        await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
 
                         // Cập nhật trạng thái claim
                         _mapper.Map(rejectClaimRequest, pendingClaim);
-                        
+
                         _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
 
-                            // Chỉ ghi changelog khi approver lần đầu reject (Audit Trails)
-                            var changeLog = new ClaimChangeLog
-                            {
-                                HistoryId = Guid.NewGuid(),
-                                ClaimId = pendingClaim.Id,
-                                FieldChanged = "Claim Status",
-                                OldValue = "Pending",
-                                NewValue = pendingClaim.Status.ToString(),
-                                ChangedAt = DateTime.UtcNow,
-                                ChangedBy = approverName
-                            };
-                        await _unitOfWork.GetRepository<ClaimChangeLog>().InsertAsync(changeLog);
+                        // Chỉ ghi changelog khi approver lần đầu reject (Audit Trails)
+                        await LogChangeAsync(pendingClaim.Id, "Claim Status", "Pending", ClaimStatus.Rejected.ToString(), approverName);
 
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();

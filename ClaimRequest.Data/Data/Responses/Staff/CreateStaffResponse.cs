@@ -1,9 +1,4 @@
-﻿using ClaimRequest.DAL.Data.Entities;
-using System;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace ClaimRequest.DAL.Data.Responses.Staff
+﻿namespace ClaimRequest.DAL.Data.Responses.Staff
 {
     // tao class response de tra thong tin ve cho client
     public class CreateStaffResponse

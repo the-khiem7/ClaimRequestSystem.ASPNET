@@ -1,5 +1,5 @@
-using ClaimRequest.DAL.Data.Entities;
 using System.ComponentModel.DataAnnotations;
+using ClaimRequest.DAL.Data.Entities;
 
 namespace ClaimRequest.DAL.Data.Requests.Staff
 {
