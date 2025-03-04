@@ -631,21 +631,28 @@ namespace ClaimRequest.BLL.Services.Implements
 
             if (!projectStaffs.Any())
             {
-                throw new NotFoundException($"No active staff members found for project with ID {project.Id}");
+                throw new KeyNotFoundException($"No active staff members found for project with ID {project.Id}");
             }
 
             var potentialApprover = projectStaffs
                 .Select(ps => ps.Staff)
-                .Where(staff => staff.SystemRole == SystemRole.Approver && staff.Id != claim.ClaimerId)
+                .Where(staff => staff.SystemRole == SystemRole.Approver)
                 .ToList();
 
             var approver = potentialApprover
-                .OrderBy(s => s.Department == Department.ProjectManagement ? 0 : 1)  // Prioritize ProjectManagement
+                .Where(s => s.Department == Department.ProjectManagement && s.Id != claim.ClaimerId)
                 .FirstOrDefault();
 
             if (approver == null)
             {
-                throw new NotFoundException($"No eligible approvers found for claim {claimId}");
+                approver = potentialApprover
+                    .Where(s => s.Department == Department.BusinessOperations && s.Id != claim.ClaimerId)
+                    .FirstOrDefault();
+            }
+
+            if (approver == null)
+            {
+                throw new KeyNotFoundException($"No eligible approver found for claim {claimId}");
             }
 
             return new ClaimApprover
@@ -654,6 +661,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 ApproverId = approver.Id
             };
         }
+
 
         private async Task AddChangeLog(Guid claimId, string fieldChanged, string oldValue, string newValue, string changedBy)
         {
