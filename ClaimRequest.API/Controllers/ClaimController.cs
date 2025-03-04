@@ -1,4 +1,5 @@
 ﻿using ClaimRequest.API.Constants;
+using ClaimRequest.API.Extensions;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Exceptions;
@@ -219,5 +220,27 @@ namespace ClaimRequest.API.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
             }
         }
+
+        [HttpPut(ApiEndPointConstant.Claim.PaidClaimEndpoint)]
+        //[Authorize(Roles = "Finance")]
+        [ProducesResponseType(typeof(CreateClaimResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        [ValidateModelAttributes]
+        public async Task<IActionResult> PayClaim([FromRoute] Guid id, [FromQuery] Guid financeId)
+        {
+            var response = await _claimService.PaidClaim(id, financeId);
+
+            return Ok(ApiResponseBuilder.BuildResponse(
+                message: "Claim paid successfully.",
+                data: response,
+                statusCode: StatusCodes.Status200OK
+            ));
+        }
+
+
+
+
     }
 }
