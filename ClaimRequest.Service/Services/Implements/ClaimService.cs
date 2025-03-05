@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using AutoMapper;
 using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
@@ -554,9 +554,8 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                // 🔹 Tìm claim theo ID
-                var existingClaim = await _unitOfWork.GetRepository<Claim>()
-                    .SingleOrDefaultAsync(predicate: c => c.Id == id);
+                var existingClaim = (await _unitOfWork.GetRepository<Claim>()
+                    .SingleOrDefaultAsync(predicate: c => c.Id == id).ValidateExists(id));
 
                 if (existingClaim == null)
                 {
