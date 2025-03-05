@@ -594,7 +594,7 @@ namespace ClaimRequest.BLL.Services.Implements
                         _logger.LogInformation("Submitted claim {ClaimId} by {ClaimerId} on {Time}. Approver: {ApproverId}",
                             id, claim.ClaimerId, claim.UpdateAt, approver.ApproverId);
 
-                        await AddChangeLog(id, "Claim Status", "Draft", "Pending", "Claimer");
+                        await LogChangeAsync(id, "Claim Status", "Draft", "Pending", "Claimer");
 
                         // Send email to approver and CC to claimer
 
@@ -662,20 +662,5 @@ namespace ClaimRequest.BLL.Services.Implements
             };
         }
 
-
-        private async Task AddChangeLog(Guid claimId, string fieldChanged, string oldValue, string newValue, string changedBy)
-        {
-            var changeLog = new ClaimChangeLog
-            {
-                HistoryId = Guid.NewGuid(),
-                ClaimId = claimId,
-                FieldChanged = fieldChanged,
-                OldValue = oldValue,
-                NewValue = newValue,
-                ChangedAt = DateTime.UtcNow,
-                ChangedBy = changedBy
-            };
-            await _unitOfWork.GetRepository<ClaimChangeLog>().InsertAsync(changeLog);
-        }
     }
 }
