@@ -325,6 +325,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 )).ValidateExists(id);
 
                 return claim.c;
+
             }
             catch (NotFoundException)
             {

@@ -1,4 +1,5 @@
-﻿using ClaimRequest.API.Constants;
+﻿using AutoMapper;
+using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Exceptions;
@@ -14,12 +15,14 @@ namespace ClaimRequest.API.Controllers
     {
         #region Create Class Referrence
         private readonly IClaimService _claimService;
+        private readonly IMapper _mapper;
         #endregion
 
         #region Contructor
-        public ClaimController(ILogger<ClaimController> logger, IClaimService claimService) : base(logger)
+        public ClaimController(ILogger<ClaimController> logger, IClaimService claimService, IMapper mapper) : base(logger)
         {
             _claimService = claimService;
+            _mapper = mapper;
         }
         #endregion
 
@@ -56,7 +59,7 @@ namespace ClaimRequest.API.Controllers
             var response = await _claimService.GetClaimById(id);
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: $"Get claim with id {id} successfully!",
-                data: response,
+                data: _mapper.Map<ViewClaimResponse>(response),
                 statusCode: StatusCodes.Status200OK));
         }
 

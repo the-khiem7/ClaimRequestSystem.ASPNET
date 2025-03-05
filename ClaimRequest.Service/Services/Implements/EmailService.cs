@@ -1,5 +1,4 @@
 ﻿using ClaimRequest.BLL.Services.Interfaces;
-using ClaimRequest.DAL.Data.Requests.Email;
 using MailKit.Security;
 using ClaimRequest.DAL.Data.Entities;
 using MailKit.Security;
@@ -15,11 +14,13 @@ using ClaimRequest.DAL.Data.Responses.Project;
 using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.DAL.Data.Exceptions;
 using Microsoft.Extensions.Logging;
-using SmtpClient = MailKit.Net.Smtp.SmtpClient;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
 
 namespace ClaimRequest.BLL.Services.Implements
 {
-    public class EmailService : IEmailService
+    public class EmailService : IEmailService    
     {
         public readonly string _smtpServer;
         public readonly int _port;
@@ -43,12 +44,13 @@ namespace ClaimRequest.BLL.Services.Implements
             _logger = logger;
 
         }
+        
 
         public async Task SendClaimReturnedEmail(Guid Id)
         {
             try
             {
-                Claim claim = await _claimService.GetClaimById(Id);
+                var claim = await _claimService.GetClaimById(Id);
                 if (claim == null)
                     throw new NotFoundException($"Claim with { Id} not found.");
 
@@ -91,13 +93,10 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 string projectName = claim.Project.Name;
 
-                var updatedDate = claim.UpdateAt.ToString("yyyy-MM-dd HH:mm:ss");
+                var updatedDate = claim.UpdateAt.ToString("yyyy-MM-dd HH:mm:ss");   
 
                 CreateStaffResponse claimer = await _staffService.GetStaffById(claim.ClaimerId);
-                if (claim.Finance.Email == null || string.IsNullOrEmpty(claim.Finance.Email))
-                    throw new Exception("Finance information is invalid.");
-
-                string recipientEmail = claim.Finance.Email;
+                string recipientEmail = claimer.Email;
                 string subject = $"Claim Request for {projectName} - {claimer.ResponseName} ({claimer.Id})";
 
 
@@ -132,7 +131,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 string projectName = claim.Project.Name;
 
-                string projectManagerName = project.ProjectManager.Name;
+                string projectManagerName = claim.Claimer.Name;
                 string projectManagerEmail = project.ProjectManager.Email;
 
                 var updatedDate = claim.UpdateAt.ToString("yyyy-MM-dd HH:mm:ss");
@@ -198,7 +197,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        private async Task SendEmailAsync(string recipientEmail, string subject, string body)
+        public async Task SendEmailAsync(string recipientEmail, string subject, string body)
         {
             try
             {
@@ -224,6 +223,11 @@ namespace ClaimRequest.BLL.Services.Implements
                 _logger.LogError(ex, "Error sending email to {recipientEmail}", recipientEmail);
                 throw;
             }
+        }
+
+        public Task SendEmailAsync(Guid claimId)
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -10,6 +10,7 @@ namespace ClaimRequest.DAL.Data.Entities
         Tester,
         BusinessAnalyst,
         QualityAssurance,
+        Manager,
     }
 
     [Table("ProjectStaffs")]
