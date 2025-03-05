@@ -313,7 +313,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-        public async Task<ViewClaimResponse> GetClaimById(Guid id)
+        public async Task<Claim> GetClaimById(Guid id)
         {
             try
             {
@@ -324,7 +324,8 @@ namespace ClaimRequest.BLL.Services.Implements
                     include: q => q.Include(c => c.Claimer).Include(c => c.Project)
                 )).ValidateExists(id);
 
-                return _mapper.Map<ViewClaimResponse>(claim.c);
+                return claim.c;
+
             }
             catch (NotFoundException)
             {
