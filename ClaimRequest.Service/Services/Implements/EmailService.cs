@@ -208,7 +208,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                     var mailMessage = new MailMessage
                     {
-                        From = new MailAddress(_senderEmail),
+                        From = new MailAddress(_senderEmail, "noreply@claimservice.com"),
                         Subject = subject,
                         Body = body,
                         IsBodyHtml = true,
