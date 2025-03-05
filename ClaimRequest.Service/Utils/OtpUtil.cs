@@ -15,7 +15,7 @@ namespace ClaimRequest.BLL.Utils
     {
         static string GenerateSecretKey(string email)
         {
-            using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes("secret_salt")))
+            using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes("never_gonna")))
             {
                 byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(email));
                 return Base32Encoding.ToString(hash);
