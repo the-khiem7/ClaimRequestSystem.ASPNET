@@ -4,6 +4,7 @@ using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Exceptions;
+using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
 using ClaimRequest.DAL.Repositories.Interfaces;
@@ -302,23 +303,27 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task<IEnumerable<ViewClaimResponse>> GetClaims(ClaimStatus? status)
+        public async Task<PagingResponse<ViewClaimResponse>> GetClaims(int pageNumber = 1, int pageSize = 20, ClaimStatus? status = null)
         {
             try
             {
+                // Validate claim status
                 if (status.HasValue && !Enum.IsDefined(typeof(ClaimStatus), status.Value))
                 {
                     throw new BadRequestException("Invalid claim status!");
                 }
 
-                var claimRepository = _unitOfWork.GetRepository<Claim>();
-                var claims = await claimRepository.GetListAsync(
-                    c => new { c, c.Claimer, c.Project },
-                    c => !status.HasValue || c.Status == status.Value,
-                    include: q => q.Include(c => c.Claimer).Include(c => c.Project)
+                var response = await _unitOfWork.GetRepository<Claim>().GetPagingListAsync(
+                    include: query => query.AsNoTracking()
+                                           .Include(c => c.Project)
+                                           .Include(c => c.Claimer),
+                    predicate: c => !status.HasValue || c.Status == status.Value,
+                    selector: c => _mapper.Map<ViewClaimResponse>(c),
+                    page: pageNumber,
+                    size: pageSize
                 );
 
-                return _mapper.Map<IEnumerable<ViewClaimResponse>>(claims.Select(c => c.c));
+                return response;
             }
             catch (BadRequestException)
             {
@@ -330,6 +335,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
+
         public async Task<ViewClaimResponse> GetClaimById(Guid id)
         {
             try
