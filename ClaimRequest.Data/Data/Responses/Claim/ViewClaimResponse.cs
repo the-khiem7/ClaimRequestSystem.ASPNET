@@ -8,5 +8,6 @@
         public DateOnly ProjectStartDate { get; set; }
         public DateOnly ProjectEndDate { get; set; }
         public decimal TotalWorkingHours { get; set; }
+        public decimal Amount { get; set; }
     }
 }
