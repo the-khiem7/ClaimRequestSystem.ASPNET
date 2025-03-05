@@ -557,10 +557,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 var existingClaim = (await _unitOfWork.GetRepository<Claim>()
                     .SingleOrDefaultAsync(predicate: c => c.Id == id).ValidateExists(id));
 
-                if (existingClaim == null)
-                {
-                    throw new NotFoundException("Claim not found.");
-                }
 
                 // 🔹 Kiểm tra trạng thái của claim (chỉ được thanh toán khi Approved)
                 if (existingClaim.Status != ClaimStatus.Approved)
