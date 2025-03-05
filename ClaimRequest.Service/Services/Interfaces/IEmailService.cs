@@ -6,6 +6,6 @@ namespace ClaimRequest.BLL.Services.Interfaces
     public interface IEmailService
     {
         Task<bool> SendEmailAsync(SendMailRequest request);
-        Task<SendOtpResponse> SendOtpEmailAsync(SendOtpRequest request);
+        Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request);
     }
 }

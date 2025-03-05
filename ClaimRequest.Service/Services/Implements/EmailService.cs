@@ -14,13 +14,13 @@ namespace ClaimRequest.BLL.Services.Implements
     {
         private readonly IConfiguration _config;
         private readonly ILogger<EmailService> _logger;
-        private readonly OtpUtil _otpUtil;
+        private readonly IOtpService _otpService;
 
-        public EmailService(IConfiguration config, ILogger<EmailService> logger, OtpUtil otpUtil)
+        public EmailService(IConfiguration config, ILogger<EmailService> logger, IOtpService otpService)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _otpUtil = otpUtil ?? throw new ArgumentNullException(nameof(otpUtil));
+            _otpService = otpService ?? throw new ArgumentNullException(nameof(otpService));
         }
 
         public async Task<bool> SendEmailAsync(SendMailRequest request)
@@ -107,13 +107,14 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task<SendOtpResponse> SendOtpEmailAsync(SendOtpRequest request)
+        public async Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request)
         {
-            var response = new SendOtpResponse();
+            var response = new SendOtpEmailResponse();
             try
             {
-                // Generate OTP
-                var otp = await _otpUtil.GenerateOtp(request.Email);
+                // Generate OTP using OtpUtil
+                var otp = OtpUtil.GenerateOtp(request.Email);
+                await _otpService.CreateOtpEntity(request.Email, otp);
 
                 // Create email request
                 var emailRequest = new SendMailRequest

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace ClaimRequest.DAL.Data.Requests.Email
 {
-    public class SendOtpRequest
+    public class SendOtpEmailRequest
     {
         [Required(ErrorMessage = "Recipient email is required")]
         [EmailAddress(ErrorMessage = "Invalid email address")]

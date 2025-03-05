@@ -33,7 +33,7 @@ namespace ClaimRequest.API.Controllers
         }
 
         [HttpPost(ApiEndPointConstant.Email.SendOtp)]
-        public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest request)
+        public async Task<IActionResult> SendOtp([FromBody] SendOtpEmailRequest request)
         {
             if (!ModelState.IsValid)
             {
