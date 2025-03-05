@@ -564,8 +564,9 @@ namespace ClaimRequest.BLL.Services.Implements
                 var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
                 return await executionStrategy.ExecuteAsync(async () =>
                 {
-                    var claim = await _unitOfWork.GetRepository<Claim>()
-                        .GetByIdAsync(id) ?? throw new NotFoundException($"Claim with ID {id} not found.");
+                    var claim = (await _unitOfWork.GetRepository<Claim>()
+                        .GetByIdAsync(id)).ValidateExists(id);
+                        //?? throw new NotFoundException($"Claim with ID {id} not found.");
 
                     if (claim.Status != ClaimStatus.Draft)
                     {
@@ -617,11 +618,13 @@ namespace ClaimRequest.BLL.Services.Implements
 
         private async Task<ClaimApprover> AssignApproverForClaim(Guid claimId)
         {
-            var claim = await _unitOfWork.GetRepository<Claim>()
-                .SingleOrDefaultAsync(predicate: c => c.Id == claimId) ?? throw new NotFoundException($"Claim with ID {claimId} not found.");
+            var claim = (await _unitOfWork.GetRepository<Claim>()
+                .SingleOrDefaultAsync(predicate: c => c.Id == claimId)).ValidateExists(claimId);
+                //?? throw new NotFoundException($"Claim with ID {claimId} not found.");
 
-            var project = await _unitOfWork.GetRepository<Project>()
-                .SingleOrDefaultAsync(predicate: p => p.Id == claim.ProjectId) ?? throw new NotFoundException($"Project for claim with ID {claimId} not found.");
+            var project = (await _unitOfWork.GetRepository<Project>()
+                .SingleOrDefaultAsync(predicate: p => p.Id == claim.ProjectId)).ValidateExists(claim.ProjectId);
+                //?? throw new NotFoundException($"Project for claim with ID {claimId} not found.");
 
             var projectStaffs = await _unitOfWork.GetRepository<ProjectStaff>()
                 .GetListAsync(
@@ -631,7 +634,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
             if (!projectStaffs.Any())
             {
-                throw new KeyNotFoundException($"No active staff members found for project with ID {project.Id}");
+                throw new NotFoundException($"No active staff members found for project with ID {project.Id}");
             }
 
             var potentialApprover = projectStaffs
@@ -652,7 +655,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
             if (approver == null)
             {
-                throw new KeyNotFoundException($"No eligible approver found for claim {claimId}");
+                throw new NotFoundException($"No eligible approver found for claim {claimId}");
             }
 
             return new ClaimApprover
