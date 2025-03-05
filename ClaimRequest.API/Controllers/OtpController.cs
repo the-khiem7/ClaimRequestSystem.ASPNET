@@ -1,6 +1,8 @@
 ﻿using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
+using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Otp;
+using ClaimRequest.DAL.Data.Responses.Otp;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClaimRequest.API.Controllers
@@ -16,22 +18,39 @@ namespace ClaimRequest.API.Controllers
         }
 
         [HttpPost(ApiEndPointConstant.Otp.ValidateOtp)]
+        [ProducesResponseType(typeof(ValidateOtpResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ValidateOtp([FromBody] ValidateOtpRequest request)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status400BadRequest,
+                    "Invalid request",
+                    "The request data is invalid"
+                ));
             }
 
             var response = await _otpService.ValidateOtp(request.Email, request.Otp);
 
             if (response.Success)
             {
-                return Ok(response);
+                return Ok(ApiResponseBuilder.BuildResponse(
+                    StatusCodes.Status200OK,
+                    "OTP validated successfully",
+                    response
+                ));
             }
             else
             {
-                return BadRequest(response);
+                return BadRequest(ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status400BadRequest,
+                    "OTP validation failed",
+                    response.Message
+                ));
             }
         }
     }

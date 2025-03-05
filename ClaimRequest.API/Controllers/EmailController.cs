@@ -1,6 +1,8 @@
 ﻿using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
+using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Email;
+using ClaimRequest.DAL.Data.Responses.Email;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClaimRequest.API.Controllers
@@ -33,20 +35,37 @@ namespace ClaimRequest.API.Controllers
         }
 
         [HttpPost(ApiEndPointConstant.Email.SendOtp)]
+        [ProducesResponseType(typeof(SendOtpEmailResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> SendOtp([FromBody] SendOtpEmailRequest request)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status400BadRequest,
+                    "Invalid request",
+                    "The request data is invalid"
+                ));
             }
 
             var result = await _emailService.SendOtpEmailAsync(request);
             if (!result.Success)
             {
-                return StatusCode(500, result.Message);
+                return StatusCode(500, ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status500InternalServerError,
+                    "Failed to send OTP",
+                    result.Message
+                ));
             }
 
-            return Ok(result.Message);
+            return Ok(ApiResponseBuilder.BuildResponse(
+                StatusCodes.Status200OK,
+                "OTP sent successfully",
+                result
+            ));
         }
     }
 }
