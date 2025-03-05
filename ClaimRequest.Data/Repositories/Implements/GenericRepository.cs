@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
@@ -78,6 +79,26 @@ namespace ClaimRequest.DAL.Repositories.Implements
         {
             if (predicate != null) return await _dbSet.CountAsync(predicate);
             return await _dbSet.CountAsync();
+        }
+
+        public Task<PagingResponse<T>> GetPagingListAsync(Expression<Func<T, bool>> predicate = null, Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null, Func<IQueryable<T>, IIncludableQueryable<T, object>> include = null, int page = 1,
+            int size = 10)
+        {
+            IQueryable<T> query = _dbSet;
+            if (include != null) query = include(query);
+            if (predicate != null) query = query.Where(predicate);
+            if (orderBy != null) return orderBy(query).ToPagingResponse(page, size, 1);
+            return query.AsNoTracking().ToPagingResponse(page, size, 1);
+        }
+
+        public Task<PagingResponse<TResult>> GetPagingListAsync<TResult>(Expression<Func<T, TResult>> selector, Expression<Func<T, bool>> predicate = null, Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null,
+            Func<IQueryable<T>, IIncludableQueryable<T, object>> include = null, int page = 1, int size = 10)
+        {
+            IQueryable<T> query = _dbSet;
+            if (include != null) query = include(query);
+            if (predicate != null) query = query.Where(predicate);
+            if (orderBy != null) return orderBy(query).Select(selector).ToPagingResponse(page, size, 1);
+            return query.AsNoTracking().Select(selector).ToPagingResponse(page, size, 1);
         }
 
         #endregion
