@@ -27,6 +27,7 @@ namespace ClaimRequest.BLL.Services.Implements
         {
         }
 
+        // Audit Trails (Changelog)
         private async Task LogChangeAsync(Guid claimId, string field, string oldValue, string newValue, string changedBy)
         {
             var changeLog = new ClaimChangeLog
@@ -371,10 +372,7 @@ namespace ClaimRequest.BLL.Services.Implements
                                 include: q => q.Include(c => c.ClaimApprovers)
                             );
 
-                        if (pendingClaim == null)
-                        {
-                            throw new KeyNotFoundException($"Claim with ID {id} not found.");
-                        }
+                        pendingClaim.ValidateExists(id);
 
                         if (pendingClaim.Status != ClaimStatus.Pending)
                         {
@@ -391,24 +389,21 @@ namespace ClaimRequest.BLL.Services.Implements
                             throw new BadRequestException($"Approver with ID {rejectClaimRequest.ApproverId} has already rejected this claim.");
                         }
 
-                        var project = await _unitOfWork.GetRepository<Project>()
-                    .SingleOrDefaultAsync(
-                            predicate: s => s.Id == pendingClaim.ProjectId,
-                            include: q => q.Include(p => p.ProjectManager)
+                        var approver = await _unitOfWork.GetRepository<Staff>()
+                        .SingleOrDefaultAsync(
+                            predicate: s => s.Id == rejectClaimRequest.ApproverId
                             );
 
-                        if (project == null)
+                        approver.ValidateExists(rejectClaimRequest.ApproverId);
+
+                        // Kiểm tra xem Approver có đúng Role hay không
+                        if (approver.SystemRole != SystemRole.Approver)
                         {
-                            throw new NotFoundException($"Project for claim with ID {id} not found.");
+                            throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
                         }
 
-                        // Kiểm tra xem Approver có phải Project Manager của dự án đó không
-                        if (project.ProjectManagerId != rejectClaimRequest.ApproverId)
-                        {
-                            throw new UnauthorizedAccessException($"Approver with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
-                        }
+                        var approverName = approver.Name ?? "Unknown Approver";
 
-                        var approverName = project?.ProjectManager?.Name ?? "Unknown Approver";
 
                         // Nếu claim chưa có approver thì tạo mới
                         var newApprover = new ClaimApprover
