@@ -39,9 +39,9 @@ namespace ClaimRequest.API.Controllers
 
         [HttpGet(ApiEndPointConstant.Claim.ClaimsEndpoint)]
         [ProducesResponseType(typeof(IEnumerable<ViewClaimResponse>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status)
+        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var response = await _claimService.GetClaims(status);
+            var response = await _claimService.GetClaims(pageNumber, pageSize, status);
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: "Get claims successfully!",
                 data: response,
