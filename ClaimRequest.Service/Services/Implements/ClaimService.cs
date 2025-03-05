@@ -27,6 +27,23 @@ namespace ClaimRequest.BLL.Services.Implements
         {
         }
 
+        private async Task LogChangeAsync(Guid claimId, string field, string oldValue, string newValue, string changedBy)
+        {
+            var changeLog = new ClaimChangeLog
+            {
+                HistoryId = Guid.NewGuid(),
+                ClaimId = claimId,
+                FieldChanged = field,
+                OldValue = oldValue,
+                NewValue = newValue,
+                ChangedAt = DateTime.UtcNow,
+                ChangedBy = changedBy
+            };
+
+            await _unitOfWork.GetRepository<ClaimChangeLog>().InsertAsync(changeLog);
+        }
+
+
         #region Nguyen_Anh_Quan
         public async Task<CancelClaimResponse> CancelClaim(CancelClaimRequest cancelClaimRequest)
         {
@@ -407,17 +424,7 @@ namespace ClaimRequest.BLL.Services.Implements
                         _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
 
                         // Chỉ ghi changelog khi approver lần đầu reject (Audit Trails)
-                        var changeLog = new ClaimChangeLog
-                        {
-                            HistoryId = Guid.NewGuid(),
-                            ClaimId = pendingClaim.Id,
-                            FieldChanged = "Claim Status",
-                            OldValue = "Pending",
-                            NewValue = pendingClaim.Status.ToString(),
-                            ChangedAt = DateTime.UtcNow,
-                            ChangedBy = approverName
-                        };
-                        await _unitOfWork.GetRepository<ClaimChangeLog>().InsertAsync(changeLog);
+                        await LogChangeAsync(pendingClaim.Id, "Claim Status", "Pending", ClaimStatus.Rejected.ToString(), approverName);
 
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();
