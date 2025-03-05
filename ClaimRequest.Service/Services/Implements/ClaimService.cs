@@ -28,10 +28,6 @@ namespace ClaimRequest.BLL.Services.Implements
         {
         }
 
-<<<<<<< HEAD
-        // Audit Trails (Changelog)
-=======
->>>>>>> 4335c48bfa57cc79e76a0857be495fa575232318
         private async Task LogChangeAsync(Guid claimId, string field, string oldValue, string newValue, string changedBy)
         {
             var changeLog = new ClaimChangeLog
