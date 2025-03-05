@@ -16,6 +16,7 @@ namespace ClaimRequest.API.Controllers
         #region Create Class Referrence
         private readonly IClaimService _claimService;
         private readonly IMapper _mapper;
+        public readonly IEmailService _emailService;
         #endregion
 
         #region Contructor
@@ -37,6 +38,7 @@ namespace ClaimRequest.API.Controllers
                 _logger.LogError("Create claim failed");
                 return Problem("Create claim failed");
             }
+            await _emailService.SendClaimSubmittedEmail(createClaimRequest.ClaimerId);
             return CreatedAtAction(nameof(CreateClaim), response);
         }
 
@@ -163,6 +165,8 @@ namespace ClaimRequest.API.Controllers
             try
             {
                 var response = await _claimService.ApproveClaim(id, approveClaimRequest);
+                await _emailService.SendManagerApprovedEmail(approveClaimRequest.ApproverId);
+                await _emailService.SendClaimSubmittedEmail(id);
                 return Ok(response);
             }
             catch (NotFoundException ex)
@@ -207,6 +211,7 @@ namespace ClaimRequest.API.Controllers
                     "Claim returned successfully",
                     returnedClaim
                 );
+                await _emailService.SendClaimSubmittedEmail(id);
                 return Ok(successResponse);
             }
             catch (Exception ex)
@@ -221,6 +226,7 @@ namespace ClaimRequest.API.Controllers
                 );
                 return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
             }
+
         }
     }
 }
