@@ -379,27 +379,29 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         pendingClaim.ValidateExists(id);
 
+                        // Check claim status
                         if (pendingClaim.Status != ClaimStatus.Pending)
                         {
                             throw new InvalidOperationException($"Claim with ID {id} is not in pending status.");
-                        }
-
-                        // Find Claim's Approver
-                        var existingApprover = pendingClaim.ClaimApprovers
-                            .FirstOrDefault(ca => ca.ApproverId == rejectClaimRequest.ApproverId);
-
-                        // Check if approver exist
-                        if (existingApprover != null)
-                        {
-                            throw new BadRequestException($"Approver with ID {rejectClaimRequest.ApproverId} has already rejected this claim.");
                         }
 
                         var approver = await _unitOfWork.GetRepository<Staff>()
                         .SingleOrDefaultAsync(
                             predicate: s => s.Id == rejectClaimRequest.ApproverId
                             );
-
                         approver.ValidateExists(rejectClaimRequest.ApproverId);
+
+                        var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
+                        .SingleOrDefaultAsync(
+                            predicate: ps => ps.StaffId == rejectClaimRequest.ApproverId 
+                            && ps.ProjectId == pendingClaim.ProjectId
+                            );
+
+                        // Check if approver belongs in the claim's project
+                        if (projectStaff == null)
+                        {
+                            throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} is not in the right project to reject this claim.");
+                        }
 
                         // Check approver permission
                         if (approver.SystemRole != SystemRole.Approver)
@@ -409,6 +411,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         var approverName = approver.Name ?? "Unknown Approver";
 
+                        // If the claim has not been check then update
                         var newApprover = new ClaimApprover
                         {
                             ClaimId = pendingClaim.Id,
@@ -442,7 +445,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-
 
         public async Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest)
         {
