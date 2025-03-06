@@ -22,6 +22,7 @@
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
 		<PackageReference Include="NETCore.MailKit" Version="2.1.0" />
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.6.0" />
+		<PackageReference Include="Otp.NET" Version="1.4.0" />
 	</ItemGroup>
 
 </Project>
