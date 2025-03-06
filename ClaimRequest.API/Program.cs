@@ -171,10 +171,18 @@ app.UseHttpsRedirection();
 
 app.UseCors(options =>
 {
-    options.AllowAnyOrigin();
+    app.UseCors(options =>
+    {
+        options.WithOrigins("http://localhost:5173")
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
     options.AllowAnyMethod();
     options.AllowAnyHeader();
 });
+
+
 
 app.UseAuthorization();
 
