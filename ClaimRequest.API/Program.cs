@@ -92,6 +92,7 @@ builder.Services.AddScoped<IStaffService, StaffService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 
 //Serilize enum to string
@@ -134,6 +135,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+builder.Services.AddAuthorization();
 // Update the Kestrel configuration
 //builder.WebHost.ConfigureKestrel(serverOptions =>
 //{
@@ -146,6 +148,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 //});
 
 var app = builder.Build();
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -170,10 +173,18 @@ app.UseHttpsRedirection();
 
 app.UseCors(options =>
 {
-    options.AllowAnyOrigin();
+    app.UseCors(options =>
+    {
+        options.WithOrigins("http://localhost:5173")
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
     options.AllowAnyMethod();
     options.AllowAnyHeader();
 });
+
+
 
 app.UseAuthorization();
 

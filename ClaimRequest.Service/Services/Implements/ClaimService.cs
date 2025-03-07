@@ -480,7 +480,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                     if (!isApproverAllowed)
                     {
-                        throw new UnauthorizedAccessException($"Approver with ID {approverId} does not have permission to approve claim ID {id}.");
+                        throw new UnauthorizedAccessException($"Approver with ID {approverId} does not have permission to this claim");
                     }
 
                     _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approverId);
@@ -489,6 +489,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     claimRepo.UpdateAsync(pendingClaim);
 
                     await _unitOfWork.CommitAsync();
+                    await transaction.CommitAsync();
 
                     return true;
                 }
