@@ -39,9 +39,9 @@ namespace ClaimRequest.API.Controllers
 
         [HttpGet(ApiEndPointConstant.Claim.ClaimsEndpoint)]
         [ProducesResponseType(typeof(IEnumerable<ViewClaimResponse>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status)
+        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var response = await _claimService.GetClaims(status);
+            var response = await _claimService.GetClaims(pageNumber, pageSize, status);
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: "Get claims successfully!",
                 data: response,
@@ -152,14 +152,15 @@ namespace ClaimRequest.API.Controllers
         }
 
         [HttpPut(ApiEndPointConstant.Claim.ApproveClaimEndpoint)]
-        [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id, [FromBody] ApproveClaimRequest approveClaimRequest)
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ApproveClaim([FromHeader] Guid approverId, [FromRoute] Guid id)
         {
             try
             {
-                var response = await _claimService.ApproveClaim(id, approveClaimRequest);
+                var response = await _claimService.ApproveClaim(approverId, id);
                 return Ok(response);
             }
             catch (NotFoundException ex)
