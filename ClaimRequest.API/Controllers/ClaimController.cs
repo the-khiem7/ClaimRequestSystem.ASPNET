@@ -102,7 +102,6 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
-        [Authorize]
         [HttpPut(ApiEndPointConstant.Claim.RejectClaimEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

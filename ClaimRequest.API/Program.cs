@@ -135,7 +135,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
 // Update the Kestrel configuration
 //builder.WebHost.ConfigureKestrel(serverOptions =>
 //{
