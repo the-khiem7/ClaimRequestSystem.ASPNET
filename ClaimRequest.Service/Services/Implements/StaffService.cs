@@ -4,6 +4,7 @@ using AutoMapper;
 using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
+using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Staff;
 using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.DAL.Repositories.Interfaces;
@@ -192,6 +193,68 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
+        public async Task<AssignStaffResponse> AssignStaff(Guid id ,AssignStaffRequest assignStaffRequest)
+        {
+            try
+            {
+                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+
+                return await executionStrategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
+                    try
+                    {
+                        // Validate staff if exists
+                        var existingStaff = (await _unitOfWork.GetRepository<Staff>()
+                            .SingleOrDefaultAsync(
+                                predicate: s => s.Id == id && s.IsActive
+                            )).ValidateExists(id);
+
+                        var existingProject = await _unitOfWork.GetRepository<Project>()
+                            .SingleOrDefaultAsync(
+                            predicate: p => p.Id == assignStaffRequest.projectId
+                            ).ValidateExists(assignStaffRequest.projectId);
+
+                        if (!Enum.IsDefined(typeof(ProjectRole), assignStaffRequest.ProjectRole))
+                        {
+                            throw new BadRequestException("Invalid project role.");
+                        }
+
+                        // Check if staff is assign to the project
+                        var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
+                            .SingleOrDefaultAsync(predicate: s => s.StaffId == id
+                            && s.ProjectId == assignStaffRequest.projectId);
+
+                        if (projectStaff != null)
+                        {
+                            throw new BadRequestException("Staff already assign to this project.");
+                        }
+
+                        // Assign staff to project
+                        var newProjectStaff = _mapper.Map<ProjectStaff>(assignStaffRequest);
+                        newProjectStaff.Id = Guid.NewGuid();
+                        newProjectStaff.StaffId = id;
+
+                        await _unitOfWork.GetRepository<ProjectStaff>().InsertAsync(newProjectStaff);
+
+                        await _unitOfWork.CommitAsync();
+                        await transaction.CommitAsync();
+
+                        return _mapper.Map<AssignStaffResponse>(newProjectStaff);
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error Assigning staff member: {Message}", ex.Message);
+                throw;
+            }
+        }
 
         public static class PasswordHasher
         {

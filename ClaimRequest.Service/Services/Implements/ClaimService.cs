@@ -376,7 +376,6 @@ namespace ClaimRequest.BLL.Services.Implements
                                 predicate: s => s.Id == id,
                                 include: q => q.Include(c => c.ClaimApprovers)
                             );
-
                         pendingClaim.ValidateExists(id);
 
                         // Check claim status
@@ -391,6 +390,13 @@ namespace ClaimRequest.BLL.Services.Implements
                             );
                         approver.ValidateExists(rejectClaimRequest.ApproverId);
 
+                        // Check approver permission
+                        if (approver.SystemRole != SystemRole.Approver)
+                        {
+                            throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
+                        }
+                        var approverName = approver.Name ?? "Unknown Approver";
+
                         var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
                         .SingleOrDefaultAsync(
                             predicate: ps => ps.StaffId == rejectClaimRequest.ApproverId 
@@ -402,14 +408,6 @@ namespace ClaimRequest.BLL.Services.Implements
                         {
                             throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} is not in the right project to reject this claim.");
                         }
-
-                        // Check approver permission
-                        if (approver.SystemRole != SystemRole.Approver)
-                        {
-                            throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
-                        }
-
-                        var approverName = approver.Name ?? "Unknown Approver";
 
                         // If the claim has not been check then update
                         var newApprover = new ClaimApprover

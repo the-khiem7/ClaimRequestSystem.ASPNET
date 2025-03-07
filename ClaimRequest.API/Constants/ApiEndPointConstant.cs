@@ -49,6 +49,7 @@ namespace ClaimRequest.API.Constants
             public const string StaffEndpointById = StaffsEndpoint + "/{id}";
             public const string UpdateStaffEndpoint = StaffEndpointById + "/update";
             public const string DeleteStaffEndpoint = StaffEndpointById + "/delete";
+            public const string AssignStaffEndpoint = StaffEndpointById + "/assign";
         }
     }
 }

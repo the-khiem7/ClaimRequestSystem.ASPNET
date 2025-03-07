@@ -12,6 +12,6 @@ namespace ClaimRequest.BLL.Services.Interfaces
         Task<IEnumerable<CreateStaffResponse>> GetStaffs();
         Task<UpdateStaffResponse> UpdateStaff(Guid id, UpdateStaffRequest updateStaffRequest);
         Task<bool> DeleteStaff(Guid id);
-
+        Task<AssignStaffResponse> AssignStaff(Guid id ,AssignStaffRequest assignStaffRequest);
     }
 }

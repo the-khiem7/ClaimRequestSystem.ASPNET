@@ -102,5 +102,37 @@ namespace ClaimRequest.API.Controllers
                 )
             );
         }
+
+        [HttpPost(ApiEndPointConstant.Staffs.AssignStaffEndpoint)]
+        [ProducesResponseType(typeof(ApiResponse<AssignStaffResponse>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> AssignStaff(Guid id ,[FromBody] AssignStaffRequest request)
+        {
+            var response = await _staffService.AssignStaff(id ,request);
+
+            if (response == null)
+            {
+                return BadRequest(
+                    ApiResponseBuilder.BuildErrorResponse<object>(
+                        null,
+                        StatusCodes.Status400BadRequest,
+                        "Failed to assign staff",
+                        "The staff assigning process failed"
+                    )
+                );
+            }
+
+            return CreatedAtAction(
+                nameof(GetStaffById),
+                new { id = response.Id },
+                ApiResponseBuilder.BuildResponse(
+                    StatusCodes.Status201Created,
+                    "Staff assigned to project successfully",
+                    response
+                )
+            );
+        }
+
     }
 }
