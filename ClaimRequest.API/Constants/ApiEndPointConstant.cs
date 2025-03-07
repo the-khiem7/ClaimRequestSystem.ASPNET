@@ -32,8 +32,13 @@ namespace ClaimRequest.API.Constants
         {
             public const string EmailEndpoint = ApiEndpoint + "/email";
             public const string SendEmail = EmailEndpoint + "/send";
+            public const string SendOtp = EmailEndpoint + "/send-otp";
         }
-
+        public static class Otp
+        {
+            public const string OtpEndpoint = ApiEndpoint + "/otp";
+            public const string ValidateOtp = OtpEndpoint + "/validate";
+        }
         public static class Projects
         {
             public const string ProjectsEndpoint = ApiEndpoint + "/projects";
