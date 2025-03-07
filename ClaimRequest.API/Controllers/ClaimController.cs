@@ -16,13 +16,15 @@ namespace ClaimRequest.API.Controllers
         #region Create Class Referrence
         private readonly IClaimService _claimService;
         private readonly IMapper _mapper;
+        private readonly IEmailService _emailService;
         #endregion
 
         #region Contructor
-        public ClaimController(ILogger<ClaimController> logger, IClaimService claimService, IMapper mapper) : base(logger)
+        public ClaimController(ILogger<ClaimController> logger, IClaimService claimService, IMapper mapper, IEmailService emailService) : base(logger)
         {
             _claimService = claimService;
             _mapper = mapper;
+            _emailService = emailService;
         }
         #endregion
 
@@ -158,11 +160,13 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id, [FromBody] ApproveClaimRequest approveClaimRequest)
+        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id, [FromRoute] Guid approverId)
         {
             try
             {
-                var response = await _claimService.ApproveClaim(id, approveClaimRequest);
+                var response = await _claimService.ApproveClaim(id, approverId);
+                await _emailService.SendClaimApprovedEmail(id);
+                await _emailService.SendManagerApprovedEmail(id, approverId);
                 return Ok(response);
             }
             catch (NotFoundException ex)

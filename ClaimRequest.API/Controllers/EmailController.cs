@@ -49,15 +49,15 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
-        [HttpPost("send-manager-approved/{claimId}")]
+        [HttpPost("send-manager-approved/{approverId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> SendManagerApprovedEmail(Guid claimId)
+        public async Task<IActionResult> SendManagerApprovedEmail(Guid Id, Guid approverId)
         {
             try
             {
-                await _emailService.SendManagerApprovedEmail(claimId);
+                await _emailService.SendManagerApprovedEmail(Id, approverId);
                 return Ok(new { message = "Email sent successfully." });
             }
             catch (Exception ex)

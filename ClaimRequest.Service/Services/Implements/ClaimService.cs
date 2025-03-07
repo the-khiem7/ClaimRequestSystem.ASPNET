@@ -440,7 +440,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest)
+        public async Task<ApproveClaimResponse> ApproveClaim(Guid id, Guid approverId)
         {
             var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
@@ -455,7 +455,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     var pendingClaim = (await claimRepo.SingleOrDefaultAsync(
                         predicate: s => s.Id == id,
                         include: s => s.Include(c => c.ClaimApprovers)
-                    )).ValidateExists(id, "Claim"); ;
+                    )).ValidateExists(id); ;
 
 
                     if (pendingClaim.Status != ClaimStatus.Pending)
@@ -464,16 +464,15 @@ namespace ClaimRequest.BLL.Services.Implements
                     }
 
                     var isApproverAllowed = pendingClaim.ClaimApprovers
-                        .Any(ca => ca.ApproverId == approveClaimRequest.ApproverId);
+                        .Any(ca => ca.ApproverId == approverId);
 
                     if (!isApproverAllowed)
                     {
-                        throw new UnauthorizedAccessException($"Approver with ID {approveClaimRequest.ApproverId} does not have permission to approve claim ID {id}.");
+                        throw new UnauthorizedAccessException($"Approver with ID {approverId} does not have permission to approve claim ID {id}.");
                     }
 
-                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approveClaimRequest.ApproverId);
+                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approverId);
 
-                    _mapper.Map(approveClaimRequest, pendingClaim);
                     pendingClaim.Status = ClaimStatus.Approved;
 
                     claimRepo.UpdateAsync(pendingClaim);
@@ -482,7 +481,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     await transaction.CommitAsync();
 
                     var response = _mapper.Map<ApproveClaimResponse>(pendingClaim);
-                    response.ApproverId = approveClaimRequest.ApproverId;
+                    response.ApproverId = approverId;
                     return response;
                 }
                 catch (Exception)

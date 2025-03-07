@@ -80,39 +80,34 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-
-        public async Task SendManagerApprovedEmail(Guid claimId)
+        public async Task SendManagerApprovedEmail(Guid approverId, Guid Id)
         {
             try
             {
-                Claim claim = await _claimService.GetClaimById(claimId);
-                if (claim == null)
-                    throw new Exception("Claim not found.");
-
-
-
+                var claim = await _claimService.GetClaimById(Id);
                 string projectName = claim.Project.Name;
+                var updatedDate = claim.UpdateAt.ToString("yyyy-MM-dd HH:mm:ss");
+                var approver = await _staffService.GetStaffById(approverId);
 
-                var updatedDate = claim.UpdateAt.ToString("yyyy-MM-dd HH:mm:ss");   
+                string recipientEmail = approver.Email;
+                string subject = $"Claim Request for {projectName} - {approver.ResponseName} ({approver.Id})";
 
-                CreateStaffResponse claimer = await _staffService.GetStaffById(claim.ClaimerId);
-                string recipientEmail = claimer.Email;
-                string subject = $"Claim Request for {projectName} - {claimer.ResponseName} ({claimer.Id})";
-
-
+                // Load email template
                 string templatePath = Path.Combine(AppContext.BaseDirectory, "Services", "Templates", "ManagerApprovedEmailTemplate.html");
                 string body = await File.ReadAllTextAsync(templatePath);
 
-                body = body.Replace("{ClaimerName}", claimer.ResponseName)
+                // Thay thế dữ liệu trong template
+                body = body.Replace("{ClaimerName}", approver.ResponseName)
                            .Replace("{ProjectName}", projectName)
-                           .Replace("{ClaimerId}", claimer.Id.ToString())
+                           .Replace("{ClaimerId}", approver.Id.ToString())
                            .Replace("{UpdatedDate}", updatedDate);
 
+                // Gửi email
                 await SendEmailAsync(recipientEmail, subject, body);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending claim returned email with claimId: {claimId}", claimId);
+                _logger.LogError(ex, "Error sending manager approved email for approverId: {ApproverId}", approverId);
                 throw;
             }
         }
