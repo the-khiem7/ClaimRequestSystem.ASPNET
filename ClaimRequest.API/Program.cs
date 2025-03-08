@@ -92,7 +92,7 @@ builder.Services.AddScoped<IStaffService, StaffService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-
+builder.Services.AddScoped<IOtpService, OtpService>();
 
 //Serilize enum to string
 builder.Services.AddControllers().AddJsonOptions(options =>
@@ -170,10 +170,18 @@ app.UseHttpsRedirection();
 
 app.UseCors(options =>
 {
-    options.AllowAnyOrigin();
+    app.UseCors(options =>
+    {
+        options.WithOrigins("http://localhost:5173")
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
     options.AllowAnyMethod();
     options.AllowAnyHeader();
 });
+
+
 
 app.UseAuthorization();
 
