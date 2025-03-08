@@ -194,18 +194,12 @@ app.UseHttpsRedirection();
 
 app.UseCors(options =>
 {
-    app.UseCors(options =>
-    {
-        options.WithOrigins("http://localhost:5173")
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials();
-    });
-    options.AllowAnyMethod();
-    options.AllowAnyHeader();
+     options.SetIsOriginAllowed(origin => 
+        origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:"))
+           .AllowAnyMethod()
+           .AllowAnyHeader()
+           .AllowCredentials();
 });
-
-
 
 app.UseAuthorization();
 
