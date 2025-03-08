@@ -132,6 +132,24 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration.GetSection("Jwt:Audience").Get<string>(),
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
         };
+        
+        // Add this to automatically prepend "Bearer " to the token
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Headers["Authorization"].FirstOrDefault();
+                
+                // If token exists but doesn't start with "Bearer "
+                if (!string.IsNullOrEmpty(accessToken) && !accessToken.StartsWith("Bearer "))
+                {
+                    // Add "Bearer " prefix
+                    context.Request.Headers["Authorization"] = "Bearer " + accessToken;
+                }
+                
+                return Task.CompletedTask;
+            }
+        };
     });
 
 // Update the Kestrel configuration
