@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using AutoMapper;
 using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
@@ -556,6 +556,68 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
+
+        public async Task<bool> PaidClaim(Guid id, Guid financeId)
+        {
+            try
+            {
+                var existingClaim = (await _unitOfWork.GetRepository<Claim>()
+                    .SingleOrDefaultAsync(predicate: c => c.Id == id).ValidateExists(id));
+
+
+                // 🔹 Kiểm tra trạng thái của claim (chỉ được thanh toán khi Approved)
+                if (existingClaim.Status != ClaimStatus.Approved)
+                {
+                    throw new BusinessException($"Cannot mark as Paid when the status is not Approved. Current Status: {existingClaim.Status}");
+                }
+
+                // 🔹 Kiểm tra Finance Staff có hợp lệ không
+                var finance = await _unitOfWork.GetRepository<Staff>()
+                    .SingleOrDefaultAsync(predicate: s => s.Id == financeId && s.SystemRole == SystemRole.Finance);
+
+                if (finance == null)
+                {
+                    throw new BadRequestException($"Finance staff with ID {financeId} not found or does not have the Finance role.");
+                }
+
+                // 🔹 Cập nhật trạng thái của claim thành "Paid"
+                var oldStatus = existingClaim.Status;
+                existingClaim.Status = ClaimStatus.Paid;
+                _unitOfWork.GetRepository<Claim>().UpdateAsync(existingClaim);
+                await _unitOfWork.CommitAsync(); // Lưu thay đổi vào DB
+
+                // 🔹 Ghi log thay đổi trạng thái
+                var claimLog = new ClaimChangeLog
+                {
+                    HistoryId = Guid.NewGuid(),
+                    ClaimId = existingClaim.Id,
+                    FieldChanged = "Status",
+                    OldValue = oldStatus.ToString(),
+                    NewValue = ClaimStatus.Paid.ToString(),
+                    ChangedAt = DateTime.UtcNow,
+                    ChangedBy = finance.Name ?? "System"
+                };
+
+                await _unitOfWork.GetRepository<ClaimChangeLog>().InsertAsync(claimLog);
+                await _unitOfWork.CommitAsync(); // Lưu log vào DB
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error Paid Claim: {Message}", ex.Message);
+
+                if (ex.InnerException != null)
+                {
+                    _logger.LogError("Inner Exception: {InnerMessage}", ex.InnerException.Message);
+                }
+
+                throw;
+            }
+        }
+
+
+
 
 
     }
