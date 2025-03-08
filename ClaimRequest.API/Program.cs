@@ -155,55 +155,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 // Add authorization with policies for different roles and operations
 builder.Services.AddAuthorization(options =>
 {
-    // Cac policy dua tren vai tro
-    options.AddPolicy("RequireAdminRole", policy => policy.RequireRole("Admin"));
-    options.AddPolicy("RequireFinanceRole", policy => policy.RequireRole("Finance"));
-    options.AddPolicy("RequireApproverRole", policy => policy.RequireRole("Approver"));
-    options.AddPolicy("RequireStaffRole", policy => policy.RequireRole("Staff"));
-    
-    // Policy cho phep tat ca vai tro da xac thuc
-    options.AddPolicy("RequireAnyRole", policy => 
-        policy.RequireRole("Admin", "Finance", "Approver", "Staff"));
-    
-    // Cac policy cu the cho tung thao tac dua tren bang phan quyen trong srs
-    options.AddPolicy("CanCreateClaim", policy => 
-        policy.RequireRole("Staff"));
-
-    options.AddPolicy("CanViewClaims", policy => 
-        policy.RequireRole("Staff", "Approver", "Finance", "Admin"));
-    
-    options.AddPolicy("CanUpdateClaim", policy => 
-        policy.RequireRole("Staff"));
-    
-    options.AddPolicy("CanSubmitClaim", policy => 
-        policy.RequireRole("Staff"));
-    
-    options.AddPolicy("CanApproveClaim", policy => 
-        policy.RequireRole("Approver"));
-    
-    options.AddPolicy("CanRejectClaim", policy => 
-        policy.RequireRole("Approver"));
-    
-    options.AddPolicy("CanReturnClaim", policy => 
-        policy.RequireRole("Approver", "Finance"));
-    
-    options.AddPolicy("CanCancelClaim", policy => 
-        policy.RequireRole("Staff"));
-    
-    options.AddPolicy("CanProcessPayment", policy => 
-        policy.RequireRole("Finance"));
-    
-    options.AddPolicy("CanDownloadClaim", policy => 
-        policy.RequireRole("Finance"));
-
-    // Admin flow
-    // Policy cho phep quan ly nhan vien va du an
-
-    options.AddPolicy("CanManageStaff", policy => 
-        policy.RequireRole("Admin"));
-    
-    options.AddPolicy("CanManageProjects", policy => 
-        policy.RequireRole("Admin"));
+    options.AddClaimRequestPolicies();
 });
 
 // Update the Kestrel configuration
