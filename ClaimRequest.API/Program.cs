@@ -6,6 +6,7 @@ using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
+using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Repositories.Implements;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -148,6 +149,35 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 }
                 
                 return Task.CompletedTask;
+            },
+            
+            // Add custom response for unauthorized requests
+            OnChallenge = async context =>
+            {
+                // Skip the default logic
+                context.HandleResponse();
+                
+                // Set the response status code
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.ContentType = "application/json";
+                
+                // Create a custom response
+                var response = new ApiResponse<object>
+                {
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = "Unauthorized access",
+                    Reason = "Authentication failed. Please provide a valid token.",
+                    IsSuccess = false,
+                    Data = new
+                    {
+                        Path = context.Request.Path,
+                        Method = context.Request.Method,
+                        Timestamp = DateTime.UtcNow
+                    }
+                };
+                
+                // Write the response
+                await context.Response.WriteAsJsonAsync(response);
             }
         };
     });
