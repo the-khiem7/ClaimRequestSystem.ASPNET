@@ -1,14 +1,15 @@
-
 using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Project;
 using ClaimRequest.DAL.Data.Responses.Project;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClaimRequest.API.Controllers
 {
     [ApiController]
+    [Authorize(Policy = "CanManageProjects")]
     public class ProjectsController : BaseController<ProjectsController>
     {
         private readonly IProjectService _projectService;
@@ -90,8 +91,6 @@ namespace ClaimRequest.API.Controllers
                 updatedProject
             ));
         }
-
-
 
         [HttpDelete(ApiEndPointConstant.Projects.DeleteProjectEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
