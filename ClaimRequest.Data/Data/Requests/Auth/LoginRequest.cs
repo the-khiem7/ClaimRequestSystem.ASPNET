@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace ClaimRequest.DAL.Data.Requests
+namespace ClaimRequest.DAL.Data.Requests.Auth
 {
     public class LoginRequest
     {
