@@ -6,6 +6,7 @@ using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
+using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Repositories.Implements;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -132,7 +133,60 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration.GetSection("Jwt:Audience").Get<string>(),
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
         };
+        
+        // Add this to automatically prepend "Bearer " to the token
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Headers["Authorization"].FirstOrDefault();
+                
+                // If token exists but doesn't start with "Bearer "
+                if (!string.IsNullOrEmpty(accessToken) && !accessToken.StartsWith("Bearer "))
+                {
+                    // Add "Bearer " prefix
+                    context.Request.Headers["Authorization"] = "Bearer " + accessToken;
+                }
+                
+                return Task.CompletedTask;
+            },
+            
+            // Add custom response for unauthorized requests
+            OnChallenge = async context =>
+            {
+                // Skip the default logic
+                context.HandleResponse();
+                
+                // Set the response status code
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.ContentType = "application/json";
+                
+                // Create a custom response
+                var response = new ApiResponse<object>
+                {
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = "Unauthorized access",
+                    Reason = "Authentication failed. Please provide a valid token.",
+                    IsSuccess = false,
+                    Data = new
+                    {
+                        Path = context.Request.Path,
+                        Method = context.Request.Method,
+                        Timestamp = DateTime.UtcNow
+                    }
+                };
+                
+                // Write the response
+                await context.Response.WriteAsJsonAsync(response);
+            }
+        };
     });
+
+// Add authorization with policies for different roles and operations
+builder.Services.AddAuthorization(options =>
+{
+    options.AddClaimRequestPolicies();
+});
 
 // Update the Kestrel configuration
 //builder.WebHost.ConfigureKestrel(serverOptions =>
@@ -170,18 +224,12 @@ app.UseHttpsRedirection();
 
 app.UseCors(options =>
 {
-    app.UseCors(options =>
-    {
-        options.WithOrigins("http://localhost:5173")
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials();
-    });
-    options.AllowAnyMethod();
-    options.AllowAnyHeader();
+     options.SetIsOriginAllowed(origin => 
+        origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:"))
+           .AllowAnyMethod()
+           .AllowAnyHeader()
+           .AllowCredentials();
 });
-
-
 
 app.UseAuthorization();
 
