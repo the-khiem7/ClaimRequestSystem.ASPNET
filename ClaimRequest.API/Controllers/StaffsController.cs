@@ -134,5 +134,19 @@ namespace ClaimRequest.API.Controllers
             );
         }
 
+        [HttpDelete(ApiEndPointConstant.Staffs.RemoveStaffEndpoint)]
+        [ProducesResponseType(typeof(ApiResponse<RemoveStaffResponse>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> RemoveStaff(Guid id, [FromBody] RemoveStaffRequest request)
+        {
+            var response = await _staffService.RemoveStaff(id, request);
+            return Ok(ApiResponseBuilder.BuildResponse<object>(
+                StatusCodes.Status200OK,
+                "Staff removed successfully",
+                response
+            ));
+        }
+
     }
 }

@@ -48,6 +48,14 @@ namespace ClaimRequest.DAL.Mappers
             // AssignStaffRequest --> ProjectStaff
             CreateMap<ProjectStaff, AssignStaffResponse>()
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id));
+
+            // ProjectStaff --> RemoveStaffResponse
+            CreateMap<RemoveStaffRequest, ProjectStaff>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore());
+
+            // RemoveStaffRequest --> ProjectStaff
+            CreateMap<ProjectStaff, RemoveStaffResponse>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id));
         }
     }
 }

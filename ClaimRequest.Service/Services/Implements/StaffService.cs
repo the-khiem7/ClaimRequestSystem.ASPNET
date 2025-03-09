@@ -256,6 +256,65 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
+        public async Task<RemoveStaffResponse> RemoveStaff(Guid id, RemoveStaffRequest removeStaffRequest)
+        {
+            try
+            {
+                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+
+                return await executionStrategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
+                    try
+                    {
+                        // Validate staff if exists
+                        var existingStaff = (await _unitOfWork.GetRepository<Staff>()
+                            .SingleOrDefaultAsync(
+                                predicate: s => s.Id == id && s.IsActive
+                            )).ValidateExists(id);
+
+                        var existingProject = await _unitOfWork.GetRepository<Project>()
+                            .SingleOrDefaultAsync(
+                            predicate: p => p.Id == removeStaffRequest.projectId
+                            ).ValidateExists(removeStaffRequest.projectId);
+
+                        // Check if staff is assign to the project
+                        var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
+                            .SingleOrDefaultAsync(predicate: s => s.StaffId == id
+                            && s.ProjectId == removeStaffRequest.projectId);
+
+                        if (projectStaff == null)
+                        {
+                            throw new BadRequestException("Staff is not assign to this project.");
+                        }
+
+                        if (projectStaff.ProjectRole == ProjectRole.ProjectManager) 
+                        {
+                            throw new BadRequestException("Project Manager cannot be remove from project.");
+                        }
+
+                        _unitOfWork.GetRepository<ProjectStaff>().DeleteAsync(projectStaff);
+
+                        await _unitOfWork.CommitAsync();
+                        await transaction.CommitAsync();
+
+                        return _mapper.Map<RemoveStaffResponse>(projectStaff);
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error Assigning staff member: {Message}", ex.Message);
+                throw;
+            }
+        }
+
+
         public static class PasswordHasher
         {
             public static string HashPassword(string password)
