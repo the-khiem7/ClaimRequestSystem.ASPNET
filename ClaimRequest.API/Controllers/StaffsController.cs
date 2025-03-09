@@ -3,11 +3,13 @@ using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Staff;
 using ClaimRequest.DAL.Data.Responses.Staff;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClaimRequest.API.Controllers
 {
     [ApiController]
+    [Authorize(Policy = "CanManageStaff")]
     public class StaffsController : BaseController<StaffsController>
     {
         private readonly IStaffService _staffService; // inject staff service vao staff controller
