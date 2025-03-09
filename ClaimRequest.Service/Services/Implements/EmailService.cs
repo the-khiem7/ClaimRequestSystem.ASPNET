@@ -44,7 +44,40 @@ namespace ClaimRequest.BLL.Services.Implements
             _logger = logger;
 
         }
-        
+
+        public async Task SendEmailReminderAsync()
+        {
+            try
+            {
+                var pendingClaims = await _claimService.GetPendingClaimsAsync();
+                if (!pendingClaims.Any()) return; // Không có claim nào Pending thì không gửi
+
+                string recipientEmail = "thongnmse172317@fpt.edu.vn";
+                string subject = "Reminder: Pending Claim Requests";
+                var updatedDate = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+
+                // Đọc template email
+                string templatePath = Path.Combine(AppContext.BaseDirectory, "Services", "Templates", "ClaimReminderTemplate.html");
+                string body = await File.ReadAllTextAsync(templatePath);
+
+                // Danh sách claim Pending
+                string claimsList = string.Join("<br/>", pendingClaims.Select(c => $"• Staff: {c.StaffName} - Project: {c.ProjectName}"));
+
+                // Thay thế placeholder trong template
+                body = body.Replace("{ClaimerName}", "Approver")
+                           .Replace("{ListName}", claimsList)
+                           .Replace("{UpdatedDate}", updatedDate);
+
+                await SendEmailAsync(recipientEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending claim reminder email");
+                throw;
+            }
+        }
+
+
 
         public async Task SendClaimReturnedEmail(Guid Id)
         {
@@ -208,7 +241,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                     var mailMessage = new MailMessage
                     {
-                        From = new MailAddress(_senderEmail, "noreply@claimservice.com"),
+                        From = new MailAddress(_senderEmail, "noreply@emailservice.com"),
                         Subject = subject,
                         Body = body,
                         IsBodyHtml = true,

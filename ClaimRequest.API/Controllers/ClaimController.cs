@@ -211,7 +211,7 @@ namespace ClaimRequest.API.Controllers
                     "Claim returned successfully",
                     returnedClaim
                 );
-                await _emailService.SendClaimSubmittedEmail(id);
+                await _emailService.SendClaimReturnedEmail(id);
                 return Ok(successResponse);
             }
             catch (Exception ex)

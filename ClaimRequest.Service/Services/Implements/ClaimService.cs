@@ -552,5 +552,29 @@ namespace ClaimRequest.BLL.Services.Implements
         }
 
 
+        public async Task<IEnumerable<ViewClaimResponse>> GetPendingClaimsAsync()
+        {
+            try
+    {
+        var claimRepository = _unitOfWork.GetRepository<Claim>();
+        var pendingClaims = await claimRepository.GetListAsync(
+            selector: c => new ViewClaimResponse 
+            { 
+                StaffName = c.Claimer.Name,
+                ProjectName = c.Project.Name,
+              
+            },
+            predicate: c => c.Status == ClaimStatus.Pending,
+            include: q => q.Include(c => c.Claimer).Include(c => c.Project)
+        );
+
+        return pendingClaims;
+    }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while retrieving pending claims.");
+                throw;
+            }
+        }
     }
 }

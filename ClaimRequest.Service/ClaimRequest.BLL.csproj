@@ -29,6 +29,9 @@
 	  <None Update="Services\Templates\ClaimApprovedEmailTemplate.html">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
+	  <None Update="Services\Templates\ClaimReminderTemplate.html">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
 	  <None Update="Services\Templates\ClaimReturnedEmailTemplate.html">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>

@@ -9,5 +9,6 @@ namespace ClaimRequest.BLL.Services.Interfaces
         Task SendClaimReturnedEmail(Guid claimId);
         Task SendClaimSubmittedEmail(Guid claimId);
         Task SendManagerApprovedEmail(Guid claimId);
+        Task SendEmailReminderAsync();
     }
 }

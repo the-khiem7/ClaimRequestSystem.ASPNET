@@ -91,7 +91,7 @@ internal class Program
         // Registing some utils class
         builder.Services.AddSingleton<JwtUtil>();
 
-
+        builder.Services.AddHostedService<ClaimReminderService>();
 
         // Dependency Injection for Repositories and Services
         builder.Services.AddScoped<IClaimService, ClaimService>();
