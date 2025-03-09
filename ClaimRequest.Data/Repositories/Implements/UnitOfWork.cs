@@ -2,10 +2,11 @@
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using ClaimRequest.DAL.Data.Entities;
 
 namespace ClaimRequest.DAL.Repositories.Implements
 {
-    public class UnitOfWork<TContext> : IUnitOfWork<TContext> where TContext : DbContext
+    public class UnitOfWork<TContext> : IUnitOfWork<TContext> where TContext : ClaimRequestDbContext
     {
         public TContext Context { get; }
         private Dictionary<Type, object> _repositories;
