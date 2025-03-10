@@ -16,5 +16,8 @@ namespace ClaimRequest.BLL.Services.Interfaces
         Task<MemoryStream> DownloadClaimAsync(DownloadClaimRequest downloadClaimRequest);
         Task<bool> ApproveClaim(Guid approverId, Guid id);
         Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest);
+
+        Task<bool> PaidClaim(Guid id, Guid financeId);
+
     }
 }
