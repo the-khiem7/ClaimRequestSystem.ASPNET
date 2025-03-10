@@ -116,7 +116,7 @@ namespace ClaimRequest.API.Controllers
                 {
                     StatusCode = StatusCodes.Status200OK,
                     Message = "Project deleted successfully",
-                    IsSuccess = true, // chỗ này xem lại
+                    IsSuccess = true,
                     Data = null
                 });
             }
