@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ClaimRequest.API.Controllers
 {
     [ApiController]
+    [Authorize(Policy = "CanManageStaff")]
     public class StaffsController : BaseController<StaffsController>
     {
         private readonly IStaffService _staffService; // inject staff service vao staff controller
