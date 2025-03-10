@@ -355,53 +355,46 @@ namespace ClaimRequest.BLL.Services.Implements
                     await using var transaction = await _unitOfWork.BeginTransactionAsync();
                     try
                     {
-                        // Truy vấn claim từ Id và các dữ liệu liên quan cần thiết
+                        // Find claim by Id
                         var pendingClaim = await _unitOfWork.GetRepository<Claim>()
                             .SingleOrDefaultAsync(
                                 predicate: s => s.Id == id,
                                 include: q => q.Include(c => c.ClaimApprovers)
                             );
+                        pendingClaim.ValidateExists(id);
 
-                        if (pendingClaim == null)
-                        {
-                            throw new KeyNotFoundException($"Claim with ID {id} not found.");
-                        }
-
+                        // Check claim status
                         if (pendingClaim.Status != ClaimStatus.Pending)
                         {
                             throw new InvalidOperationException($"Claim with ID {id} is not in pending status.");
                         }
 
-                        // Truy vấn approver của claim
-                        var existingApprover = pendingClaim.ClaimApprovers
-                            .FirstOrDefault(ca => ca.ApproverId == rejectClaimRequest.ApproverId);
+                        var approver = await _unitOfWork.GetRepository<Staff>()
+                        .SingleOrDefaultAsync(
+                            predicate: s => s.Id == rejectClaimRequest.ApproverId
+                            );
+                        approver.ValidateExists(rejectClaimRequest.ApproverId);
 
-                        // Chỉ xử lý nếu approver chưa tồn tại
-                        if (existingApprover != null)
+                        // Check approver permission
+                        if (approver.SystemRole != SystemRole.Approver)
                         {
-                            throw new BadRequestException($"Approver with ID {rejectClaimRequest.ApproverId} has already rejected this claim.");
+                            throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
                         }
+                        var approverName = approver.Name ?? "Unknown Approver";
 
-                        var project = await _unitOfWork.GetRepository<Project>()
-                    .SingleOrDefaultAsync(
-                            predicate: s => s.Id == pendingClaim.ProjectId,
-                            include: q => q.Include(p => p.ProjectManager)
+                        var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
+                        .SingleOrDefaultAsync(
+                            predicate: ps => ps.StaffId == rejectClaimRequest.ApproverId 
+                            && ps.ProjectId == pendingClaim.ProjectId
                             );
 
-                        if (project == null)
+                        // Check if approver belongs in the claim's project
+                        if (projectStaff == null)
                         {
-                            throw new NotFoundException($"Project for claim with ID {id} not found.");
+                            throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} is not in the right project to reject this claim.");
                         }
 
-                        // Kiểm tra xem Approver có phải Project Manager của dự án đó không
-                        if (project.ProjectManagerId != rejectClaimRequest.ApproverId)
-                        {
-                            throw new UnauthorizedAccessException($"Approver with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
-                        }
-
-                        var approverName = project?.ProjectManager?.Name ?? "Unknown Approver";
-
-                        // Nếu claim chưa có approver thì tạo mới
+                        // If the claim has not been check then update
                         var newApprover = new ClaimApprover
                         {
                             ClaimId = pendingClaim.Id,
@@ -409,18 +402,17 @@ namespace ClaimRequest.BLL.Services.Implements
                         };
                         await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
 
-                        // Cập nhật trạng thái claim
+                        // Update claim status
                         _mapper.Map(rejectClaimRequest, pendingClaim);
 
                         _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
 
-                        // Chỉ ghi changelog khi approver lần đầu reject (Audit Trails)
+                        // Audit trails
                         await LogChangeAsync(pendingClaim.Id, "Claim Status", "Pending", ClaimStatus.Rejected.ToString(), approverName);
 
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();
 
-                        // Ánh xạ dữ liệu trả về
                         return _mapper.Map<RejectClaimResponse>(pendingClaim);
                     }
                     catch (Exception)
@@ -436,7 +428,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-
 
         public async Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest)
         {
@@ -606,9 +597,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-
-
-
 
 
     }
