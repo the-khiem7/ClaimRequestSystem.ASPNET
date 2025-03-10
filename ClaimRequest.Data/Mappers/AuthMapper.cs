@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
 using ClaimRequest.DAL.Data.Entities;
-using ClaimRequest.DAL.Data.Requests;
-using ClaimRequest.DAL.Data.Responses;
+using ClaimRequest.DAL.Data.Requests.Auth;
+using ClaimRequest.DAL.Data.Responses.Auth;
 
 namespace ClaimRequest.DAL.Mappers
 {
