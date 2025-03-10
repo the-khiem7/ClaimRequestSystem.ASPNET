@@ -4,7 +4,10 @@
       "commandName": "DockerCompose",
       "commandVersion": "1.0",
       "serviceActions": {
-        "claimrequest.api": "StartDebugging"
+        "claimrequest.api": "StartDebugging",
+        "claimrequest.db": "StartWithoutDebugging",
+        "claimrequest.test": "StartDebugging",
+        "pgadmin": "StartWithoutDebugging"
       }
     }
   }
