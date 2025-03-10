@@ -220,7 +220,16 @@ namespace ClaimRequest.BLL.Services.Implements
                             throw new BadRequestException("Invalid project role.");
                         }
 
-                        // Check if staff is assign to the project
+                        var assignerInProject = await _unitOfWork.GetRepository<ProjectStaff>()
+                            .SingleOrDefaultAsync(predicate: ps => ps.StaffId == assignStaffRequest.AssignerId
+                                                 && ps.ProjectId == assignStaffRequest.projectId);
+
+                        if (assignerInProject == null)
+                        {
+                            throw new BadRequestException("You are not a member of this project.");
+                        }
+
+                        // Check if staff is assigned to the project
                         var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
                             .SingleOrDefaultAsync(predicate: s => s.StaffId == id
                             && s.ProjectId == assignStaffRequest.projectId);
@@ -278,7 +287,16 @@ namespace ClaimRequest.BLL.Services.Implements
                             predicate: p => p.Id == removeStaffRequest.projectId
                             ).ValidateExists(removeStaffRequest.projectId);
 
-                        // Check if staff is assign to the project
+                        var removerInProject = await _unitOfWork.GetRepository<ProjectStaff>()
+                            .SingleOrDefaultAsync(predicate: ps => ps.StaffId == removeStaffRequest.RemoverId
+                                                 && ps.ProjectId == removeStaffRequest.projectId);
+
+                        if (removerInProject == null)
+                        {
+                            throw new BadRequestException("You are not a member of this project.");
+                        }
+
+                        // Check if staff is assigned to the project
                         var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
                             .SingleOrDefaultAsync(predicate: s => s.StaffId == id
                             && s.ProjectId == removeStaffRequest.projectId);
