@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Linq.Expressions;
+using ClaimRequest.DAL.Data.Exceptions;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -52,7 +53,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         if (existingStaff != null)
                         {
-                            throw new Exception("Email is already in use. Please use a different email.");
+                            throw new BusinessException("Email is already in use. Please use a different email.");
                         }
 
                         // Ánh xạ từ Request sang Entity
