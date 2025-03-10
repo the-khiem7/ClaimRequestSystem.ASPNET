@@ -22,7 +22,7 @@ namespace ClaimRequest.API.Controllers
         public async Task<IActionResult> Login([FromBody] DAL.Data.Requests.Auth.LoginRequest loginRequest)
         {
             var response = await _authService.Login(loginRequest);
-            return Ok(ApiResponseBuilder.BuildResponse(StatusCodes.Status200OK,"Login successful",response));
+            return Ok(ApiResponseBuilder.BuildResponse(StatusCodes.Status200OK, "Login successful", response));
         }
 
         [HttpPost(ApiEndPointConstant.Auth.ForgotPasswordEndpoint)]
@@ -67,3 +67,4 @@ namespace ClaimRequest.API.Controllers
         }
     }
 }
+

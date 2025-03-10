@@ -13,40 +13,34 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
-internal class Program
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+
+builder.Services.AddControllers();
+
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
 {
-    private static void Main(string[] args)
+    options.SwaggerDoc("v1", new OpenApiInfo
     {
-        var builder = WebApplication.CreateBuilder(args);
+        Title = "ClaimRequest.API",
+        Version = "v1",
+        Description = "A Claim Request System Project"
+    });
+    options.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = JwtBearerDefaults.AuthenticationScheme,
+        Description = "JWT Authorization header using the Bearer scheme. Example: "
+    });
 
-        // Add services to the container.
-
-        builder.Services.AddControllers();
-
-        // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-        builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen(options =>
-        {
-            options.SwaggerDoc("v1", new OpenApiInfo
-            {
-                Title = "ClaimRequest.API",
-                Version = "v1",
-                Description = "A Claim Request System Project"
-            });
-            options.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, new OpenApiSecurityScheme
-            {
-                Name = "Authorization",
-                In = ParameterLocation.Header,
-                Type = SecuritySchemeType.ApiKey,
-                Scheme = JwtBearerDefaults.AuthenticationScheme,
-                Description = "JWT Authorization header using the Bearer scheme. Example: "
-            });
-
-            options.AddSecurityRequirement(new OpenApiSecurityRequirement
-            {
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
         {
             new OpenApiSecurityScheme
             {
@@ -62,37 +56,36 @@ internal class Program
             },
             new List<string>()
         }
-            });
-        });
+    });
+});
 
-        // Add DbContext connect to Postgres
-        builder.Services.AddDbContext<ClaimRequestDbContext>(options =>
+// Add DbContext connect to Postgres
+builder.Services.AddDbContext<ClaimRequestDbContext>(options =>
+{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("SupaBaseConnection"),
+        npgsqlOptionsAction: sqlOptions =>
         {
-            options.UseNpgsql(builder.Configuration.GetConnectionString("SupaBaseConnection"),
-                npgsqlOptionsAction: sqlOptions =>
-                {
-                    sqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 5,
-                        maxRetryDelay: TimeSpan.FromSeconds(30),
-                        errorCodesToAdd: null);
-                });
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorCodesToAdd: null);
         });
+});
 
-        // Add services to the container.
-        //builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
-        // tat ca cac service implement tu Profile cuar AutoMapperProfile se duoc tu dong add vao
-        builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+// Add services to the container.
+//builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
+// tat ca cac service implement tu Profile cuar AutoMapperProfile se duoc tu dong add vao
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-        // Add IUnitOfWork and UnitOfWork
-        builder.Services.AddScoped<IUnitOfWork<ClaimRequestDbContext>, UnitOfWork<ClaimRequestDbContext>>();
+// Add IUnitOfWork and UnitOfWork
+builder.Services.AddScoped<IUnitOfWork<ClaimRequestDbContext>, UnitOfWork<ClaimRequestDbContext>>();
 
-        // Add this line before registering your services
-        builder.Services.AddHttpContextAccessor();
+// Add this line before registering your services
+builder.Services.AddHttpContextAccessor();
 
-        // Registing some utils class
-        builder.Services.AddSingleton<JwtUtil>();
+// Registing some utils class
+builder.Services.AddSingleton<JwtUtil>();
 
-        builder.Services.AddHostedService<ClaimReminderService>();
 
 // Dependency Injection for Repositories and Services
 builder.Services.AddScoped<IClaimService, ClaimService>();
@@ -110,21 +103,21 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 
 
 
-        //Serilize enum to string
-        builder.Services.AddControllers().AddJsonOptions(options =>
-        {
-            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-        });
+//Serilize enum to string
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 
-        // disable the default ModelStateInvalidFilter => to use the custom ExceptionHandlerMiddleware
-        // neu dinh chuong khong doc duoc loi tu swagger => comment lai doan code phia duoi
-        // ===============================================
-        //builder.Services.Configure<ApiBehaviorOptions>(options =>
-        //{
-        //    options.SuppressModelStateInvalidFilter = true;
-        //});
-        // ===============================================
+// disable the default ModelStateInvalidFilter => to use the custom ExceptionHandlerMiddleware
+// neu dinh chuong khong doc duoc loi tu swagger => comment lai doan code phia duoi
+// ===============================================
+//builder.Services.Configure<ApiBehaviorOptions>(options =>
+//{
+//    options.SuppressModelStateInvalidFilter = true;
+//});
+// ===============================================
 
 // Add authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -140,34 +133,34 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration.GetSection("Jwt:Audience").Get<string>(),
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
         };
-        
+
         // Add this to automatically prepend "Bearer " to the token
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
             {
                 var accessToken = context.Request.Headers["Authorization"].FirstOrDefault();
-                
+
                 // If token exists but doesn't start with "Bearer "
                 if (!string.IsNullOrEmpty(accessToken) && !accessToken.StartsWith("Bearer "))
                 {
                     // Add "Bearer " prefix
                     context.Request.Headers["Authorization"] = "Bearer " + accessToken;
                 }
-                
+
                 return Task.CompletedTask;
             },
-            
+
             // Add custom response for unauthorized requests
             OnChallenge = async context =>
             {
                 // Skip the default logic
                 context.HandleResponse();
-                
+
                 // Set the response status code
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 context.Response.ContentType = "application/json";
-                
+
                 // Create a custom response
                 var response = new ApiResponse<object>
                 {
@@ -182,7 +175,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                         Timestamp = DateTime.UtcNow
                     }
                 };
-                
+
                 // Write the response
                 await context.Response.WriteAsJsonAsync(response);
             }
@@ -195,18 +188,18 @@ builder.Services.AddAuthorization(options =>
     options.AddClaimRequestPolicies();
 });
 
-        // Update the Kestrel configuration
-        //builder.WebHost.ConfigureKestrel(serverOptions =>
-        //{
-        //    serverOptions.ListenAnyIP(5000); // HTTP
-        //    serverOptions.ListenAnyIP(5001, listenOptions =>
-        //    {
-        //        // In development/docker, we'll use HTTP instead of HTTPS
-        //        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
-        //    });
-        //});
+// Update the Kestrel configuration
+//builder.WebHost.ConfigureKestrel(serverOptions =>
+//{
+//    serverOptions.ListenAnyIP(5000); // HTTP
+//    serverOptions.ListenAnyIP(5001, listenOptions =>
+//    {
+//        // In development/docker, we'll use HTTP instead of HTTPS
+//        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+//    });
+//});
 
-        var app = builder.Build();
+var app = builder.Build();
 
 
 // Configure the HTTP request pipeline.
@@ -218,31 +211,29 @@ if (app.Environment.IsDevelopment())
         app.ApplyMigrations();
     }
 
-            app.UseSwagger();
-            app.UseSwaggerUI();
-        }
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
-        // Add the ExceptionHandlerMiddleware to the pipeline
-        // comment lai doan code phia duoi neu chuong khong doc duoc loi tu swagger
-        // ===============================================
-        app.UseMiddleware<ExceptionHandlerMiddleware>(); //comment lai de bat loi 500 
-                                                         // ===============================================
+// Add the ExceptionHandlerMiddleware to the pipeline
+// comment lai doan code phia duoi neu chuong khong doc duoc loi tu swagger
+// ===============================================
+app.UseMiddleware<ExceptionHandlerMiddleware>(); //comment lai de bat loi 500 
+// ===============================================
 
-        app.UseHttpsRedirection();
+app.UseHttpsRedirection();
 
 app.UseCors(options =>
 {
-     options.SetIsOriginAllowed(origin => 
-        origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:"))
-           .AllowAnyMethod()
-           .AllowAnyHeader()
-           .AllowCredentials();
+    options.SetIsOriginAllowed(origin =>
+       origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:"))
+          .AllowAnyMethod()
+          .AllowAnyHeader()
+          .AllowCredentials();
 });
 
-        app.UseAuthorization();
+app.UseAuthorization();
 
-        app.MapControllers();
+app.MapControllers();
 
-        app.Run();
-    }
-}
+app.Run();

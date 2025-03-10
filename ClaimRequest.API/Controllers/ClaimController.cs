@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using ClaimRequest.API.Constants;
+﻿using ClaimRequest.API.Constants;
 using ClaimRequest.API.Extensions;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
@@ -18,16 +17,12 @@ namespace ClaimRequest.API.Controllers
     {
         #region Create Class Referrence
         private readonly IClaimService _claimService;
-        private readonly IMapper _mapper;
-        public readonly IEmailService _emailService;
         #endregion
 
         #region Contructor
-        public ClaimController(ILogger<ClaimController> logger, IEmailService emailService, IClaimService claimService, IMapper mapper) : base(logger)
+        public ClaimController(ILogger<ClaimController> logger, IClaimService claimService) : base(logger)
         {
-            _emailService = emailService;
             _claimService = claimService;
-            _mapper = mapper;
         }
         #endregion
 
@@ -42,7 +37,6 @@ namespace ClaimRequest.API.Controllers
                 _logger.LogError("Create claim failed");
                 return Problem("Create claim failed");
             }
-            await _emailService.SendClaimSubmittedEmail(createClaimRequest.ClaimerId);
             return CreatedAtAction(nameof(CreateClaim), response);
         }
 
@@ -67,7 +61,7 @@ namespace ClaimRequest.API.Controllers
             var response = await _claimService.GetClaimById(id);
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: $"Get claim with id {id} successfully!",
-                data: _mapper.Map<ViewClaimResponse>(response),
+                data: response,
                 statusCode: StatusCodes.Status200OK));
         }
 
@@ -112,6 +106,7 @@ namespace ClaimRequest.API.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
             }
         }
+
 
         [Authorize(Policy = "CanRejectClaim")]
         [HttpPut(ApiEndPointConstant.Claim.RejectClaimEndpoint)]
@@ -168,24 +163,31 @@ namespace ClaimRequest.API.Controllers
 
         [Authorize(Policy = "CanApproveClaim")]
         [HttpPut(ApiEndPointConstant.Claim.ApproveClaimEndpoint)]
-        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id)
+        [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id, [FromBody] ApproveClaimRequest approveClaimRequest)
         {
-            var approverIdClaim = User.FindFirst("StaffId")?.Value;
-            if (string.IsNullOrEmpty(approverIdClaim))
+            try
             {
-                return Unauthorized("Approver ID not found in token.");
+                var response = await _claimService.ApproveClaim(id, approveClaimRequest);
+                return Ok(response);
             }
-
-            var approverId = Guid.Parse(approverIdClaim);
-            var result = await _claimService.ApproveClaim(approverId, id);
-            await _emailService.SendManagerApprovedEmail(approverId, id);
-            await _emailService.SendClaimApprovedEmail(id);
-
-            return result ? Ok("Claim approved.") : BadRequest("Approval failed.");
+            catch (NotFoundException ex)
+            {
+                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error approving claim with ID {Id}: {Message}", id, ex.Message);
+                return StatusCode(500, new { message = ex.Message });
+            }
         }
 
         [Authorize(Policy = "CanReturnClaim")]
@@ -214,7 +216,6 @@ namespace ClaimRequest.API.Controllers
                     "Claim returned successfully",
                     returnedClaim
                 );
-                await _emailService.SendClaimReturnedEmail(id);
                 return Ok(successResponse);
             }
             catch (Exception ex)
@@ -250,3 +251,4 @@ namespace ClaimRequest.API.Controllers
         }
     }
 }
+

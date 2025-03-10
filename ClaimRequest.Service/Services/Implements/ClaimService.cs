@@ -260,22 +260,13 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 if (claim == null)
                 {
-                    return new UpdateClaimResponse
-                    {
-                        ClaimId = Id,
-                        Message = "Claim not found",
-                        Success = false
-                    };
+                    throw new KeyNotFoundException("Claim not found");
                 }
 
                 if (request.StartDate >= request.EndDate)
                 {
-                    return new UpdateClaimResponse
-                    {
-                        ClaimId = Id,
-                        Message = "Start Date must be earlier than End Date",
-                        Success = false
-                    };
+                    _logger.LogError("Start Date {StartDate} must be earlier than End Date {EndDate}.", request.StartDate, request.EndDate);
+                    throw new InvalidOperationException("Start Date must be earlier than End Date.");
                 }
 
                 claim.StartDate = request.StartDate;
@@ -286,15 +277,8 @@ namespace ClaimRequest.BLL.Services.Implements
                 claimRepository.UpdateAsync(claim);
                 await _unitOfWork.CommitAsync();
 
-                return new UpdateClaimResponse
-                {
-                    ClaimId = claim.Id,
-                    StartDate = claim.StartDate,
-                    EndDate = claim.EndDate,
-                    TotalWorkingHours = claim.TotalWorkingHours,
-                    Success = true,
-                    Message = "Claim updated successfully"
-                };
+                _logger.LogInformation("Successfully updated claim with ID {ClaimId}.", Id);
+                return _mapper.Map<UpdateClaimResponse>(claim);
             }
             catch (Exception ex)
             {
@@ -302,6 +286,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
+
 
         public async Task<PagingResponse<ViewClaimResponse>> GetClaims(int pageNumber = 1, int pageSize = 20, ClaimStatus? status = null)
         {
@@ -453,7 +438,7 @@ namespace ClaimRequest.BLL.Services.Implements
         }
 
 
-        public async Task<bool> ApproveClaim(Guid approverId, Guid id)
+        public async Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest)
         {
             var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
@@ -468,7 +453,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     var pendingClaim = (await claimRepo.SingleOrDefaultAsync(
                         predicate: s => s.Id == id,
                         include: s => s.Include(c => c.ClaimApprovers)
-                    )).ValidateExists(id); ;
+                    )).ValidateExists(id, "Claim"); ;
 
 
                     if (pendingClaim.Status != ClaimStatus.Pending)
@@ -477,14 +462,16 @@ namespace ClaimRequest.BLL.Services.Implements
                     }
 
                     var isApproverAllowed = pendingClaim.ClaimApprovers
-                        .Any(ca => ca.ApproverId == approverId);
+                        .Any(ca => ca.ApproverId == approveClaimRequest.ApproverId);
 
                     if (!isApproverAllowed)
                     {
-                        throw new UnauthorizedAccessException($"Approver with ID {approverId} does not have permission to this claim");
+                        throw new UnauthorizedAccessException($"Approver with ID {approveClaimRequest.ApproverId} does not have permission to approve claim ID {id}.");
                     }
 
-                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approverId);
+                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approveClaimRequest.ApproverId);
+
+                    _mapper.Map(approveClaimRequest, pendingClaim);
                     pendingClaim.Status = ClaimStatus.Approved;
 
                     claimRepo.UpdateAsync(pendingClaim);
@@ -492,7 +479,9 @@ namespace ClaimRequest.BLL.Services.Implements
                     await _unitOfWork.CommitAsync();
                     await transaction.CommitAsync();
 
-                    return true;
+                    var response = _mapper.Map<ApproveClaimResponse>(pendingClaim);
+                    response.ApproverId = approveClaimRequest.ApproverId;
+                    return response;
                 }
                 catch (Exception)
                 {
@@ -501,8 +490,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 }
             });
         }
-
-
 
         public async Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest)
         {

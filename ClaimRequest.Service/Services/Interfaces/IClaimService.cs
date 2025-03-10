@@ -2,7 +2,6 @@
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
-using Claim = ClaimRequest.DAL.Data.Entities.Claim;
 
 namespace ClaimRequest.BLL.Services.Interfaces
 {
@@ -16,7 +15,7 @@ namespace ClaimRequest.BLL.Services.Interfaces
         Task<ViewClaimResponse> GetClaimById(Guid id);
         Task<RejectClaimResponse> RejectClaim(Guid Id, RejectClaimRequest rejectClaimRequest);
         Task<MemoryStream> DownloadClaimAsync(DownloadClaimRequest downloadClaimRequest);
-        Task<bool> ApproveClaim(Guid approverId, Guid id);
+        Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest);
         Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest);
 
         Task<bool> PaidClaim(Guid id, Guid financeId);
