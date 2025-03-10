@@ -570,9 +570,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
                 return await executionStrategy.ExecuteAsync(async () =>
                 {
-                    var claim = (await _unitOfWork.GetRepository<Claim>()
-                        .GetByIdAsync(id)).ValidateExists(id);
-                        //?? throw new NotFoundException($"Claim with ID {id} not found.");
+                    var claim = (await _unitOfWork.GetRepository<Claim>().GetByIdAsync(id)).ValidateExists(id);
 
                     if (claim.Status != ClaimStatus.Draft)
                     {
@@ -592,7 +590,6 @@ namespace ClaimRequest.BLL.Services.Implements
                         claim.UpdateAt = DateTime.UtcNow;
 
                         _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
-
                         await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(approver);
 
                         await _unitOfWork.CommitAsync();
@@ -618,6 +615,10 @@ namespace ClaimRequest.BLL.Services.Implements
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error submitting claim: {Message}", ex.Message);
+                throw;
+            }
+        }
+
         public async Task<bool> PaidClaim(Guid id, Guid financeId)
         {
             try

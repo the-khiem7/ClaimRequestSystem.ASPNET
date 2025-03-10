@@ -231,6 +231,7 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
+        [Authorize(Policy = "CanSubmitClaim")]
         [HttpPut(ApiEndPointConstant.Claim.SubmitClaimEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -284,4 +285,5 @@ namespace ClaimRequest.API.Controllers
                 statusCode: StatusCodes.Status200OK
             ));
         }
+    }
 }
