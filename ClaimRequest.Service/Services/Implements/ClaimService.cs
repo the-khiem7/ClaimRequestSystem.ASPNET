@@ -253,11 +253,6 @@ namespace ClaimRequest.BLL.Services.Implements
 
         public async Task<UpdateClaimResponse> UpdateClaim(Guid Id, UpdateClaimRequest request)
         {
-            var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-
-            return await executionStrategy.ExecuteAsync(async () =>
-            {
-                await using var transaction = await _unitOfWork.BeginTransactionAsync();
                 try
                 {
                     var claimRepository = _unitOfWork.GetRepository<Claim>();
@@ -287,11 +282,9 @@ namespace ClaimRequest.BLL.Services.Implements
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync();
                     _logger.LogError(ex, "Error updating claim with ID {ClaimId}: {Message}", Id, ex.Message);
-                    throw new InvalidOperationException("An error occurred while updating the claim", ex);
+                    throw;
                 }
-            });
         }
 
 
