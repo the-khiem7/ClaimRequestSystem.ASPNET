@@ -92,7 +92,7 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
-        [HttpDelete(ApiEndPointConstant.Projects.DeleteProjectEndpoint)]
+        [HttpPut(ApiEndPointConstant.Projects.DeleteProjectEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
