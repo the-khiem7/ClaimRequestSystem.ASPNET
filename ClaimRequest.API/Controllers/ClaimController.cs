@@ -107,6 +107,7 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
+
         [Authorize(Policy = "CanRejectClaim")]
         [HttpPut(ApiEndPointConstant.Claim.RejectClaimEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]
