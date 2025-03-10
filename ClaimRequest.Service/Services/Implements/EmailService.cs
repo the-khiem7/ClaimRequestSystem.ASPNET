@@ -1,5 +1,7 @@
 ﻿using ClaimRequest.BLL.Services.Interfaces;
+using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Requests.Email;
+using ClaimRequest.DAL.Data.Responses.Email;
 using MailKit.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -12,11 +14,13 @@ namespace ClaimRequest.BLL.Services.Implements
     {
         private readonly IConfiguration _config;
         private readonly ILogger<EmailService> _logger;
+        private readonly IOtpService _otpService;
 
-        public EmailService(IConfiguration config, ILogger<EmailService> logger)
+        public EmailService(IConfiguration config, ILogger<EmailService> logger, IOtpService otpService)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _otpService = otpService ?? throw new ArgumentNullException(nameof(otpService));
         }
 
         public async Task<bool> SendEmailAsync(SendMailRequest request)
@@ -40,8 +44,6 @@ namespace ClaimRequest.BLL.Services.Implements
                     _logger.LogWarning("Email body is empty.");
                 }
 
-
-
                 // Đọc thông tin cấu hình từ appsettings.json
                 var smtpServer = _config["EmailSettings:SmtpServer"];
                 var smtpPort = _config["EmailSettings:SmtpPort"];
@@ -60,7 +62,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 email.From.Add(MailboxAddress.Parse(senderEmail));
                 email.To.Add(MailboxAddress.Parse(request.To));
                 email.Subject = request.Subject;
-
 
                 var bodyBuilder = new BodyBuilder { HtmlBody = request.Body };
 
@@ -104,6 +105,38 @@ namespace ClaimRequest.BLL.Services.Implements
                 _logger.LogError(ex, "Email sending failed.");
                 return false;
             }
+        }
+
+        public async Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request)
+        {
+            var response = new SendOtpEmailResponse();
+            try
+            {
+                // Generate OTP using OtpUtil
+                var otp = OtpUtil.GenerateOtp(request.Email);
+                await _otpService.CreateOtpEntity(request.Email, otp);
+
+                // Create email request
+                var emailRequest = new SendMailRequest
+                {
+                    To = request.Email,
+                    Subject = "Your OTP Code",
+                    Body = $"Your OTP code is: {otp}"
+                };
+
+                // Send email
+                var emailSent = await SendEmailAsync(emailRequest);
+                response.Success = emailSent;
+                response.Message = emailSent ? "OTP email sent successfully." : "Failed to send OTP email.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send OTP email.");
+                response.Success = false;
+                response.Message = "An error occurred while sending the OTP email.";
+            }
+
+            return response;
         }
     }
 }

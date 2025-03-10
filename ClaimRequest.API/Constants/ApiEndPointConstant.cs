@@ -13,6 +13,8 @@ namespace ClaimRequest.API.Constants
             public const string RegisterEndpoint = AuthEndpoint + "/register";
             public const string RefreshTokenEndpoint = AuthEndpoint + "/refresh-token";
             public const string LogoutEndpoint = AuthEndpoint + "/logout";
+            public const string ForgotPasswordEndpoint = AuthEndpoint + "/forgot-password";
+
         }
 
         public static class Claim
@@ -26,14 +28,20 @@ namespace ClaimRequest.API.Constants
             public const string DownloadClaimEndpoint = ClaimsEndpoint + "/download";
             public const string PaidClaimEndpoint = ClaimEndpointById + "/paid";
             public const string ReturnClaimEndpoint = ClaimEndpointById + "/return";
+            public const string SubmitClaimEndpoint = ClaimEndpointById + "/submit";
 
         }
         public static class Email
         {
             public const string EmailEndpoint = ApiEndpoint + "/email";
             public const string SendEmail = EmailEndpoint + "/send";
+            public const string SendOtp = EmailEndpoint + "/send-otp";
         }
-
+        public static class Otp
+        {
+            public const string OtpEndpoint = ApiEndpoint + "/otp";
+            public const string ValidateOtp = OtpEndpoint + "/validate";
+        }
         public static class Projects
         {
             public const string ProjectsEndpoint = ApiEndpoint + "/projects";

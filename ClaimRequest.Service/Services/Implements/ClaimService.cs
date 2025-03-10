@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using System.Security.Claims;
 using AutoMapper;
 using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
@@ -452,7 +453,6 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-
         public async Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest)
         {
             var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
@@ -563,6 +563,169 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
+        public async Task<bool> SubmitClaim(Guid id)
+        {
+            try
+            {
+                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+                return await executionStrategy.ExecuteAsync(async () =>
+                {
+                    var claim = (await _unitOfWork.GetRepository<Claim>().GetByIdAsync(id)).ValidateExists(id);
+
+                    if (claim.Status != ClaimStatus.Draft)
+                    {
+                        throw new BusinessException("Claim cannot be submitted as it is not in Draft status.");
+                    }
+
+                    var approver = await AssignApproverForClaim(id);
+                    if (approver == null)
+                    {
+                        throw new BusinessException("No eligible approver found for this claim.");
+                    }
+
+                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
+                    try
+                    {
+                        claim.Status = ClaimStatus.Pending;
+                        claim.UpdateAt = DateTime.UtcNow;
+
+                        _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
+                        await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(approver);
+
+                        await _unitOfWork.CommitAsync();
+                        await _unitOfWork.CommitTransactionAsync(transaction);
+
+                        _logger.LogInformation("Submitted claim {ClaimId} by {ClaimerId} on {Time}. Approver: {ApproverId}",
+                            id, claim.ClaimerId, claim.UpdateAt, approver.ApproverId);
+
+                        await LogChangeAsync(id, "Claim Status", "Draft", "Pending", "Claimer");
+
+                        // Send email to approver and CC to claimer
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        await _unitOfWork.RollbackTransactionAsync(transaction);
+                        _logger.LogError(ex, "Error occurred during claim submission.");
+                        throw;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error submitting claim: {Message}", ex.Message);
+                throw;
+            }
+        }
+
+        public async Task<bool> PaidClaim(Guid id, Guid financeId)
+        {
+            try
+            {
+                var existingClaim = (await _unitOfWork.GetRepository<Claim>()
+                    .SingleOrDefaultAsync(predicate: c => c.Id == id).ValidateExists(id));
+
+
+                // 🔹 Kiểm tra trạng thái của claim (chỉ được thanh toán khi Approved)
+                if (existingClaim.Status != ClaimStatus.Approved)
+                {
+                    throw new BusinessException($"Cannot mark as Paid when the status is not Approved. Current Status: {existingClaim.Status}");
+                }
+
+                // 🔹 Kiểm tra Finance Staff có hợp lệ không
+                var finance = await _unitOfWork.GetRepository<Staff>()
+                    .SingleOrDefaultAsync(predicate: s => s.Id == financeId && s.SystemRole == SystemRole.Finance);
+
+                if (finance == null)
+                {
+                    throw new BadRequestException($"Finance staff with ID {financeId} not found or does not have the Finance role.");
+                }
+
+                // 🔹 Cập nhật trạng thái của claim thành "Paid"
+                var oldStatus = existingClaim.Status;
+                existingClaim.Status = ClaimStatus.Paid;
+                _unitOfWork.GetRepository<Claim>().UpdateAsync(existingClaim);
+                await _unitOfWork.CommitAsync(); // Lưu thay đổi vào DB
+
+                // 🔹 Ghi log thay đổi trạng thái
+                var claimLog = new ClaimChangeLog
+                {
+                    HistoryId = Guid.NewGuid(),
+                    ClaimId = existingClaim.Id,
+                    FieldChanged = "Status",
+                    OldValue = oldStatus.ToString(),
+                    NewValue = ClaimStatus.Paid.ToString(),
+                    ChangedAt = DateTime.UtcNow,
+                    ChangedBy = finance.Name ?? "System"
+                };
+
+                await _unitOfWork.GetRepository<ClaimChangeLog>().InsertAsync(claimLog);
+                await _unitOfWork.CommitAsync(); // Lưu log vào DB
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error Paid Claim: {Message}", ex.Message);
+
+                if (ex.InnerException != null)
+                {
+                    _logger.LogError("Inner Exception: {InnerMessage}", ex.InnerException.Message);
+                }
+
+                throw;
+            }
+        }
+
+        private async Task<ClaimApprover> AssignApproverForClaim(Guid claimId)
+        {
+            var claim = (await _unitOfWork.GetRepository<Claim>()
+                .SingleOrDefaultAsync(predicate: c => c.Id == claimId)).ValidateExists(claimId);
+                //?? throw new NotFoundException($"Claim with ID {claimId} not found.");
+
+            var project = (await _unitOfWork.GetRepository<Project>()
+                .SingleOrDefaultAsync(predicate: p => p.Id == claim.ProjectId)).ValidateExists(claim.ProjectId);
+                //?? throw new NotFoundException($"Project for claim with ID {claimId} not found.");
+
+            var projectStaffs = await _unitOfWork.GetRepository<ProjectStaff>()
+                .GetListAsync(
+                    predicate: ps => ps.ProjectId == project.Id && ps.Staff.IsActive,
+                    include: q => q.Include(ps => ps.Staff)
+                );
+
+            if (!projectStaffs.Any())
+            {
+                throw new NotFoundException($"No active staff members found for project with ID {project.Id}");
+            }
+
+            var potentialApprover = projectStaffs
+                .Select(ps => ps.Staff)
+                .Where(staff => staff.SystemRole == SystemRole.Approver)
+                .ToList();
+
+            var approver = potentialApprover
+                .Where(s => s.Department == Department.ProjectManagement && s.Id != claim.ClaimerId)
+                .FirstOrDefault();
+
+            if (approver == null)
+            {
+                approver = potentialApprover
+                    .Where(s => s.Department == Department.BusinessOperations && s.Id != claim.ClaimerId)
+                    .FirstOrDefault();
+            }
+
+            if (approver == null)
+            {
+                throw new NotFoundException($"No eligible approver found for claim {claimId}");
+            }
+
+            return new ClaimApprover
+            {
+                ClaimId = claim.Id,
+                ApproverId = approver.Id
+            };
+        }
 
     }
 }
