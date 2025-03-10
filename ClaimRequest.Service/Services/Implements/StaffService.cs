@@ -233,11 +233,11 @@ namespace ClaimRequest.BLL.Services.Implements
                             predicate: p => p.Id == assignStaffRequest.projectId
                             ).ValidateExists(assignStaffRequest.projectId);
 
-                        // Check valid role
-                        //if (!Enum.IsDefined(typeof(ProjectRole), assignStaffRequest.ProjectRole))
-                        //{
-                        //    throw new BadRequestException("Invalid project role.");
-                        //}
+                        // Check valid inputted role
+                        if (!Enum.IsDefined(typeof(ProjectRole), assignStaffRequest.ProjectRole))
+                        {
+                            throw new BadRequestException("Invalid project role.");
+                        }
 
                         // Validate if assigner is in project
                         var assignerInProject = await _unitOfWork.GetRepository<ProjectStaff>()
