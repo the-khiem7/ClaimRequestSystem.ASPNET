@@ -18,7 +18,7 @@ using ClaimRequest.DAL.Data.Exceptions;
 namespace ClaimRequest.BLL.Services.Implements
 {
     // chuẩn bị cho việc implement các method CRUD cho Staff 
-    public class StaffService : BaseService<Staff>, IStaffService
+    public class StaffService : BaseService<StaffService>, IStaffService
     {
 
         private readonly IConfiguration _configuration;
