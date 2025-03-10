@@ -40,6 +40,22 @@ namespace ClaimRequest.DAL.Mappers
             // update response model co the khac voi create response model
             CreateMap<Staff, UpdateStaffResponse>();
 
+
+            // ProjectStaff --> AssignStaffResponse
+            CreateMap<AssignStaffRequest, ProjectStaff>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore());
+
+            // AssignStaffRequest --> ProjectStaff
+            CreateMap<ProjectStaff, AssignStaffResponse>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id));
+
+            // ProjectStaff --> RemoveStaffResponse
+            CreateMap<RemoveStaffRequest, ProjectStaff>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore());
+
+            // RemoveStaffRequest --> ProjectStaff
+            CreateMap<ProjectStaff, RemoveStaffResponse>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id));
         }
     }
 }
