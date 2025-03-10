@@ -10,15 +10,21 @@ using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Linq.Expressions;
+using ClaimRequest.DAL.Data.Exceptions;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
     // chuẩn bị cho việc implement các method CRUD cho Staff 
     public class StaffService : BaseService<Staff>, IStaffService
     {
-        public StaffService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, ILogger<Staff> logger, IMapper mapper, IHttpContextAccessor httpContextAccessor) : base(unitOfWork, logger, mapper, httpContextAccessor)
+
+        private readonly IConfiguration _configuration;
+        public StaffService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, ILogger<StaffService> logger, IMapper mapper, IHttpContextAccessor httpContextAccessor, IConfiguration configuration) : base(unitOfWork, logger, mapper, httpContextAccessor)
         {
+            _configuration = configuration;
         }
 
         // B3: Implement method CRUD cho Staff
@@ -28,35 +34,46 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                // co the xay ra loi trong create, update, delete nen dung transaction
+                if (createStaffRequest == null)
+                {
+                    throw new ArgumentNullException(nameof(createStaffRequest), "Request data cannot be null.");
+                }
+
+                // Sử dụng ExecutionStrategy để retry nếu có lỗi tạm thời trong DB
                 var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
                 return await executionStrategy.ExecuteAsync(async () =>
                 {
-                    // Begin transaction
+                    // Bắt đầu transaction
                     await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
                     try
                     {
-                        // Map request to entity
+                        Expression<Func<Staff, bool>> predicate = s => s.Email == createStaffRequest.Email;
+                        var existingStaff = await _unitOfWork.GetRepository<Staff>()
+                            .SingleOrDefaultAsync(predicate: s => s.Email == createStaffRequest.Email);
+
+                        if (existingStaff != null)
+                        {
+                            throw new BusinessException("Email is already in use. Please use a different email.");
+                        }
+
+                        // Ánh xạ từ Request sang Entity
                         var newStaff = _mapper.Map<Staff>(createStaffRequest);
+                        newStaff.Id = Guid.NewGuid(); // Tạo ID mới
+                        newStaff.Password = BCrypt.Net.BCrypt.HashPassword(createStaffRequest.Password); // Hash mật khẩu
 
-                        // Insert new staff
-                        // su dung generic repository de insert staff => 
-                        // ko can define tung repository cho tung entity
+                        // Thêm vào DB
                         await _unitOfWork.GetRepository<Staff>().InsertAsync(newStaff);
-
-                        // Save changes
                         await _unitOfWork.CommitAsync();
 
-                        // Commit transaction
+                        // Commit transaction trước khi trả về response
                         await transaction.CommitAsync();
-
-                        // Map and return response
                         return _mapper.Map<CreateStaffResponse>(newStaff);
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
                         await transaction.RollbackAsync();
+                        Console.WriteLine($"Error creating staff: {ex.Message}");
                         throw;
                     }
                 });
