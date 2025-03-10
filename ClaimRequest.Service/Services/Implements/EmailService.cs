@@ -20,7 +20,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
-    public class EmailService : IEmailService    
+    public class EmailService : IEmailService
     {
         public readonly string _smtpServer;
         public readonly int _port;
@@ -45,37 +45,37 @@ namespace ClaimRequest.BLL.Services.Implements
 
         }
 
-        public async Task SendEmailReminderAsync()
-        {
-            try
-            {
-                var pendingClaims = await _claimService.GetPendingClaimsAsync();
-                if (!pendingClaims.Any()) return; // Không có claim nào Pending thì không gửi
+        //public async Task SendEmailReminderAsync()
+        //{
+        //    try
+        //    {
+        //        var pendingClaims = await _claimService.GetPendingClaimsAsync();
+        //        if (!pendingClaims.Any()) return; // Không có claim nào Pending thì không gửi
 
-                string recipientEmail = "thongnmse172317@fpt.edu.vn";
-                string subject = "Reminder: Pending Claim Requests";
-                var updatedDate = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+        //        string recipientEmail = "thongnmse172317@fpt.edu.vn";
+        //        string subject = "Reminder: Pending Claim Requests";
+        //        var updatedDate = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
 
-                // Đọc template email
-                string templatePath = Path.Combine(AppContext.BaseDirectory, "Services", "Templates", "ClaimReminderTemplate.html");
-                string body = await File.ReadAllTextAsync(templatePath);
+        //        // Đọc template email
+        //        string templatePath = Path.Combine(AppContext.BaseDirectory, "Services", "Templates", "ClaimReminderTemplate.html");
+        //        string body = await File.ReadAllTextAsync(templatePath);
 
-                // Danh sách claim Pending
-                string claimsList = string.Join("<br/>", pendingClaims.Select(c => $"• Staff: {c.StaffName} - Project: {c.ProjectName}"));
+        //        // Danh sách claim Pending
+        //        string claimsList = string.Join("<br/>", pendingClaims.Select(c => $"• Staff: {c.StaffName} - Project: {c.ProjectName}"));
 
-                // Thay thế placeholder trong template
-                body = body.Replace("{ClaimerName}", "Approver")
-                           .Replace("{ListName}", claimsList)
-                           .Replace("{UpdatedDate}", updatedDate);
+        //        // Thay thế placeholder trong template
+        //        body = body.Replace("{ClaimerName}", "Approver")
+        //                   .Replace("{ListName}", claimsList)
+        //                   .Replace("{UpdatedDate}", updatedDate);
 
-                await SendEmailAsync(recipientEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending claim reminder email");
-                throw;
-            }
-        }
+        //        await SendEmailAsync(recipientEmail, subject, body);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error sending claim reminder email");
+        //        throw;
+        //    }
+        //}
 
 
 
@@ -85,7 +85,7 @@ namespace ClaimRequest.BLL.Services.Implements
             {
                 var claim = await _claimService.GetClaimById(Id);
                 if (claim == null)
-                    throw new NotFoundException($"Claim with { Id} not found.");
+                    throw new NotFoundException($"Claim with {Id} not found.");
 
                 string projectName = claim.Project.Name;
 
@@ -126,7 +126,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 string projectName = claim.Project.Name;
 
-                var updatedDate = claim.UpdateAt.ToString("yyyy-MM-dd HH:mm:ss");   
+                var updatedDate = claim.UpdateAt.ToString("yyyy-MM-dd HH:mm:ss");
 
                 CreateStaffResponse claimer = await _staffService.GetStaffById(claim.ClaimerId);
                 string recipientEmail = claimer.Email;
@@ -148,13 +148,13 @@ namespace ClaimRequest.BLL.Services.Implements
                 _logger.LogError(ex, "Error sending claim returned email with claimId: {claimId}", claimId);
                 throw;
             }
-        }
+        } //Staff approves
 
-        public async Task SendClaimSubmittedEmail(Guid claimId)
+        public async Task SendClaimSubmittedEmail(Guid claimerId)
         {
             try
             {
-                Claim claim = await _claimService.GetClaimById(claimId);
+                Claim claim = await _claimService.GetClaimById(claimerId);
                 if (claim == null)
                     throw new Exception("Claim not found.");
 
@@ -164,7 +164,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 string projectName = claim.Project.Name;
 
-                string projectManagerName = claim.Claimer.Name;
+                string projectManagerName = project.ProjectManager.ResponseName;
                 string projectManagerEmail = project.ProjectManager.Email;
 
                 var updatedDate = claim.UpdateAt.ToString("yyyy-MM-dd HH:mm:ss");
@@ -195,7 +195,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task SendClaimApprovedEmail(Guid claimId)
+        public async Task SendClaimApprovedEmail(Guid claimId) //Approver approves
         {
             try
             {
@@ -258,9 +258,5 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public Task SendEmailAsync(Guid claimId)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

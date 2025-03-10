@@ -6,6 +6,7 @@ using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClaimRequest.API.Controllers
@@ -20,8 +21,9 @@ namespace ClaimRequest.API.Controllers
         #endregion
 
         #region Contructor
-        public ClaimController(ILogger<ClaimController> logger, IClaimService claimService, IMapper mapper) : base(logger)
+        public ClaimController(ILogger<ClaimController> logger, IEmailService emailService, IClaimService claimService, IMapper mapper) : base(logger)
         {
+            _emailService = emailService;
             _claimService = claimService;
             _mapper = mapper;
         }
@@ -155,36 +157,29 @@ namespace ClaimRequest.API.Controllers
             var fileName = "Template_Export_Claim.xlsx";
             return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
-
+        [Authorize]
         [HttpPut(ApiEndPointConstant.Claim.ApproveClaimEndpoint)]
-        [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id, [FromBody] ApproveClaimRequest approveClaimRequest)
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id)
         {
-            try
+            var approverIdClaim = User.FindFirst("StaffId")?.Value;
+            if (string.IsNullOrEmpty(approverIdClaim))
             {
-                var response = await _claimService.ApproveClaim(id, approveClaimRequest);
-                await _emailService.SendManagerApprovedEmail(approveClaimRequest.ApproverId);
-                await _emailService.SendClaimSubmittedEmail(id);
-                return Ok(response);
+                return Unauthorized("Approver ID not found in token.");
             }
-            catch (NotFoundException ex)
-            {
-                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
-                return NotFound(new { message = ex.Message });
-            }
-            catch (BadRequestException ex)
-            {
-                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error approving claim with ID {Id}: {Message}", id, ex.Message);
-                return StatusCode(500, new { message = ex.Message });
-            }
+
+            var approverId = Guid.Parse(approverIdClaim);
+            var result = await _claimService.ApproveClaim(approverId, id);
+            await _emailService.SendManagerApprovedEmail(approverId, id);
+            await _emailService.SendClaimApprovedEmail(id);
+
+            return result ? Ok("Claim approved.") : BadRequest("Approval failed.");
         }
+
+
 
         [HttpPut(ApiEndPointConstant.Claim.ReturnClaimEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<ReturnClaimResponse>), StatusCodes.Status200OK)]

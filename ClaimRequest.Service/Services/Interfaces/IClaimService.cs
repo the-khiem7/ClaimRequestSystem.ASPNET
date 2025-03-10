@@ -14,8 +14,9 @@ namespace ClaimRequest.BLL.Services.Interfaces
         Task<Claim> GetClaimById(Guid id);
         Task<RejectClaimResponse> RejectClaim(Guid Id, RejectClaimRequest rejectClaimRequest);
         Task<MemoryStream> DownloadClaimAsync(DownloadClaimRequest downloadClaimRequest);
-        Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest);
+        Task<bool> ApproveClaim(Guid approverId, Guid id);
         Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest);
-        Task<IEnumerable<ViewClaimResponse>> GetPendingClaimsAsync();
+
+        //Task<IEnumerable<ViewClaimResponse>> GetPendingClaimsAsync();
     }
 }
