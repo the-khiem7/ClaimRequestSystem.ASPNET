@@ -15,9 +15,9 @@ using Microsoft.Extensions.Logging;
 namespace ClaimRequest.BLL.Services.Implements
 {
     // chuẩn bị cho việc implement các method CRUD cho Staff 
-    public class StaffService : BaseService<StaffService>, IStaffService
+    public class StaffService : BaseService<Staff>, IStaffService
     {
-        public StaffService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, ILogger<StaffService> logger, IMapper mapper, IHttpContextAccessor httpContextAccessor) : base(unitOfWork, logger, mapper, httpContextAccessor)
+        public StaffService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, ILogger<Staff> logger, IMapper mapper, IHttpContextAccessor httpContextAccessor) : base(unitOfWork, logger, mapper, httpContextAccessor)
         {
         }
 
