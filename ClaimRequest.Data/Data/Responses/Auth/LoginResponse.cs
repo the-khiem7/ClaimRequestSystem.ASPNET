@@ -1,6 +1,6 @@
 ﻿using ClaimRequest.DAL.Data.Entities;
 
-namespace ClaimRequest.DAL.Data.Responses
+namespace ClaimRequest.DAL.Data.Responses.Auth
 {
     public class LoginResponse
     {
@@ -11,7 +11,7 @@ namespace ClaimRequest.DAL.Data.Responses
         public SystemRole Role { get; set; }
         public Department Department { get; set; }
 
-        public LoginResponse(ClaimRequest.DAL.Data.Entities.Staff staff)
+        public LoginResponse(Entities.Staff staff)
         {
             Id = staff.Id;
             Email = staff.Email;

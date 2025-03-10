@@ -13,6 +13,8 @@ namespace ClaimRequest.API.Constants
             public const string RegisterEndpoint = AuthEndpoint + "/register";
             public const string RefreshTokenEndpoint = AuthEndpoint + "/refresh-token";
             public const string LogoutEndpoint = AuthEndpoint + "/logout";
+            public const string ForgotPasswordEndpoint = AuthEndpoint + "/forgot-password";
+
         }
 
         public static class Claim
