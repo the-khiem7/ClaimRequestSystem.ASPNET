@@ -227,16 +227,19 @@ namespace ClaimRequest.BLL.Services.Implements
                                 predicate: s => s.Id == id && s.IsActive
                             )).ValidateExists(id);
 
+                        // Validate if project exists
                         var existingProject = await _unitOfWork.GetRepository<Project>()
                             .SingleOrDefaultAsync(
                             predicate: p => p.Id == assignStaffRequest.projectId
                             ).ValidateExists(assignStaffRequest.projectId);
 
-                        if (!Enum.IsDefined(typeof(ProjectRole), assignStaffRequest.ProjectRole))
-                        {
-                            throw new BadRequestException("Invalid project role.");
-                        }
+                        // Check valid role
+                        //if (!Enum.IsDefined(typeof(ProjectRole), assignStaffRequest.ProjectRole))
+                        //{
+                        //    throw new BadRequestException("Invalid project role.");
+                        //}
 
+                        // Validate if assigner is in project
                         var assignerInProject = await _unitOfWork.GetRepository<ProjectStaff>()
                             .SingleOrDefaultAsync(predicate: ps => ps.StaffId == assignStaffRequest.AssignerId
                                                  && ps.ProjectId == assignStaffRequest.projectId);
@@ -299,14 +302,17 @@ namespace ClaimRequest.BLL.Services.Implements
                                 predicate: s => s.Id == id && s.IsActive
                             )).ValidateExists(id);
 
+                        // Validate project if exists
                         var existingProject = await _unitOfWork.GetRepository<Project>()
                             .SingleOrDefaultAsync(
                             predicate: p => p.Id == removeStaffRequest.projectId
                             ).ValidateExists(removeStaffRequest.projectId);
 
+                        // Remover must be project manager
                         var removerInProject = await _unitOfWork.GetRepository<ProjectStaff>()
                             .SingleOrDefaultAsync(predicate: ps => ps.StaffId == removeStaffRequest.RemoverId
-                                                 && ps.ProjectId == removeStaffRequest.projectId);
+                                                 && ps.ProjectId == removeStaffRequest.projectId
+                                                 && ps.ProjectRole != ProjectRole.ProjectManager);
 
                         if (removerInProject == null)
                         {
@@ -323,6 +329,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             throw new BadRequestException("Staff is not assign to this project.");
                         }
 
+                        // Cannot remove project manager
                         if (projectStaff.ProjectRole == ProjectRole.ProjectManager) 
                         {
                             throw new BadRequestException("Project Manager cannot be remove from project.");
