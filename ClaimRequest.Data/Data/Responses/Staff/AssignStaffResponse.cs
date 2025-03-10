@@ -15,6 +15,6 @@ namespace ClaimRequest.DAL.Data.Responses.Staff
 
         public Guid StaffId { get; set; }
 
-        public ProjectRole ProjectRole { get; set; }
+        //public ProjectRole ProjectRole { get; set; }
     }
 }
