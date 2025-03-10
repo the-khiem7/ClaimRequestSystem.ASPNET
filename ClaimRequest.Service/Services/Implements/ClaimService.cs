@@ -614,8 +614,5 @@ namespace ClaimRequest.BLL.Services.Implements
         }
 
 
-
-
-
     }
 }
