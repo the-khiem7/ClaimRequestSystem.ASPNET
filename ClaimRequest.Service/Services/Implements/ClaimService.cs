@@ -253,10 +253,15 @@ namespace ClaimRequest.BLL.Services.Implements
 
         public async Task<UpdateClaimResponse> UpdateClaim(Guid Id, UpdateClaimRequest request)
         {
-            try
+            var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+
+            return await executionStrategy.ExecuteAsync(async () =>
             {
-                var claimRepository = _unitOfWork.GetRepository<Claim>();
-                var claim = await claimRepository.GetByIdAsync(Id);
+                await using var transaction = await _unitOfWork.BeginTransactionAsync();
+                try
+                {
+                    var claimRepository = _unitOfWork.GetRepository<Claim>();
+                    var claim = await claimRepository.GetByIdAsync(Id);
 
                 if (claim == null)
                 {
@@ -268,15 +273,11 @@ namespace ClaimRequest.BLL.Services.Implements
                     };
                 }
 
-                if (request.StartDate >= request.EndDate)
-                {
-                    return new UpdateClaimResponse
+                    if (request.StartDate >= request.EndDate)
                     {
-                        ClaimId = Id,
-                        Message = "Start Date must be earlier than End Date",
-                        Success = false
-                    };
-                }
+                        _logger.LogError("Start Date {StartDate} must be earlier than End Date {EndDate}.", request.StartDate, request.EndDate);
+                        throw new InvalidOperationException("Start Date must be earlier than End Date.");
+                    }
 
                 claim.StartDate = request.StartDate;
                 claim.EndDate = request.EndDate;
@@ -286,15 +287,16 @@ namespace ClaimRequest.BLL.Services.Implements
                 claimRepository.UpdateAsync(claim);
                 await _unitOfWork.CommitAsync();
 
-                _logger.LogInformation("Successfully updated claim with ID {ClaimId}.", Id);
-
-                return _mapper.Map<UpdateClaimResponse>(claim);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating claim with ID {ClaimId}: {Message}", Id, ex.Message);
-                throw new InvalidOperationException("An error occurred while updating the claim", ex);
-            }
+                    _logger.LogInformation("Successfully updated claim with ID {ClaimId}.", Id);
+                    return _mapper.Map<UpdateClaimResponse>(claim);
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(ex, "Error updating claim with ID {ClaimId}: {Message}", Id, ex.Message);
+                    throw new InvalidOperationException("An error occurred while updating the claim", ex);
+                }
+            });
         }
 
         public async Task<PagingResponse<ViewClaimResponse>> GetClaims(int pageNumber = 1, int pageSize = 20, ClaimStatus? status = null)
