@@ -260,36 +260,36 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request)
-        {
-            var response = new SendOtpEmailResponse();
-            try
-            {
-                // Generate OTP using OtpUtil
-                var otp = OtpUtil.GenerateOtp(request.Email);
-                await _otpService.CreateOtpEntity(request.Email, otp);
+        //public async Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request)
+        //{
+        //    var response = new SendOtpEmailResponse();
+        //    try
+        //    {
+        //        // Generate OTP using OtpUtil
+        //        var otp = OtpUtil.GenerateOtp(request.Email);
+        //        await _otpService.CreateOtpEntity(request.Email, otp);
 
-                // Create email request
-                var emailRequest = new SendMailRequest
-                {
-                    To = request.Email,
-                    Subject = "Your OTP Code",
-                    Body = $"Your OTP code is: {otp}"
-                };
+        //        // Create email request
+        //        var emailRequest = new SendMailRequest
+        //        {
+        //            To = request.Email,
+        //            Subject = "Your OTP Code",
+        //            Body = $"Your OTP code is: {otp}"
+        //        };
 
-                // Send email
-                var emailSent = await SendEmailAsync(emailRequest);
-                response.Success = emailSent;
-                response.Message = emailSent ? "OTP email sent successfully." : "Failed to send OTP email.";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send OTP email.");
-                response.Success = false;
-                response.Message = "An error occurred while sending the OTP email.";
-            }
+        //        // Send email
+        //        var emailSent = await SendEmailAsync(emailRequest);
+        //        response.Success = emailSent;
+        //        response.Message = emailSent ? "OTP email sent successfully." : "Failed to send OTP email.";
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Failed to send OTP email.");
+        //        response.Success = false;
+        //        response.Message = "An error occurred while sending the OTP email.";
+        //    }
 
-            return response;
-        }
+        //    return response;
+        //}
     }
 }
