@@ -312,11 +312,11 @@ namespace ClaimRequest.BLL.Services.Implements
                         var removerInProject = await _unitOfWork.GetRepository<ProjectStaff>()
                             .SingleOrDefaultAsync(predicate: ps => ps.StaffId == removeStaffRequest.RemoverId
                                                  && ps.ProjectId == removeStaffRequest.projectId
-                                                 && ps.ProjectRole != ProjectRole.ProjectManager);
+                                                 && ps.ProjectRole == ProjectRole.ProjectManager);
 
                         if (removerInProject == null)
                         {
-                            throw new BadRequestException("You are not a member of this project.");
+                            throw new BadRequestException("You are not a member of this project or not project manager.");
                         }
 
                         // Check if staff is assigned to the project
