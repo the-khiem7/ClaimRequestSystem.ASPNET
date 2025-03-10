@@ -80,14 +80,18 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-        public async Task SendManagerApprovedEmail(Guid approverId, Guid Id)
+        public async Task SendManagerApprovedEmail(Guid approverId, Guid claimId)
         {
             try
             {
-                var claim = await _claimService.GetClaimById(Id);
+                var claim = await _claimService.GetClaimById(claimId);
+                if (claim == null) throw new Exception("Claim not found");
+
                 string projectName = claim.Project.Name;
-                var updatedDate = claim.UpdateAt.ToString("yyyy-MM-dd HH:mm:ss");
+                string updatedDate = claim.UpdateAt.ToString("yyyy-MM-dd HH:mm:ss");
+
                 var approver = await _staffService.GetStaffById(approverId);
+                if (approver == null) throw new Exception("Approver not found");
 
                 string recipientEmail = approver.Email;
                 string subject = $"Claim Request for {projectName} - {approver.ResponseName} ({approver.Id})";

@@ -8,6 +8,6 @@ namespace ClaimRequest.BLL.Services.Interfaces
         Task SendClaimApprovedEmail(Guid claimId);
         Task SendClaimReturnedEmail(Guid claimId);
         Task SendClaimSubmittedEmail(Guid claimId);
-        Task SendManagerApprovedEmail(Guid Id, Guid approverId);
+        Task SendManagerApprovedEmail(Guid approverId, Guid claimId);
     }
 }

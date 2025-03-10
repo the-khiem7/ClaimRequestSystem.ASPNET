@@ -1,4 +1,5 @@
 ﻿using ClaimRequest.BLL.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -49,15 +50,24 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
-        [HttpPost("send-manager-approved/{approverId}")]
+        [Authorize]
+        [HttpPost("send-manager-approved/{claimId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> SendManagerApprovedEmail(Guid Id, Guid approverId)
+        public async Task<IActionResult> SendManagerApprovedEmail([FromRoute] Guid claimId)
         {
             try
             {
-                await _emailService.SendManagerApprovedEmail(Id, approverId);
+                var approverIdClaim = User.FindFirst("StaffId")?.Value;
+                if (string.IsNullOrEmpty(approverIdClaim))
+                {
+                    return Unauthorized("Approver ID not found in token.");
+                }
+
+                var approverId = Guid.Parse(approverIdClaim);
+                await _emailService.SendManagerApprovedEmail(approverId, claimId);
+
                 return Ok(new { message = "Email sent successfully." });
             }
             catch (Exception ex)
@@ -65,6 +75,7 @@ namespace ClaimRequest.API.Controllers
                 return StatusCode(500, new { error = "Failed to send email.", details = ex.Message });
             }
         }
+
 
         [HttpPost("send-claim-approved/{claimId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
