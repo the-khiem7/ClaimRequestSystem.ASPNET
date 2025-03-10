@@ -6,6 +6,7 @@ using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
+using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Repositories.Implements;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -93,19 +94,19 @@ internal class Program
 
         builder.Services.AddHostedService<ClaimReminderService>();
 
-        // Dependency Injection for Repositories and Services
-        builder.Services.AddScoped<IClaimService, ClaimService>();
-        builder.Services.AddScoped<IStaffService, StaffService>();
-        builder.Services.AddScoped<IProjectService, ProjectService>();
-        builder.Services.AddScoped<IEmailService, EmailService>();
-        builder.Services.AddScoped<IAuthService, AuthService>();
+// Dependency Injection for Repositories and Services
+builder.Services.AddScoped<IClaimService, ClaimService>();
+builder.Services.AddScoped<IStaffService, StaffService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
 
-
-        //Serilize enum to string
-        builder.Services.AddControllers().AddJsonOptions(options =>
-        {
-            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-        });
+//Serilize enum to string
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 
 
@@ -125,21 +126,74 @@ internal class Program
         //});
         // ===============================================
 
-        // Add authentication
-        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
+// Add authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidIssuer = builder.Configuration.GetSection("Jwt:Issuer").Get<string>(),
+            ValidAudience = builder.Configuration.GetSection("Jwt:Audience").Get<string>(),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+        };
+        
+        // Add this to automatically prepend "Bearer " to the token
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
             {
-                options.TokenValidationParameters = new TokenValidationParameters
+                var accessToken = context.Request.Headers["Authorization"].FirstOrDefault();
+                
+                // If token exists but doesn't start with "Bearer "
+                if (!string.IsNullOrEmpty(accessToken) && !accessToken.StartsWith("Bearer "))
                 {
-                    ValidateIssuerSigningKey = true,
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidIssuer = builder.Configuration.GetSection("Jwt:Issuer").Get<string>(),
-                    ValidAudience = builder.Configuration.GetSection("Jwt:Audience").Get<string>(),
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+                    // Add "Bearer " prefix
+                    context.Request.Headers["Authorization"] = "Bearer " + accessToken;
+                }
+                
+                return Task.CompletedTask;
+            },
+            
+            // Add custom response for unauthorized requests
+            OnChallenge = async context =>
+            {
+                // Skip the default logic
+                context.HandleResponse();
+                
+                // Set the response status code
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.ContentType = "application/json";
+                
+                // Create a custom response
+                var response = new ApiResponse<object>
+                {
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = "Unauthorized access",
+                    Reason = "Authentication failed. Please provide a valid token.",
+                    IsSuccess = false,
+                    Data = new
+                    {
+                        Path = context.Request.Path,
+                        Method = context.Request.Method,
+                        Timestamp = DateTime.UtcNow
+                    }
                 };
-            });
+                
+                // Write the response
+                await context.Response.WriteAsJsonAsync(response);
+            }
+        };
+    });
+
+// Add authorization with policies for different roles and operations
+builder.Services.AddAuthorization(options =>
+{
+    options.AddClaimRequestPolicies();
+});
 
         // Update the Kestrel configuration
         //builder.WebHost.ConfigureKestrel(serverOptions =>
@@ -154,14 +208,15 @@ internal class Program
 
         var app = builder.Build();
 
-        // Configure the HTTP request pipeline.
-        if (app.Environment.IsDevelopment())
-        {
-            // Only apply migrations if explicitly enabled in configuration
-            if (builder.Configuration.GetValue("ApplyMigrations", false))
-            {
-                app.ApplyMigrations();
-            }
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    // Only apply migrations if explicitly enabled in configuration
+    if (builder.Configuration.GetValue<bool>("ApplyMigrations", false))
+    {
+        app.ApplyMigrations();
+    }
 
             app.UseSwagger();
             app.UseSwaggerUI();
@@ -175,12 +230,14 @@ internal class Program
 
         app.UseHttpsRedirection();
 
-        app.UseCors(options =>
-        {
-            options.AllowAnyOrigin();
-            options.AllowAnyMethod();
-            options.AllowAnyHeader();
-        });
+app.UseCors(options =>
+{
+     options.SetIsOriginAllowed(origin => 
+        origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:"))
+           .AllowAnyMethod()
+           .AllowAnyHeader()
+           .AllowCredentials();
+});
 
         app.UseAuthorization();
 

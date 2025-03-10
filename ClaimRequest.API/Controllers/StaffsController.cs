@@ -3,11 +3,13 @@ using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Staff;
 using ClaimRequest.DAL.Data.Responses.Staff;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClaimRequest.API.Controllers
 {
     [ApiController]
+    [Authorize(Policy = "CanManageStaff")]
     public class StaffsController : BaseController<StaffsController>
     {
         private readonly IStaffService _staffService; // inject staff service vao staff controller
@@ -20,8 +22,12 @@ namespace ClaimRequest.API.Controllers
         [HttpGet(ApiEndPointConstant.Staffs.StaffsEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<CreateStaffResponse>>), StatusCodes.Status200OK)] // tra ve response 200 OK
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)] // tra ve response 500 neu co loi
+        [Authorize(Roles = "Admin, Approver, Finance")]
         public async Task<IActionResult> GetStaffs()
         {
+            var userClaims = User.Claims.Select(c => new {c.Type, c.Value}); //debugging code
+            _logger.LogInformation("User claims: {@Claims}", userClaims);
+
             var staffs = await _staffService.GetStaffs();
             return Ok(ApiResponseBuilder.BuildResponse(
                 StatusCodes.Status200OK,
@@ -48,6 +54,7 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<UpdateStaffResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateStaff(Guid id, [FromBody] UpdateStaffRequest request)
         {
             var updatedStaff = await _staffService.UpdateStaff(id, request);
@@ -58,10 +65,11 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
-        [HttpDelete(ApiEndPointConstant.Staffs.DeleteStaffEndpoint)]
+        [HttpPut(ApiEndPointConstant.Staffs.DeleteStaffEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteStaff(Guid id)
         {
             await _staffService.DeleteStaff(id);
@@ -76,6 +84,7 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<CreateStaffResponse>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateStaff([FromBody] CreateStaffRequest request)
         {
             var response = await _staffService.CreateStaff(request);
