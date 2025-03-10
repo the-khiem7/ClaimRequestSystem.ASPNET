@@ -114,7 +114,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task SendManagerApprovedEmail(Guid claimId)
+        public async Task SendManagerApprovedEmail(Guid approverId, Guid claimId)
         {
             try
             {
