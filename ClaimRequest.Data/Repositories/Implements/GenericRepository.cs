@@ -121,7 +121,8 @@ namespace ClaimRequest.DAL.Repositories.Implements
         #region Update
         public void UpdateAsync(T entity)
         {
-            _dbSet.Update(entity);
+            _dbSet.Attach(entity);
+            _dbContext.Entry(entity).State = EntityState.Modified;
         }
 
         public void UpdateRange(IEnumerable<T> entities)

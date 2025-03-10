@@ -16,6 +16,8 @@ using ClaimRequest.DAL.Data.Exceptions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using ClaimRequest.DAL.Data.Responses.Email;
+using ClaimRequest.DAL.Data.Requests.Email;
 
 
 namespace ClaimRequest.BLL.Services.Implements
