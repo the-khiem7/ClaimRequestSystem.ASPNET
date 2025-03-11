@@ -451,50 +451,38 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-                return await executionStrategy.ExecuteAsync(async () =>
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
-                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
-                    try
+                    var pendingClaim = await _unitOfWork.GetRepository<Claim>()
+                        .SingleOrDefaultAsync(
+                            predicate: s => s.Id == id,
+                            include: q => q.Include(c => c.ClaimApprovers));
+
+                    pendingClaim.ValidateExists(id);
+
+                    if (pendingClaim.Status != ClaimStatus.Pending)
                     {
-                        var pendingClaim = await _unitOfWork.GetRepository<Claim>()
-                            .SingleOrDefaultAsync(
-                                predicate: s => s.Id == id,
-                                include: q => q.Include(c => c.ClaimApprovers));
-
-                        pendingClaim.ValidateExists(id);
-
-                        if (pendingClaim.Status != ClaimStatus.Pending)
-                        {
-                            throw new BadRequestException($"Claim with ID {id} is not pending for approval.");
-                        }
-
-                        _logger.LogInformation("Returning claim with ID: {id} by approver: {Approverid}", id, returnClaimRequest.ApproverId);
-
-                        var existingApprover = pendingClaim.ClaimApprovers
-                            .FirstOrDefault(ca => ca.ApproverId == returnClaimRequest.ApproverId);
-
-                        if (existingApprover == null)
-                        {
-                            throw new UnauthorizedAccessException($"Approver with ID {returnClaimRequest.ApproverId} does not have permission to return claim ID {id}.");
-                        }
-
-                        _mapper.Map(returnClaimRequest, pendingClaim);
-
-                        pendingClaim.Status = ClaimStatus.Draft;
-                        pendingClaim.UpdateAt = DateTime.UtcNow;
-
-                        _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
-                        await _unitOfWork.CommitAsync();
-                        await transaction.CommitAsync();
-
-                        return _mapper.Map<ReturnClaimResponse>(pendingClaim);
+                        throw new BadRequestException($"Claim with ID {id} is not pending for approval.");
                     }
-                    catch (Exception)
+
+                    _logger.LogInformation("Returning claim with ID: {id} by approver: {Approverid}", id, returnClaimRequest.ApproverId);
+
+                    var existingApprover = pendingClaim.ClaimApprovers
+                        .FirstOrDefault(ca => ca.ApproverId == returnClaimRequest.ApproverId);
+
+                    if (existingApprover == null)
                     {
-                        await transaction.RollbackAsync();
-                        throw;
+                        throw new UnauthorizedAccessException($"Approver with ID {returnClaimRequest.ApproverId} does not have permission to return claim ID {id}.");
                     }
+
+                    _mapper.Map(returnClaimRequest, pendingClaim);
+
+                    pendingClaim.Status = ClaimStatus.Draft;
+                    pendingClaim.UpdateAt = DateTime.UtcNow;
+
+                    _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
+
+                    return _mapper.Map<ReturnClaimResponse>(pendingClaim);
                 });
             }
             catch (Exception ex)
