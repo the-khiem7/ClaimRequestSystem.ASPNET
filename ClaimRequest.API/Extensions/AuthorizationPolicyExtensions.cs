@@ -61,7 +61,7 @@ namespace ClaimRequest.API.Extensions
         private static void AddManagementPolicies(AuthorizationOptions options)
         {
             options.AddPolicy("CanManageStaff", policy => 
-                policy.RequireRole(SystemRole.Admin.ToString()));
+                policy.RequireRole(SystemRole.Admin.ToString(), SystemRole.Staff.ToString(), SystemRole.Approver.ToString()));
                 
             options.AddPolicy("CanManageProjects", policy => 
                 policy.RequireRole(SystemRole.Admin.ToString()));
