@@ -469,7 +469,6 @@ namespace ClaimRequest.BLL.Services.Implements
                         include: s => s.Include(c => c.ClaimApprovers)
                     )).ValidateExists(id); ;
 
-
                     if (pendingClaim.Status != ClaimStatus.Pending)
                     {
                         throw new BadRequestException($"Claim with ID {id} is not in pending state.");

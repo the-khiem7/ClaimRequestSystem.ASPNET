@@ -35,16 +35,23 @@ namespace ClaimRequest.API.Controllers
 
             try
             {
+                var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Unauthorized("Missing authentication token.");
+                }
+
                 using var stream = file.OpenReadStream();
-                var imageUrl = await _cloudinaryService.UploadImageAsync(stream, file.FileName);
+                var imageUrl = await _cloudinaryService.UploadImageAsync(stream, file.FileName, token);
                 return Ok(new { imageUrl });
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error uploading image: {ex.Message}");
-                return StatusCode(500, "An error occurred while uploading the image.");
+                return StatusCode(500, $"An error occurred while uploading the image: {ex.Message}");
             }
         }
+
 
         [HttpDelete(ApiEndPointConstant.Cloudinary.DeleteImage)]
         public async Task<IActionResult> DeleteImage([FromRoute] string publicId)
