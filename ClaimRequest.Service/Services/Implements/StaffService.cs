@@ -249,6 +249,12 @@ namespace ClaimRequest.BLL.Services.Implements
                             throw new BadRequestException("You are not a member of this project.");
                         }
 
+                        // Ensure assigner is project manager
+                        if (assignerInProject.ProjectRole != ProjectRole.ProjectManager)
+                        {
+                            throw new UnauthorizedException("You do not have permission to assign staff to this project.");
+                        }
+
                         // Check if staff is assigned to the project
                         var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
                             .SingleOrDefaultAsync(predicate: s => s.StaffId == id
