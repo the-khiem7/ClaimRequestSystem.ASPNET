@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ClaimRequest.DAL.Data.Entities
@@ -52,6 +53,9 @@ namespace ClaimRequest.DAL.Data.Entities
         [Required]
         [Column("is_active")]
         public bool IsActive { get; set; } = true;
+
+        [Column("avatar")]
+        public string Avatar { get; set; }
 
         public virtual ICollection<ProjectStaff> ProjectStaffs { get; set; } = [];
 

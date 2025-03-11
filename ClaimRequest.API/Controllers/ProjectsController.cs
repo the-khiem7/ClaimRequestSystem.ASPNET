@@ -92,7 +92,7 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
-        [HttpDelete(ApiEndPointConstant.Projects.DeleteProjectEndpoint)]
+        [HttpPut(ApiEndPointConstant.Projects.DeleteProjectEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
@@ -115,7 +115,7 @@ namespace ClaimRequest.API.Controllers
                 {
                     StatusCode = StatusCodes.Status200OK,
                     Message = "Project deleted successfully",
-                    IsSuccess = true, // chỗ này xem lại
+                    IsSuccess = true,
                     Data = null
                 });
             }
