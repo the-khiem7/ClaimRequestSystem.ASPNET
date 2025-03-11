@@ -13,7 +13,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Linq.Expressions;
-using ClaimRequest.DAL.Data.Exceptions;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -247,6 +246,12 @@ namespace ClaimRequest.BLL.Services.Implements
                         if (assignerInProject == null)
                         {
                             throw new BadRequestException("You are not a member of this project.");
+                        }
+
+                        // Ensure assigner is project manager
+                        if (assignerInProject.ProjectRole != ProjectRole.ProjectManager)
+                        {
+                            throw new UnauthorizedException("You do not have permission to assign staff to this project.");
                         }
 
                         // Check if staff is assigned to the project
