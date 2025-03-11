@@ -5,6 +5,12 @@ namespace ClaimRequest.DAL.Repositories.Interfaces
 {
     public interface IUnitOfWork : IGenericRepositoryFactory, IDisposable
     {
+        Task<TOperation> ProcessInTransactionAsync<TOperation>(Func<Task<TOperation>> operation);
+        Task ProcessInTransactionAsync(Func<Task> operation);
+
+
+
+
         int Commit();
 
         Task<int> CommitAsync();
