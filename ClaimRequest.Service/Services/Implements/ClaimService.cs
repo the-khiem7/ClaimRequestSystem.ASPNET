@@ -232,17 +232,12 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                // Map request to entity
-                var newClaim = _mapper.Map<Claim>(createClaimRequest);
-
-                // Insert new claim
-                await _unitOfWork.GetRepository<Claim>().InsertAsync(newClaim);
-
-                // Save changes
-                await _unitOfWork.CommitAsync();
-
-                // Map and return response
-                return _mapper.Map<CreateClaimResponse>(newClaim);
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
+                {
+                    var newClaim = _mapper.Map<Claim>(createClaimRequest);
+                    await _unitOfWork.GetRepository<Claim>().InsertAsync(newClaim);
+                    return _mapper.Map<CreateClaimResponse>(newClaim);
+                });
             }
             catch (Exception ex)
             {

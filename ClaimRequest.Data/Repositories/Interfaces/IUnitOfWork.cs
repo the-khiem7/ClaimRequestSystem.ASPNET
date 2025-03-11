@@ -7,6 +7,10 @@ namespace ClaimRequest.DAL.Repositories.Interfaces
     {
         Task<TOperation> ProcessInTransactionAsync<TOperation>(Func<Task<TOperation>> operation);
         Task ProcessInTransactionAsync(Func<Task> operation);
+
+
+
+
         int Commit();
 
         Task<int> CommitAsync();
