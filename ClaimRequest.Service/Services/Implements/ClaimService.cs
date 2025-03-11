@@ -114,6 +114,15 @@ namespace ClaimRequest.BLL.Services.Implements
                         .Include(x => x.Finance)
                 );
 
+                var foundClaimIds = selectedClaims.Select(c => c.Id).ToHashSet();
+                var missingClaimIds = downloadClaimRequest.ClaimIds.Except(foundClaimIds).ToList();
+
+                if (missingClaimIds.Any())
+                {
+                    _logger.LogWarning("The following claim IDs were not found: {MissingClaims}", string.Join(", ", missingClaimIds));
+                    throw new NotFoundException($"Some claims were not found: {string.Join(", ", missingClaimIds)}");
+                }
+
                 if (selectedClaims == null || !selectedClaims.Any())
                 {
                     _logger.LogWarning("No claims found for download.");
