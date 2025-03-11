@@ -346,77 +346,52 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-                return await executionStrategy.ExecuteAsync(async () =>
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
-                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
-                    try
-                    {
-                        // Find claim by Id
-                        var pendingClaim = await _unitOfWork.GetRepository<Claim>()
-                            .SingleOrDefaultAsync(
-                                predicate: s => s.Id == id,
-                                include: q => q.Include(c => c.ClaimApprovers)
-                            );
-                        pendingClaim.ValidateExists(id);
-
-                        // Check claim status
-                        if (pendingClaim.Status != ClaimStatus.Pending)
-                        {
-                            throw new InvalidOperationException($"Claim with ID {id} is not in pending status.");
-                        }
-
-                        var approver = await _unitOfWork.GetRepository<Staff>()
+                    var pendingClaim = await _unitOfWork.GetRepository<Claim>()
                         .SingleOrDefaultAsync(
-                            predicate: s => s.Id == rejectClaimRequest.ApproverId
-                            );
-                        approver.ValidateExists(rejectClaimRequest.ApproverId);
+                            predicate: s => s.Id == id,
+                            include: q => q.Include(c => c.ClaimApprovers)
+                        );
+                    pendingClaim.ValidateExists(id);
 
-                        // Check approver permission
-                        if (approver.SystemRole != SystemRole.Approver)
-                        {
-                            throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
-                        }
-                        var approverName = approver.Name ?? "Unknown Approver";
-
-                        var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
-                        .SingleOrDefaultAsync(
-                            predicate: ps => ps.StaffId == rejectClaimRequest.ApproverId 
-                            && ps.ProjectId == pendingClaim.ProjectId
-                            );
-
-                        // Check if approver belongs in the claim's project
-                        if (projectStaff == null)
-                        {
-                            throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} is not in the right project to reject this claim.");
-                        }
-
-                        // If the claim has not been check then update
-                        var newApprover = new ClaimApprover
-                        {
-                            ClaimId = pendingClaim.Id,
-                            ApproverId = rejectClaimRequest.ApproverId,
-                        };
-                        await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
-
-                        // Update claim status
-                        _mapper.Map(rejectClaimRequest, pendingClaim);
-
-                        _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
-
-                        // Audit trails
-                        await LogChangeAsync(pendingClaim.Id, "Claim Status", "Pending", ClaimStatus.Rejected.ToString(), approverName);
-
-                        await _unitOfWork.CommitAsync();
-                        await transaction.CommitAsync();
-
-                        return _mapper.Map<RejectClaimResponse>(pendingClaim);
-                    }
-                    catch (Exception)
+                    if (pendingClaim.Status != ClaimStatus.Pending)
                     {
-                        await transaction.RollbackAsync();
-                        throw;
+                        throw new InvalidOperationException($"Claim with ID {id} is not in pending status.");
                     }
+
+                    var approver = await _unitOfWork.GetRepository<Staff>()
+                        .SingleOrDefaultAsync(predicate: s => s.Id == rejectClaimRequest.ApproverId);
+                    approver.ValidateExists(rejectClaimRequest.ApproverId);
+
+                    if (approver.SystemRole != SystemRole.Approver)
+                    {
+                        throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
+                    }
+                    var approverName = approver.Name ?? "Unknown Approver";
+
+                    var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
+                        .SingleOrDefaultAsync(predicate: ps => ps.StaffId == rejectClaimRequest.ApproverId
+                            && ps.ProjectId == pendingClaim.ProjectId);
+
+                    if (projectStaff == null)
+                    {
+                        throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} is not in the right project to reject this claim.");
+                    }
+
+                    var newApprover = new ClaimApprover
+                    {
+                        ClaimId = pendingClaim.Id,
+                        ApproverId = rejectClaimRequest.ApproverId,
+                    };
+                    await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
+
+                    _mapper.Map(rejectClaimRequest, pendingClaim);
+                    _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
+
+                    await LogChangeAsync(pendingClaim.Id, "Claim Status", "Pending", ClaimStatus.Rejected.ToString(), approverName);
+
+                    return _mapper.Map<RejectClaimResponse>(pendingClaim);
                 });
             }
             catch (Exception ex)
