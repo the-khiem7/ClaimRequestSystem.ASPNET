@@ -246,12 +246,14 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task<UpdateClaimResponse> UpdateClaim(Guid Id, UpdateClaimRequest request)
+        public async Task<UpdateClaimResponse> UpdateClaim(Guid id, UpdateClaimRequest request)
         {
-                try
+            try
+            {
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
                     var claimRepository = _unitOfWork.GetRepository<Claim>();
-                    var claim = await claimRepository.GetByIdAsync(Id);
+                    var claim = await claimRepository.GetByIdAsync(id);
 
                     if (claim == null)
                     {
@@ -270,16 +272,16 @@ namespace ClaimRequest.BLL.Services.Implements
                     claim.UpdateAt = DateTime.UtcNow;
 
                     claimRepository.UpdateAsync(claim);
-                    await _unitOfWork.CommitAsync();
 
-                    _logger.LogInformation("Successfully updated claim with ID {ClaimId}.", Id);
+                    _logger.LogInformation("Successfully updated claim with ID {ClaimId}.", id);
                     return _mapper.Map<UpdateClaimResponse>(claim);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error updating claim with ID {ClaimId}: {Message}", Id, ex.Message);
-                    throw;
-                }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating claim with ID {ClaimId}: {Message}", id, ex.Message);
+                throw;
+            }
         }
 
 
