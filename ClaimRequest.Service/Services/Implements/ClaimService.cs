@@ -95,7 +95,6 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-
         public async Task<MemoryStream> DownloadClaimAsync(DownloadClaimRequest downloadClaimRequest)
         {
             try
@@ -177,19 +176,31 @@ namespace ClaimRequest.BLL.Services.Implements
                 int row = 2;
                 foreach (var claim in selectedClaims)
                 {
-                    worksheet.Cells[row, 1].Value = claim.Id;
-                    worksheet.Cells[row, 2].Value = claim.Claimer?.Name;
-                    worksheet.Cells[row, 3].Value = claim.Project?.Name;
-                    worksheet.Cells[row, 4].Value = claim.ClaimType.ToString();
-                    worksheet.Cells[row, 5].Value = claim.Status.ToString();
-                    worksheet.Cells[row, 6].Style.Numberformat.Format = "$#,##0.00";
-                    worksheet.Cells[row, 6].Value = claim.Amount;
-                    worksheet.Cells[row, 7].Value = claim.TotalWorkingHours;
-                    worksheet.Cells[row, 8].Value = claim.StartDate.ToString("yyyy-MM-dd");
-                    worksheet.Cells[row, 9].Value = claim.EndDate.ToString("yyyy-MM-dd");
-                    worksheet.Cells[row, 10].Value = claim.CreateAt.ToString("yyyy-MM-dd HH:mm:ss");
-                    worksheet.Cells[row, 11].Value = claim.Finance?.Name;
-                    worksheet.Cells[row, 12].Value = claim.Remark ?? "N/A";
+                    var cells = worksheet.Cells;
+
+                    var values = new object[]
+                    {
+                        claim.Id,
+                        claim.Claimer?.Name,
+                        claim.Project?.Name,
+                        claim.ClaimType.ToString(),
+                        claim.Status.ToString(),
+                        claim.Amount,
+                        claim.TotalWorkingHours,
+                        claim.StartDate.ToString("yyyy-MM-dd"),
+                        claim.EndDate.ToString("yyyy-MM-dd"),
+                        claim.CreateAt.ToString("yyyy-MM-dd HH:mm:ss"),
+                        claim.Finance?.Name,
+                        claim.Remark ?? "N/A"
+                    };
+
+                    for (int col = 0; col < values.Length; col++)
+                    {
+                        var cell = cells[row, col + 1];
+                        cell.Value = values[col];
+                        if (col == 5) // Format Amount column
+                            cell.Style.Numberformat.Format = "$#,##0.00";
+                    }
                     row++;
                 }
 
