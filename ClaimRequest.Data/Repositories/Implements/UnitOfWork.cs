@@ -6,7 +6,7 @@ using ClaimRequest.DAL.Data.Entities;
 
 namespace ClaimRequest.DAL.Repositories.Implements
 {
-    public class UnitOfWork<TContext> : IUnitOfWork<TContext> where TContext : ClaimRequestDbContext
+    public class UnitOfWork<TContext> : IUnitOfWork<TContext> where TContext : DbContext
     {
         public TContext Context { get; }
         private Dictionary<Type, object> _repositories;

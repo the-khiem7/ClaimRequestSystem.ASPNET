@@ -50,5 +50,12 @@ namespace ClaimRequest.API.Constants
             public const string UpdateStaffEndpoint = StaffEndpointById + "/update";
             public const string DeleteStaffEndpoint = StaffEndpointById + "/delete";
         }
+
+        public static class Payment
+        {
+            public const string PaymentControllerBase = ApiEndpoint + "/payment";
+            public const string CreatePaymentUrl = PaymentControllerBase + "/create-payment-url";
+            public const string PaymentCallback = PaymentControllerBase + "/payment-callback";
+        }
     }
 }
