@@ -403,12 +403,9 @@ namespace ClaimRequest.BLL.Services.Implements
 
         public async Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest)
         {
-            var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-
-            return await executionStrategy.ExecuteAsync(async () =>
+            try
             {
-                await using var transaction = await _unitOfWork.BeginTransactionAsync();
-                try
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
                     var claimRepo = _unitOfWork.GetRepository<Claim>();
                     var claimApproverRepo = _unitOfWork.GetRepository<ClaimApprover>();
@@ -416,8 +413,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     var pendingClaim = (await claimRepo.SingleOrDefaultAsync(
                         predicate: s => s.Id == id,
                         include: s => s.Include(c => c.ClaimApprovers)
-                    )).ValidateExists(id, "Claim"); ;
-
+                    )).ValidateExists(id, "Claim");
 
                     if (pendingClaim.Status != ClaimStatus.Pending)
                     {
@@ -439,19 +435,16 @@ namespace ClaimRequest.BLL.Services.Implements
 
                     claimRepo.UpdateAsync(pendingClaim);
 
-                    await _unitOfWork.CommitAsync();
-                    await transaction.CommitAsync();
-
                     var response = _mapper.Map<ApproveClaimResponse>(pendingClaim);
                     response.ApproverId = approveClaimRequest.ApproverId;
                     return response;
-                }
-                catch (Exception)
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
-            });
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error approving claim with ID {id}: {Message}", id, ex.Message);
+                throw;
+            }
         }
 
         public async Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest)
