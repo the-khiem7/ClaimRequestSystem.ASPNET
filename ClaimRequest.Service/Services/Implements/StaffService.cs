@@ -38,43 +38,62 @@ namespace ClaimRequest.BLL.Services.Implements
                     throw new ArgumentNullException(nameof(createStaffRequest), "Request data cannot be null.");
                 }
 
-                // Sử dụng ExecutionStrategy để retry nếu có lỗi tạm thời trong DB
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+                //// Sử dụng ExecutionStrategy để retry nếu có lỗi tạm thời trong DB
+                //var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
-                return await executionStrategy.ExecuteAsync(async () =>
+                //return await executionStrategy.ExecuteAsync(async () =>
+                //{
+                //    // Bắt đầu transaction
+                //    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
+                //    try
+                //    {
+                //        Expression<Func<Staff, bool>> predicate = s => s.Email == createStaffRequest.Email;
+                //        var existingStaff = await _unitOfWork.GetRepository<Staff>()
+                //            .SingleOrDefaultAsync(predicate: s => s.Email == createStaffRequest.Email);
+
+                //        if (existingStaff != null)
+                //        {
+                //            throw new BusinessException("Email is already in use. Please use a different email.");
+                //        }
+
+                //        // Ánh xạ từ Request sang Entity
+                //        var newStaff = _mapper.Map<Staff>(createStaffRequest);
+                //        newStaff.Id = Guid.NewGuid(); // Tạo ID mới
+                //        newStaff.Password = BCrypt.Net.BCrypt.HashPassword(createStaffRequest.Password); // Hash mật khẩu
+
+                //        // Thêm vào DB
+                //        await _unitOfWork.GetRepository<Staff>().InsertAsync(newStaff);
+                //        await _unitOfWork.CommitAsync();
+
+                //        // Commit transaction trước khi trả về response
+                //        await transaction.CommitAsync();
+                //        return _mapper.Map<CreateStaffResponse>(newStaff);
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        await transaction.RollbackAsync();
+                //        Console.WriteLine($"Error creating staff: {ex.Message}");
+                //        throw;
+                //    }
+                //});
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
-                    // Bắt đầu transaction
-                    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
-                    try
+                    var existingStaff = await _unitOfWork.GetRepository<Staff>()
+                        .SingleOrDefaultAsync(predicate: s => s.Email == createStaffRequest.Email);
+
+                    if (existingStaff != null)
                     {
-                        Expression<Func<Staff, bool>> predicate = s => s.Email == createStaffRequest.Email;
-                        var existingStaff = await _unitOfWork.GetRepository<Staff>()
-                            .SingleOrDefaultAsync(predicate: s => s.Email == createStaffRequest.Email);
-
-                        if (existingStaff != null)
-                        {
-                            throw new BusinessException("Email is already in use. Please use a different email.");
-                        }
-
-                        // Ánh xạ từ Request sang Entity
-                        var newStaff = _mapper.Map<Staff>(createStaffRequest);
-                        newStaff.Id = Guid.NewGuid(); // Tạo ID mới
-                        newStaff.Password = BCrypt.Net.BCrypt.HashPassword(createStaffRequest.Password); // Hash mật khẩu
-
-                        // Thêm vào DB
-                        await _unitOfWork.GetRepository<Staff>().InsertAsync(newStaff);
-                        await _unitOfWork.CommitAsync();
-
-                        // Commit transaction trước khi trả về response
-                        await transaction.CommitAsync();
-                        return _mapper.Map<CreateStaffResponse>(newStaff);
+                        throw new BusinessException("Email is already in use. Please use a different email.");
                     }
-                    catch (Exception ex)
-                    {
-                        await transaction.RollbackAsync();
-                        Console.WriteLine($"Error creating staff: {ex.Message}");
-                        throw;
-                    }
+
+                    var newStaff = _mapper.Map<Staff>(createStaffRequest);
+                    newStaff.Id = Guid.NewGuid();
+                    newStaff.Password = BCrypt.Net.BCrypt.HashPassword(createStaffRequest.Password);
+
+                    await _unitOfWork.GetRepository<Staff>().InsertAsync(newStaff);
+                    await _unitOfWork.CommitAsync();
+
+                    return _mapper.Map<CreateStaffResponse>(newStaff);
                 });
             }
             catch (Exception ex)
@@ -131,34 +150,50 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+                //var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
-                return await executionStrategy.ExecuteAsync(async () =>
+                //return await executionStrategy.ExecuteAsync(async () =>
+                //{
+                //    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
+                //    try
+                //    {
+                //        var existingStaff = (await _unitOfWork.GetRepository<Staff>()
+                //            .SingleOrDefaultAsync(
+                //                predicate: s => s.Id == id && s.IsActive,
+                //                orderBy: null,
+                //                include: null
+                //            )).ValidateExists(id, "Can't update because this staff");
+
+                //        // Update properties
+                //        _mapper.Map(updateStaffRequest, existingStaff);
+
+                //        _unitOfWork.GetRepository<Staff>().UpdateAsync(existingStaff);
+                //        await _unitOfWork.CommitAsync(); // save changes
+                //        await transaction.CommitAsync(); // thuc hien commit transaction => thay doi duoc luu vao db
+
+                //        return _mapper.Map<UpdateStaffResponse>(existingStaff);
+                //    }
+                //    catch (Exception)
+                //    {
+                //        await transaction.RollbackAsync();
+                //        throw;
+                //    }
+                //});
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
-                    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
-                    try
-                    {
-                        var existingStaff = (await _unitOfWork.GetRepository<Staff>()
-                            .SingleOrDefaultAsync(
-                                predicate: s => s.Id == id && s.IsActive,
-                                orderBy: null,
-                                include: null
-                            )).ValidateExists(id, "Can't update because this staff");
+                    var existingStaff = (await _unitOfWork.GetRepository<Staff>()
+                        .SingleOrDefaultAsync(
+                            predicate: s => s.Id == id && s.IsActive,
+                            orderBy: null,
+                            include: null
+                        )).ValidateExists(id, "Can't update because this staff");
 
-                        // Update properties
-                        _mapper.Map(updateStaffRequest, existingStaff);
+                    _mapper.Map(updateStaffRequest, existingStaff);
 
-                        _unitOfWork.GetRepository<Staff>().UpdateAsync(existingStaff);
-                        await _unitOfWork.CommitAsync(); // save changes
-                        await transaction.CommitAsync(); // thuc hien commit transaction => thay doi duoc luu vao db
+                    _unitOfWork.GetRepository<Staff>().UpdateAsync(existingStaff);
+                    await _unitOfWork.CommitAsync();
 
-                        return _mapper.Map<UpdateStaffResponse>(existingStaff);
-                    }
-                    catch (Exception)
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
+                    return _mapper.Map<UpdateStaffResponse>(existingStaff);
                 });
             }
             catch (Exception ex)
@@ -172,34 +207,50 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+                //var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
-                return await executionStrategy.ExecuteAsync(async () =>
+                //return await executionStrategy.ExecuteAsync(async () =>
+                //{
+                //    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
+                //    try
+                //    {
+                //        var staff = (await _unitOfWork.GetRepository<Staff>()
+                //            .SingleOrDefaultAsync(
+                //                predicate: s => s.Id == id && s.IsActive,
+                //                orderBy: null,
+                //                include: null
+                //            )).ValidateExists(id, "Can't delete because this staff");
+
+                //        // Soft delete
+                //        staff.IsActive = false;
+                //        _unitOfWork.GetRepository<Staff>().UpdateAsync(staff);
+
+                //        await _unitOfWork.CommitAsync();
+                //        await transaction.CommitAsync();
+
+                //        return true;
+                //    }
+                //    catch (Exception)
+                //    {
+                //        await transaction.RollbackAsync();
+                //        throw;
+                //    }
+                //});
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
-                    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
-                    try
-                    {
-                        var staff = (await _unitOfWork.GetRepository<Staff>()
-                            .SingleOrDefaultAsync(
-                                predicate: s => s.Id == id && s.IsActive,
-                                orderBy: null,
-                                include: null
-                            )).ValidateExists(id, "Can't delete because this staff");
+                    var staff = (await _unitOfWork.GetRepository<Staff>()
+                        .SingleOrDefaultAsync(
+                            predicate: s => s.Id == id && s.IsActive,
+                            orderBy: null,
+                            include: null
+                        )).ValidateExists(id, "Can't delete because this staff");
 
-                        // Soft delete
-                        staff.IsActive = false;
-                        _unitOfWork.GetRepository<Staff>().UpdateAsync(staff);
+                    staff.IsActive = false;
+                    _unitOfWork.GetRepository<Staff>().UpdateAsync(staff);
 
-                        await _unitOfWork.CommitAsync();
-                        await transaction.CommitAsync();
+                    await _unitOfWork.CommitAsync();
 
-                        return true;
-                    }
-                    catch (Exception)
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
+                    return true;
                 });
             }
             catch (Exception ex)
