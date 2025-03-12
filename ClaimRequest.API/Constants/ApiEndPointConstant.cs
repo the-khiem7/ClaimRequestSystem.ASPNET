@@ -49,7 +49,6 @@ namespace ClaimRequest.API.Constants
             public const string DeleteProjectEndpoint = ProjectEndpointById + "/delete";
 
         }
-
         public static class Staffs
         {
             public const string StaffsEndpoint = ApiEndpoint + "/staffs";
@@ -58,6 +57,12 @@ namespace ClaimRequest.API.Constants
             public const string DeleteStaffEndpoint = StaffEndpointById + "/delete";
             public const string AssignStaffEndpoint = StaffEndpointById + "/assign";
             public const string RemoveStaffEndpoint = StaffEndpointById + "/remove";
+        }
+        public static class Cloudinary
+        {
+            public const string CloudinaryEndpoint = ApiEndpoint + "/cloudinary";
+            public const string UploadImage = CloudinaryEndpoint + "/upload";
+            public const string DeleteImage = CloudinaryEndpoint + "/delete/{publicId}";
         }
 
         public static class Payment
