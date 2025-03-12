@@ -203,17 +203,17 @@ var app = builder.Build();
 
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    // Only apply migrations if explicitly enabled in configuration
-    if (builder.Configuration.GetValue<bool>("ApplyMigrations", false))
-    {
-        app.ApplyMigrations();
-    }
+//if (app.Environment.IsDevelopment())
+//{
+//    // Only apply migrations if explicitly enabled in configuration
+//    if (builder.Configuration.GetValue<bool>("ApplyMigrations", false))
+//    {
+//        app.ApplyMigrations();
+//    }
 
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+//    app.UseSwagger();
+//    app.UseSwaggerUI();
+//}
 
 // Add the ExceptionHandlerMiddleware to the pipeline
 // comment lai doan code phia duoi neu chuong khong doc duoc loi tu swagger
