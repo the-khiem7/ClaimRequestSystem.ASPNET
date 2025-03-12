@@ -28,6 +28,7 @@ namespace ClaimRequest.API.Constants
             public const string DownloadClaimEndpoint = ClaimsEndpoint + "/download";
             public const string PaidClaimEndpoint = ClaimEndpointById + "/paid";
             public const string ReturnClaimEndpoint = ClaimEndpointById + "/return";
+            public const string SubmitClaimEndpoint = ClaimEndpointById + "/submit";
 
         }
         public static class Email
@@ -49,7 +50,6 @@ namespace ClaimRequest.API.Constants
             public const string DeleteProjectEndpoint = ProjectEndpointById + "/delete";
 
         }
-
         public static class Staffs
         {
             public const string StaffsEndpoint = ApiEndpoint + "/staffs";
@@ -58,6 +58,19 @@ namespace ClaimRequest.API.Constants
             public const string DeleteStaffEndpoint = StaffEndpointById + "/delete";
             public const string AssignStaffEndpoint = StaffEndpointById + "/assign";
             public const string RemoveStaffEndpoint = StaffEndpointById + "/remove";
+        }
+        public static class Cloudinary
+        {
+            public const string CloudinaryEndpoint = ApiEndpoint + "/cloudinary";
+            public const string UploadImage = CloudinaryEndpoint + "/upload";
+            public const string DeleteImage = CloudinaryEndpoint + "/delete/{publicId}";
+        }
+
+        public static class Payment
+        {
+            public const string PaymentControllerBase = ApiEndpoint + "/payment";
+            public const string CreatePaymentUrl = PaymentControllerBase + "/create-payment-url";
+            public const string PaymentCallback = PaymentControllerBase + "/payment-callback";
         }
     }
 }
