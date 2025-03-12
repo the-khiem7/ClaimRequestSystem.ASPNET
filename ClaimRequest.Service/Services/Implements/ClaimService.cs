@@ -687,21 +687,6 @@ namespace ClaimRequest.BLL.Services.Implements
           .SingleOrDefaultAsync(predicate: p => p.Id == claim.ProjectId)).ValidateExists(claim.ProjectId);
             //?? throw new NotFoundException($"Project for claim with ID {claimId} not found.");
 
-        private void ValidateUserAccess(ViewMode selectedView, SystemRole role)
-        {
-            var requiredRoles = new Dictionary<ViewMode, SystemRole>
-            {
-                { ViewMode.AdminMode, SystemRole.Admin },
-                { ViewMode.ApproverMode, SystemRole.Approver },
-                { ViewMode.FinanceMode, SystemRole.Finance }
-            };
-
-            if (requiredRoles.TryGetValue(selectedView, out var requiredRole) && role != requiredRole)
-            {
-                throw new UnauthorizedAccessException($"Only {requiredRole} users can access {selectedView}.");
-            }
-        }
-
             var projectStaffs = await _unitOfWork.GetRepository<ProjectStaff>()
                 .GetListAsync(
                     predicate: ps => ps.ProjectId == project.Id && ps.Staff.IsActive,
@@ -739,6 +724,21 @@ namespace ClaimRequest.BLL.Services.Implements
                 ClaimId = claim.Id,
                 ApproverId = approver.Id
             };
+        }
+
+        private void ValidateUserAccess(ViewMode selectedView, SystemRole role)
+        {
+            var requiredRoles = new Dictionary<ViewMode, SystemRole>
+            {
+                { ViewMode.AdminMode, SystemRole.Admin },
+                { ViewMode.ApproverMode, SystemRole.Approver },
+                { ViewMode.FinanceMode, SystemRole.Finance }
+            };
+
+            if (requiredRoles.TryGetValue(selectedView, out var requiredRole) && role != requiredRole)
+            {
+                throw new UnauthorizedAccessException($"Only {requiredRole} users can access {selectedView}.");
+            }
         }
     }
 }
