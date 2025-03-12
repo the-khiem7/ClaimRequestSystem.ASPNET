@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using ClaimRequest.API.Extensions;
 using ClaimRequest.API.Middlewares;
 using ClaimRequest.BLL.Services.Implements;
+using ClaimRequest.BLL.Services.Implements.VNPayService.Services;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
@@ -95,6 +96,9 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+builder.Services.AddScoped<IVnPayService, VnPayService>();
+builder.Services.AddScoped<IGenericRepository<Claim>, GenericRepository<Claim>>();
+builder.Services.AddScoped<IGenericRepository<Payment>, GenericRepository<Payment>>();
 
 //Serilize enum to string
 builder.Services.AddControllers().AddJsonOptions(options =>
