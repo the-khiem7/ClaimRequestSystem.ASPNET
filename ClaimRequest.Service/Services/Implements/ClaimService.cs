@@ -406,50 +406,43 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest)
+        public async Task<bool> ApproveClaim(Guid approverId, Guid id)
         {
-            try
+            return await _unitOfWork.ProcessInTransactionAsync(async () =>
             {
-                return await _unitOfWork.ProcessInTransactionAsync(async () =>
+                var claimRepo = _unitOfWork.GetRepository<Claim>();
+                var claimApproverRepo = _unitOfWork.GetRepository<ClaimApprover>();
+
+                var pendingClaim = await claimRepo.SingleOrDefaultAsync(
+                    predicate: s => s.Id == id,
+                    include: s => s.Include(c => c.ClaimApprovers)
+                );
+
+                if (pendingClaim == null)
                 {
-                    var claimRepo = _unitOfWork.GetRepository<Claim>();
-                    var claimApproverRepo = _unitOfWork.GetRepository<ClaimApprover>();
+                    throw new NotFoundException($"Claim with ID {id} not found.");
+                }
 
-                    var pendingClaim = (await claimRepo.SingleOrDefaultAsync(
-                        predicate: s => s.Id == id,
-                        include: s => s.Include(c => c.ClaimApprovers)
-                    )).ValidateExists(id, "Claim");
+                if (pendingClaim.Status != ClaimStatus.Pending)
+                {
+                    throw new BadRequestException($"Claim with ID {id} is not in pending state.");
+                }
 
-                    if (pendingClaim.Status != ClaimStatus.Pending)
-                    {
-                        throw new BadRequestException($"Claim with ID {id} is not in pending state.");
-                    }
+                var isApproverAllowed = pendingClaim.ClaimApprovers
+                    .Any(ca => ca.ApproverId == approverId);
 
-                    var isApproverAllowed = pendingClaim.ClaimApprovers
-                        .Any(ca => ca.ApproverId == approveClaimRequest.ApproverId);
+                if (!isApproverAllowed)
+                {
+                    throw new UnauthorizedAccessException($"Approver with ID {approverId} does not have permission to approve this claim.");
+                }
 
-                    if (!isApproverAllowed)
-                    {
-                        throw new UnauthorizedAccessException($"Approver with ID {approveClaimRequest.ApproverId} does not have permission to approve claim ID {id}.");
-                    }
+                _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproverId}", id, approverId);
 
-                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approveClaimRequest.ApproverId);
+                pendingClaim.Status = ClaimStatus.Approved;
+                claimRepo.UpdateAsync(pendingClaim);
 
-                    _mapper.Map(approveClaimRequest, pendingClaim);
-                    pendingClaim.Status = ClaimStatus.Approved;
-
-                    claimRepo.UpdateAsync(pendingClaim);
-
-                    var response = _mapper.Map<ApproveClaimResponse>(pendingClaim);
-                    response.ApproverId = approveClaimRequest.ApproverId;
-                    return response;
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error approving claim with ID {id}: {Message}", id, ex.Message);
-                throw;
-            }
+                return true;
+            });
         }
 
         public async Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest)

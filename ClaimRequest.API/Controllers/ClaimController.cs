@@ -169,31 +169,40 @@ namespace ClaimRequest.API.Controllers
 
         [Authorize(Policy = "CanApproveClaim")]
         [HttpPut(ApiEndPointConstant.Claim.ApproveClaimEndpoint)]
-        [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id, [FromBody] ApproveClaimRequest approveClaimRequest)
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id)
         {
-            try
+            var approverIdClaim = User.FindFirst("StaffId")?.Value;
+            if (string.IsNullOrEmpty(approverIdClaim))
             {
-                var response = await _claimService.ApproveClaim(id, approveClaimRequest);
-                return Ok(response);
+                return Unauthorized(new ApiResponse<object>
+                {
+                    Message = "Approver ID not found in token.",
+                    Data = null,
+                    StatusCode = StatusCodes.Status401Unauthorized
+                });
             }
-            catch (NotFoundException ex)
+
+            var approverId = Guid.Parse(approverIdClaim);
+            var result = await _claimService.ApproveClaim(approverId, id);
+
+            if (result)
             {
-                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
-                return NotFound(new { message = ex.Message });
+                var successResponse = ApiResponseBuilder.BuildResponse(
+                    message: "Claim approved successfully!",
+                    data: true,
+                    statusCode: StatusCodes.Status200OK);
+                return Ok(successResponse);
             }
-            catch (BadRequestException ex)
-            {
-                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error approving claim with ID {Id}: {Message}", id, ex.Message);
-                return StatusCode(500, new { message = ex.Message });
-            }
+
+            var errorResponse = ApiResponseBuilder.BuildResponse(
+                message: "Approval failed.",
+                data: false,
+                statusCode: StatusCodes.Status400BadRequest);
+            return BadRequest(errorResponse);
         }
 
         [Authorize(Policy = "CanReturnClaim")]
