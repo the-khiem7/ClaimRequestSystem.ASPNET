@@ -366,25 +366,13 @@ namespace ClaimRequest.BLL.Services.Implements
                 {
                     var pendingClaim = await _unitOfWork.GetRepository<Claim>()
                         .SingleOrDefaultAsync(
-                            predicate: s => s.Id == id,
-                            include: q => q.Include(c => c.ClaimApprovers)
-                        );
-                    pendingClaim.ValidateExists(id);
+                            predicate: s => s.Id == id
+                        ) ?? throw new KeyNotFoundException($"Claim with ID {id} not found.");
 
                     if (pendingClaim.Status != ClaimStatus.Pending)
                     {
                         throw new InvalidOperationException($"Claim with ID {id} is not in pending status.");
                     }
-
-                    var approver = await _unitOfWork.GetRepository<Staff>()
-                        .SingleOrDefaultAsync(predicate: s => s.Id == rejectClaimRequest.ApproverId);
-                    approver.ValidateExists(rejectClaimRequest.ApproverId);
-
-                    if (approver.SystemRole != SystemRole.Approver)
-                    {
-                        throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
-                    }
-                    var approverName = approver.Name ?? "Unknown Approver";
 
                     var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
                         .SingleOrDefaultAsync(predicate: ps => ps.StaffId == rejectClaimRequest.ApproverId
@@ -395,12 +383,21 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} is not in the right project to reject this claim.");
                     }
 
-                    var newApprover = new ClaimApprover
+                    var approver = await _unitOfWork.GetRepository<Staff>()
+                        .SingleOrDefaultAsync(predicate: s => s.Id == rejectClaimRequest.ApproverId)
+                        ?? throw new KeyNotFoundException($"Approver with ID {id} not found.");
+
+                    if (approver.SystemRole != SystemRole.Approver)
+                    {
+                        throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
+                    }
+                    var approverName = approver.Name ?? "Unknown Approver";
+
+                    await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(new ClaimApprover
                     {
                         ClaimId = pendingClaim.Id,
-                        ApproverId = rejectClaimRequest.ApproverId,
-                    };
-                    await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
+                        ApproverId = rejectClaimRequest.ApproverId
+                    });
 
                     _mapper.Map(rejectClaimRequest, pendingClaim);
                     _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
