@@ -30,6 +30,41 @@ namespace ClaimRequest.DAL.Repositories.Implements
         }
         #endregion
 
+        #region Packed Transaction Management
+        public async Task<TOperation> ProcessInTransactionAsync<TOperation>(Func<Task<TOperation>> operation)
+        {
+            var executionStrategy = Context.Database.CreateExecutionStrategy();
+            return await executionStrategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await Context.Database.BeginTransactionAsync();
+                try
+                {
+                    var result = await operation();
+                    await Context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return result;
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw new DbUpdateException();
+                }
+            });
+        }
+
+        // Overload for void operation
+        public async Task ProcessInTransactionAsync(Func<Task> operation)
+        {
+            await ProcessInTransactionAsync(async () =>
+            {
+                await operation();
+                return true;
+            });
+        }
+
+
+        #endregion
+
         #region Transaction Management
         public async Task<IDbContextTransaction> BeginTransactionAsync()
         {

@@ -85,7 +85,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
                     try
                     {
-                        // Retrieve the project by ID
+                        
                         var existingProject = await _unitOfWork.GetRepository<Project>()
                             .SingleOrDefaultAsync(predicate: p => p.Id == id);
 
@@ -94,8 +94,10 @@ namespace ClaimRequest.BLL.Services.Implements
                             return false; // Return false instead of throwing an exception
                         }
 
-                        // Delete the project
-                        _unitOfWork.GetRepository<Project>().DeleteAsync(existingProject);
+                        
+                        existingProject.IsActive = false;
+                        _unitOfWork.GetRepository<Project>().UpdateAsync(existingProject);
+
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();
 
@@ -121,10 +123,11 @@ namespace ClaimRequest.BLL.Services.Implements
             {
                 var project = (await _unitOfWork.GetRepository<Project>()
                     .SingleOrDefaultAsync(
-                        predicate: p => p.Id == id,
+                        predicate: p => p.Id == id && p.IsActive,
                         include: q => q
                             .Include(p => p.ProjectManager)
                             .Include(p => p.ProjectStaffs)
+                                .ThenInclude(ps => ps.Staff) // Load Staff, including Department
                     )).ValidateExists(id);
 
                 return _mapper.Map<CreateProjectResponse>(project);
@@ -142,9 +145,11 @@ namespace ClaimRequest.BLL.Services.Implements
             {
                 var projects = await _unitOfWork.GetRepository<Project>()
                     .GetListAsync(
+                        predicate: p => p.IsActive,
                         include: q => q
                             .Include(p => p.ProjectManager)
                             .Include(p => p.ProjectStaffs)
+                                .ThenInclude(ps => ps.Staff) // Load Staff, including Department
                     );
 
                 return _mapper.Map<IEnumerable<CreateProjectResponse>>(projects);
@@ -173,9 +178,10 @@ namespace ClaimRequest.BLL.Services.Implements
                                 include: q => q
                                     .Include(p => p.ProjectManager)
                                     .Include(p => p.ProjectStaffs)
-                            )).ValidateExists(id, "Can't update becase this project ");
+                            )).ValidateExists(id, "Can't update because this project doesn't exist ");
 
                         _mapper.Map(updateProjectRequest, existingProject);
+
 
                         // If a new Project Manager is provided, update it
                         if (updateProjectRequest.ProjectManagerId != Guid.Empty)
@@ -185,7 +191,7 @@ namespace ClaimRequest.BLL.Services.Implements
                                     predicate: s => s.Id == updateProjectRequest.ProjectManagerId,
                                     orderBy: null,
                                     include: null
-                                ).ValidateExists(updateProjectRequest.ProjectManagerId, "Can't update becase this project because your ProjectManager ");
+                                ).ValidateExists(updateProjectRequest.ProjectManagerId, "Can't update this project because your ProjectManager doesn't exist ");
 
                             if (newProjectManager.SystemRole != SystemRole.Approver)
                             {

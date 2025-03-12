@@ -1,5 +1,4 @@
 using ClaimRequest.DAL.Data.Entities;
-using System.Linq;
 
 namespace ClaimRequest.API.Constants
 {

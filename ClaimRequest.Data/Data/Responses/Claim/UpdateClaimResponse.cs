@@ -6,7 +6,6 @@
         public DateOnly StartDate { get; set; }
         public DateOnly EndDate { get; set; }
         public decimal TotalWorkingHours { get; set; }
-        public bool Success { get; set; }
-        public string Message { get; set; }
+        public DateTime UpdateAt { get; set; } = DateTime.UtcNow;
     }
 }
