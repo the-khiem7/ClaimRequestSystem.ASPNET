@@ -63,7 +63,6 @@ namespace ClaimRequest.API.Constants
             public const string CloudinaryEndpoint = ApiEndpoint + "/cloudinary";
             public const string UploadImage = CloudinaryEndpoint + "/upload";
             public const string DeleteImage = CloudinaryEndpoint + "/delete/{publicId}";
-            public const string UpdateImage = CloudinaryEndpoint + "/update/{publicId}";
         }
     }
 }

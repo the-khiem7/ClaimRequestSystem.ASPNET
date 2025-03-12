@@ -8,8 +8,7 @@ namespace ClaimRequest.BLL.Services.Interfaces
 {
     public interface ICloudinaryService
     {
-        Task<string> UploadImageAsync(Stream imageStream, string fileName, string token);
+        Task<string> UploadImageAsync(Stream imageStream, string fileName);
         Task<bool> DeleteImageAsync(string publicId);
-        Task<string> UpdateImageAsync(Stream imageStream, string fileName, string publicId);
     }
 }

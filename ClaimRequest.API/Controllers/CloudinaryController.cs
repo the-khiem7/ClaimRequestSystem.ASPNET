@@ -35,21 +35,16 @@ namespace ClaimRequest.API.Controllers
 
             try
             {
-                var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-
-                if (string.IsNullOrEmpty(token))
-                {
-                    return Unauthorized("Missing authentication token.");
-                }
-
                 using var stream = file.OpenReadStream();
-                var imageUrl = await _cloudinaryService.UploadImageAsync(stream, file.FileName, token);
+                var imageUrl = await _cloudinaryService.UploadImageAsync(stream, file.FileName);
                 return Ok(new { imageUrl });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"An error occurred while uploading the image: {ex.Message}");
+                _logger.LogError($"Error uploading image: {ex.Message}");
+                return StatusCode(500, "An error occurred while uploading the image.");
             }
+
         }
 
 
@@ -61,39 +56,12 @@ namespace ClaimRequest.API.Controllers
                 var isDeleted = await _cloudinaryService.DeleteImageAsync(publicId);
                 if (!isDeleted)
                     return BadRequest("Failed to delete image.");
-
                 return Ok("Image deleted successfully.");
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Error deleting image: {ex.Message}");
                 return StatusCode(500, "An error occurred while deleting the image.");
-            }
-        }
-
-        [HttpPut(ApiEndPointConstant.Cloudinary.UpdateImage)]
-        public async Task<IActionResult> UpdateImage([FromRoute] string publicId, IFormFile file)
-        {
-            if (file == null || file.Length == 0)
-                return BadRequest("No file uploaded.");
-
-            var fileExtension = Path.GetExtension(file.FileName).ToLower();
-            if (!AllowedExtensions.Contains(fileExtension))
-                return BadRequest("Invalid file format. Allowed formats: .jpg, .jpeg, .png");
-
-            if (file.Length > MaxFileSize)
-                return BadRequest("File size exceeds the 5MB limit.");
-
-            try
-            {
-                using var stream = file.OpenReadStream();
-                var imageUrl = await _cloudinaryService.UpdateImageAsync(stream, file.FileName, publicId);
-                return Ok(new { imageUrl });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error updating image: {ex.Message}");
-                return StatusCode(500, "An error occurred while updating the image.");
             }
         }
     }
