@@ -65,12 +65,5 @@ namespace ClaimRequest.API.Constants
             public const string UploadImage = CloudinaryEndpoint + "/upload";
             public const string DeleteImage = CloudinaryEndpoint + "/delete/{publicId}";
         }
-
-        public static class Payment
-        {
-            public const string PaymentControllerBase = ApiEndpoint + "/payment";
-            public const string CreatePaymentUrl = PaymentControllerBase + "/create-payment-url";
-            public const string PaymentCallback = PaymentControllerBase + "/payment-callback";
-        }
     }
 }
