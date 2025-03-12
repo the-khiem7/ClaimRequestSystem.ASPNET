@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ClaimRequest.BLL.Services.Interfaces;
+﻿using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Responses.Otp;
 using ClaimRequest.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace ClaimRequest.BLL.Services.Implements
 {

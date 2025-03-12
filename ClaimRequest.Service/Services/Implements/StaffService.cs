@@ -4,20 +4,26 @@ using AutoMapper;
 using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
+using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Staff;
 using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Linq.Expressions;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
     // chuẩn bị cho việc implement các method CRUD cho Staff 
     public class StaffService : BaseService<StaffService>, IStaffService
     {
-        public StaffService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, ILogger<StaffService> logger, IMapper mapper, IHttpContextAccessor httpContextAccessor) : base(unitOfWork, logger, mapper, httpContextAccessor)
+
+        private readonly IConfiguration _configuration;
+        public StaffService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, ILogger<StaffService> logger, IMapper mapper, IHttpContextAccessor httpContextAccessor, IConfiguration configuration) : base(unitOfWork, logger, mapper, httpContextAccessor)
         {
+            _configuration = configuration;
         }
 
         // B3: Implement method CRUD cho Staff
@@ -27,35 +33,46 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                // co the xay ra loi trong create, update, delete nen dung transaction
+                if (createStaffRequest == null)
+                {
+                    throw new ArgumentNullException(nameof(createStaffRequest), "Request data cannot be null.");
+                }
+
+                // Sử dụng ExecutionStrategy để retry nếu có lỗi tạm thời trong DB
                 var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
                 return await executionStrategy.ExecuteAsync(async () =>
                 {
-                    // Begin transaction
+                    // Bắt đầu transaction
                     await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
                     try
                     {
-                        // Map request to entity
+                        Expression<Func<Staff, bool>> predicate = s => s.Email == createStaffRequest.Email;
+                        var existingStaff = await _unitOfWork.GetRepository<Staff>()
+                            .SingleOrDefaultAsync(predicate: s => s.Email == createStaffRequest.Email);
+
+                        if (existingStaff != null)
+                        {
+                            throw new BusinessException("Email is already in use. Please use a different email.");
+                        }
+
+                        // Ánh xạ từ Request sang Entity
                         var newStaff = _mapper.Map<Staff>(createStaffRequest);
+                        newStaff.Id = Guid.NewGuid(); // Tạo ID mới
+                        newStaff.Password = BCrypt.Net.BCrypt.HashPassword(createStaffRequest.Password); // Hash mật khẩu
 
-                        // Insert new staff
-                        // su dung generic repository de insert staff => 
-                        // ko can define tung repository cho tung entity
+                        // Thêm vào DB
                         await _unitOfWork.GetRepository<Staff>().InsertAsync(newStaff);
-
-                        // Save changes
                         await _unitOfWork.CommitAsync();
 
-                        // Commit transaction
+                        // Commit transaction trước khi trả về response
                         await transaction.CommitAsync();
-
-                        // Map and return response
                         return _mapper.Map<CreateStaffResponse>(newStaff);
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
                         await transaction.RollbackAsync();
+                        Console.WriteLine($"Error creating staff: {ex.Message}");
                         throw;
                     }
                 });
@@ -188,6 +205,158 @@ namespace ClaimRequest.BLL.Services.Implements
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting staff member: {Message}", ex.Message);
+                throw;
+            }
+        }
+
+        public async Task<AssignStaffResponse> AssignStaff(Guid id ,AssignStaffRequest assignStaffRequest)
+        {
+            try
+            {
+                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+
+                return await executionStrategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
+                    try
+                    {
+                        // Validate staff if exists
+                        var existingStaff = (await _unitOfWork.GetRepository<Staff>()
+                            .SingleOrDefaultAsync(
+                                predicate: s => s.Id == id && s.IsActive
+                            )).ValidateExists(id);
+
+                        // Validate if project exists
+                        var existingProject = await _unitOfWork.GetRepository<Project>()
+                            .SingleOrDefaultAsync(
+                            predicate: p => p.Id == assignStaffRequest.projectId
+                            ).ValidateExists(assignStaffRequest.projectId);
+
+                        // Check valid inputted role
+                        if (!Enum.IsDefined(typeof(ProjectRole), assignStaffRequest.ProjectRole))
+                        {
+                            throw new BadRequestException("Invalid project role.");
+                        }
+
+                        // Validate if assigner is in project
+                        var assignerInProject = await _unitOfWork.GetRepository<ProjectStaff>()
+                            .SingleOrDefaultAsync(predicate: ps => ps.StaffId == assignStaffRequest.AssignerId
+                                                 && ps.ProjectId == assignStaffRequest.projectId);
+
+                        if (assignerInProject == null)
+                        {
+                            throw new BadRequestException("You are not a member of this project.");
+                        }
+
+                        // Ensure assigner is project manager
+                        if (assignerInProject.ProjectRole != ProjectRole.ProjectManager)
+                        {
+                            throw new UnauthorizedException("You do not have permission to assign staff to this project.");
+                        }
+
+                        // Check if staff is assigned to the project
+                        var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
+                            .SingleOrDefaultAsync(predicate: s => s.StaffId == id
+                            && s.ProjectId == assignStaffRequest.projectId);
+
+                        if (projectStaff != null)
+                        {
+                            throw new BadRequestException("Staff already assign to this project.");
+                        }
+
+                        // Assign staff to project
+                        var newProjectStaff = _mapper.Map<ProjectStaff>(assignStaffRequest);
+                        newProjectStaff.Id = Guid.NewGuid();
+                        newProjectStaff.StaffId = id;
+
+                        await _unitOfWork.GetRepository<ProjectStaff>().InsertAsync(newProjectStaff);
+
+                        await _unitOfWork.CommitAsync();
+                        await transaction.CommitAsync();
+
+                        return _mapper.Map<AssignStaffResponse>(newProjectStaff);
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error Assigning staff member: {Message}", ex.Message);
+                throw;
+            }
+        }
+
+        public async Task<RemoveStaffResponse> RemoveStaff(Guid id, RemoveStaffRequest removeStaffRequest)
+        {
+            try
+            {
+                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+
+                return await executionStrategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
+                    try
+                    {
+                        // Validate staff if exists
+                        var existingStaff = (await _unitOfWork.GetRepository<Staff>()
+                            .SingleOrDefaultAsync(
+                                predicate: s => s.Id == id && s.IsActive
+                            )).ValidateExists(id);
+
+                        // Validate project if exists
+                        var existingProject = await _unitOfWork.GetRepository<Project>()
+                            .SingleOrDefaultAsync(
+                            predicate: p => p.Id == removeStaffRequest.projectId
+                            ).ValidateExists(removeStaffRequest.projectId);
+
+                        // Remover must be project manager
+                        var removerInProject = await _unitOfWork.GetRepository<ProjectStaff>()
+                            .SingleOrDefaultAsync(predicate: ps => ps.StaffId == removeStaffRequest.RemoverId
+                                                 && ps.ProjectId == removeStaffRequest.projectId
+                                                 && ps.ProjectRole == ProjectRole.ProjectManager);
+
+                        if (removerInProject == null)
+                        {
+                            throw new BadRequestException("You are not a member of this project or not project manager.");
+                        }
+
+                        // Check if staff is assigned to the project
+                        var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
+                            .SingleOrDefaultAsync(predicate: s => s.StaffId == id
+                            && s.ProjectId == removeStaffRequest.projectId);
+
+                        if (projectStaff == null)
+                        {
+                            throw new BadRequestException("Staff is not assign to this project.");
+                        }
+
+                        // Cannot remove project manager
+                        if (projectStaff.ProjectRole == ProjectRole.ProjectManager) 
+                        {
+                            throw new BadRequestException("Project Manager cannot be remove from project.");
+                        }
+
+                        _unitOfWork.GetRepository<ProjectStaff>().DeleteAsync(projectStaff);
+
+                        await _unitOfWork.CommitAsync();
+                        await transaction.CommitAsync();
+
+                        return _mapper.Map<RemoveStaffResponse>(projectStaff);
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error Assigning staff member: {Message}", ex.Message);
                 throw;
             }
         }
