@@ -326,7 +326,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 Expression<Func<Claim, bool>> predicate = selectedView switch
                 {
-                    ViewMode.AdminMode => c => true, 
+                    ViewMode.AdminMode => c => true,
                     ViewMode.ClaimerMode => c => c.ClaimerId == loggedUserId && (!status.HasValue || c.Status == status.Value),
                     ViewMode.ApproverMode => c => c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) && c.Status == ClaimStatus.Pending,
                     ViewMode.FinanceMode => c => c.FinanceId == loggedUserId && (c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid),
@@ -341,7 +341,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     predicate: predicate,
                     selector: c => _mapper.Map<ViewClaimResponse>(c),
                     page: pageNumber,
-                    size: pageSize 
+                    size: pageSize
                 );
 
                 return response;
@@ -447,15 +447,8 @@ namespace ClaimRequest.BLL.Services.Implements
 
             return await executionStrategy.ExecuteAsync(async () =>
             {
-                var claimRepo = _unitOfWork.GetRepository<Claim>();
-                var claimApproverRepo = _unitOfWork.GetRepository<ClaimApprover>();
-
-                var pendingClaim = await claimRepo.SingleOrDefaultAsync(
-                    predicate: s => s.Id == id,
-                    include: s => s.Include(c => c.ClaimApprovers)
-                );
-
-                if (pendingClaim == null)
+                await using var transaction = await _unitOfWork.BeginTransactionAsync();
+                try
                 {
                     var claimRepo = _unitOfWork.GetRepository<Claim>();
                     var claimApproverRepo = _unitOfWork.GetRepository<ClaimApprover>();
@@ -488,28 +481,14 @@ namespace ClaimRequest.BLL.Services.Implements
 
                     return true;
                 }
-
-                if (pendingClaim.Status != ClaimStatus.Pending)
+                catch (Exception)
                 {
-                    throw new BadRequestException($"Claim with ID {id} is not in pending state.");
+                    await transaction.RollbackAsync();
+                    throw;
                 }
-
-                var isApproverAllowed = pendingClaim.ClaimApprovers
-                    .Any(ca => ca.ApproverId == approverId);
-
-                if (!isApproverAllowed)
-                {
-                    throw new UnauthorizedAccessException($"Approver with ID {approverId} does not have permission to approve this claim.");
-                }
-
-                _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproverId}", id, approverId);
-
-                pendingClaim.Status = ClaimStatus.Approved;
-                claimRepo.UpdateAsync(pendingClaim);
-
-                return true;
             });
         }
+
 
 
         public async Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest)
