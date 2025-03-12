@@ -202,19 +202,20 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+app.UseSwagger();
+app.UseSwaggerUI();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    // Only apply migrations if explicitly enabled in configuration
-    if (builder.Configuration.GetValue<bool>("ApplyMigrations", false))
-    {
-        app.ApplyMigrations();
-    }
+//if (app.Environment.IsDevelopment())
+//{
+//    // Only apply migrations if explicitly enabled in configuration
+//    if (builder.Configuration.GetValue<bool>("ApplyMigrations", false))
+//    {
+//        app.ApplyMigrations();
+//    }
 
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+
+//}
 
 // Add the ExceptionHandlerMiddleware to the pipeline
 // comment lai doan code phia duoi neu chuong khong doc duoc loi tu swagger
