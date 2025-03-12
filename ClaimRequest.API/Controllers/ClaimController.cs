@@ -169,14 +169,7 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ApproveClaim([FromRoute] Guid id)
         {
-            var approverIdClaim = User.FindFirst("StaffId")?.Value;
-            if (string.IsNullOrEmpty(approverIdClaim))
-            {
-                return Unauthorized("Approver ID not found in token.");
-            }
-
-            var approverId = Guid.Parse(approverIdClaim);
-            var result = await _claimService.ApproveClaim(approverId, id);
+            var result = await _claimService.ApproveClaim(User, id);
 
             return result ? Ok("Claim approved.") : BadRequest("Approval failed.");
         }
