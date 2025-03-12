@@ -163,31 +163,15 @@ namespace ClaimRequest.API.Controllers
 
         [Authorize(Policy = "CanApproveClaim")]
         [HttpPut(ApiEndPointConstant.Claim.ApproveClaimEndpoint)]
-        [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id, [FromBody] ApproveClaimRequest approveClaimRequest)
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id)
         {
-            try
-            {
-                var response = await _claimService.ApproveClaim(id, approveClaimRequest);
-                return Ok(response);
-            }
-            catch (NotFoundException ex)
-            {
-                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
-                return NotFound(new { message = ex.Message });
-            }
-            catch (BadRequestException ex)
-            {
-                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error approving claim with ID {Id}: {Message}", id, ex.Message);
-                return StatusCode(500, new { message = ex.Message });
-            }
+            var result = await _claimService.ApproveClaim(User, id);
+
+            return result ? Ok("Claim approved.") : BadRequest("Approval failed.");
         }
 
         [Authorize(Policy = "CanReturnClaim")]

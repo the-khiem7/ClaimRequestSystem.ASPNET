@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Security.Claims;
 using AutoMapper;
 using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
@@ -429,8 +430,15 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task<ApproveClaimResponse> ApproveClaim(Guid id, ApproveClaimRequest approveClaimRequest)
+        public async Task<bool> ApproveClaim(ClaimsPrincipal user, Guid id)
         {
+            var approverIdClaim = user.FindFirst("StaffId")?.Value;
+            if (string.IsNullOrEmpty(approverIdClaim))
+            {
+                throw new UnauthorizedAccessException("Approver ID not found in token.");
+            }
+
+            var approverId = Guid.Parse(approverIdClaim);
             var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
             return await executionStrategy.ExecuteAsync(async () =>
@@ -444,8 +452,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     var pendingClaim = (await claimRepo.SingleOrDefaultAsync(
                         predicate: s => s.Id == id,
                         include: s => s.Include(c => c.ClaimApprovers)
-                    )).ValidateExists(id, "Claim"); ;
-
+                    )).ValidateExists(id);
 
                     if (pendingClaim.Status != ClaimStatus.Pending)
                     {
@@ -453,16 +460,14 @@ namespace ClaimRequest.BLL.Services.Implements
                     }
 
                     var isApproverAllowed = pendingClaim.ClaimApprovers
-                        .Any(ca => ca.ApproverId == approveClaimRequest.ApproverId);
+                        .Any(ca => ca.ApproverId == approverId);
 
                     if (!isApproverAllowed)
                     {
-                        throw new UnauthorizedAccessException($"Approver with ID {approveClaimRequest.ApproverId} does not have permission to approve claim ID {id}.");
+                        throw new UnauthorizedAccessException($"Approver with ID {approverId} does not have permission to this claim");
                     }
 
-                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approveClaimRequest.ApproverId);
-
-                    _mapper.Map(approveClaimRequest, pendingClaim);
+                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approverId);
                     pendingClaim.Status = ClaimStatus.Approved;
 
                     claimRepo.UpdateAsync(pendingClaim);
@@ -470,9 +475,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     await _unitOfWork.CommitAsync();
                     await transaction.CommitAsync();
 
-                    var response = _mapper.Map<ApproveClaimResponse>(pendingClaim);
-                    response.ApproverId = approveClaimRequest.ApproverId;
-                    return response;
+                    return true;
                 }
                 catch (Exception)
                 {
@@ -481,6 +484,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 }
             });
         }
+
 
         public async Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest)
         {

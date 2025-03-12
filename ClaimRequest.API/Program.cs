@@ -94,6 +94,7 @@ builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 
 //Serilize enum to string
 builder.Services.AddControllers().AddJsonOptions(options =>
