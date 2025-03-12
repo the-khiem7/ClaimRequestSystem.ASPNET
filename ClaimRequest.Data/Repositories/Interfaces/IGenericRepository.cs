@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using ClaimRequest.DAL.Data.MetaDatas;
 using Microsoft.EntityFrameworkCore.Query;
 
 namespace ClaimRequest.DAL.Repositories.Interfaces
@@ -33,6 +34,21 @@ namespace ClaimRequest.DAL.Repositories.Interfaces
 
         #endregion
         Task<T> GetByIdAsync(Guid id);
+
+        Task<PagingResponse<T>> GetPagingListAsync(
+            Expression<Func<T, bool>> predicate = null,
+            Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null,
+            Func<IQueryable<T>, IIncludableQueryable<T, object>> include = null,
+            int page = 1,
+            int size = 10);
+
+        Task<PagingResponse<TResult>> GetPagingListAsync<TResult>(
+            Expression<Func<T, TResult>> selector,
+            Expression<Func<T, bool>> predicate = null,
+            Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null,
+            Func<IQueryable<T>, IIncludableQueryable<T, object>> include = null,
+            int page = 1,
+            int size = 10);
 
         #region Insert
 
