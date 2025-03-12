@@ -2,6 +2,7 @@
 using System.Security;
 using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 namespace ClaimRequest.API.Middlewares
@@ -106,7 +107,7 @@ namespace ClaimRequest.API.Middlewares
                 #region 401 Unauthorized
 
                 UnauthorizedAccessException =>
-                            (HttpStatusCode.Unauthorized, "Unauthorized access", "You don't have permission to perform this action"),
+                    (HttpStatusCode.Unauthorized, "Unauthorized access", "You don't have permission to perform this action"),
                 SecurityTokenException =>
                     (HttpStatusCode.Unauthorized, "Invalid token", "Authentication token is invalid or expired"),
 
@@ -115,26 +116,26 @@ namespace ClaimRequest.API.Middlewares
                 #region 403 Forbidden
 
                 SecurityException =>
-                            (HttpStatusCode.Forbidden, "Access forbidden", "You don't have sufficient permissions"),
+                    (HttpStatusCode.Forbidden, "Access forbidden", "You don't have sufficient permissions"),
                 #endregion
 
                 #region 404 Not Found
 
                 NotFoundException =>
-                            (HttpStatusCode.NotFound, "Resource not found", exception.Message),
+                    (HttpStatusCode.NotFound, "Resource not found", exception.Message),
                 KeyNotFoundException =>
                     (HttpStatusCode.NotFound, "Resource not found", exception.Message),
 
                 #endregion
 
                 #region 500 Internal Server Error
-
+                DbUpdateException dbUpdateEx =>
+                    (HttpStatusCode.InternalServerError, "Database update error", dbUpdateEx.Message),
                 _ => (HttpStatusCode.InternalServerError,
-            "An unexpected error occurred",
-            _env.IsDevelopment() ? exception.Message : "Internal server error")
+                    "An unexpected error occurred",
+                    _env.IsDevelopment() ? exception.Message : "Internal server error")
 
                 #endregion
-
             };
 
             #region Json Response Message Format

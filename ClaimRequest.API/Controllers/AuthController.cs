@@ -1,8 +1,6 @@
 ﻿using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.MetaDatas;
-using ClaimRequest.DAL.Data.Requests;
-using ClaimRequest.DAL.Data.Responses;
 using ClaimRequest.DAL.Data.Responses.Auth;
 using Microsoft.AspNetCore.Mvc;
 
