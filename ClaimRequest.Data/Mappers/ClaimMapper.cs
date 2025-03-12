@@ -82,11 +82,7 @@ namespace ClaimRequest.DAL.Mappers
                 .ForMember(dest => dest.ApproverId, opt => opt.MapFrom(src => src.ClaimApprovers.FirstOrDefault().ApproverId))
                 .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(src => src.UpdateAt));
 
-            CreateMap<Claim, SubmitClaimRequest>()
-                .ForMember(dest => dest.ClaimerId, opt => opt.MapFrom(src => src.Claimer.Id));
 
-            CreateMap<Claim, SubmitClaimResponse>()
-                .ForMember(dest => dest.ClaimerId, opt => opt.MapFrom(src => src.Claimer.Id));
                 
 
 
