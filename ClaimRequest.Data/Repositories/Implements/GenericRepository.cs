@@ -9,10 +9,10 @@ namespace ClaimRequest.DAL.Repositories.Implements
 {
     public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
-        protected readonly DbContext _dbContext;
+        protected readonly ClaimRequestDbContext _dbContext;
         protected readonly DbSet<T> _dbSet;
 
-        public GenericRepository(DbContext context)
+        public GenericRepository(ClaimRequestDbContext context)
         {
             _dbContext = context;
             _dbSet = context.Set<T>();

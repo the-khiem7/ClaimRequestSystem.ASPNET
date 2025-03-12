@@ -26,7 +26,6 @@ namespace ClaimRequest.BLL.Services.Implements.VNPayService.Services
             var timeNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZoneById);
             var pay = new VnPayLibrary();
 
-            // Create a transaction reference that includes the claim ID
             var uniqueTxnRef = $"{model.ClaimId.ToString().Replace("-", "").Substring(0, 8)}{timeNow.ToString("yyyyMMddHHmmss")}";
 
             pay.AddRequestData("vnp_Version", _configuration["Vnpay:Version"]!);
