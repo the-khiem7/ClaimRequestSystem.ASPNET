@@ -22,7 +22,7 @@ namespace ClaimRequest.API.Constants
             public const string ClaimsEndpoint = ApiEndpoint + "/claims";
             public const string ClaimEndpointById = ClaimsEndpoint + "/{id}";
             public const string UpdateClaimEndpoint = ClaimEndpointById + "/update";
-            public const string CancelClaimEndpoint = ClaimsEndpoint + "/cancel";
+            public const string CancelClaimEndpoint = ClaimsEndpoint + "/{claimId}" + "/cancel";
             public const string RejectClaimEndpoint = ClaimEndpointById + "/reject";
             public const string ApproveClaimEndpoint = ClaimEndpointById + "/approve";
             public const string DownloadClaimEndpoint = ClaimsEndpoint + "/download";

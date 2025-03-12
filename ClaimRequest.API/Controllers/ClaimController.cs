@@ -135,9 +135,9 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<CancelClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> CancelClaim([FromBody] CancelClaimRequest cancelClaimRequest)
+        public async Task<IActionResult> CancelClaim([FromRoute] Guid claimId,[FromBody] CancelClaimRequest cancelClaimRequest)
         {
-            var response = await _claimService.CancelClaim(cancelClaimRequest);
+            var response = await _claimService.CancelClaim(claimId, cancelClaimRequest);
             if (response == null)
             {
                 _logger.LogError("Cancel claim failed");

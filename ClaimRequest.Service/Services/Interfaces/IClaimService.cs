@@ -9,7 +9,7 @@ namespace ClaimRequest.BLL.Services.Interfaces
     {
         Task<CreateClaimResponse> CreateClaim(CreateClaimRequest createClaimRequest);
         Task<UpdateClaimResponse> UpdateClaim(Guid Id, UpdateClaimRequest updateClaimRequest);
-        Task<CancelClaimResponse> CancelClaim(CancelClaimRequest cancelClaimRequest);
+        Task<CancelClaimResponse> CancelClaim(Guid claimId, CancelClaimRequest cancelClaimRequest);
         Task<PagingResponse<ViewClaimResponse>> GetClaims(int pageNumber = 1, int pageSize = 20, ClaimStatus? status = null);
 
         Task<ViewClaimResponse> GetClaimById(Guid id);

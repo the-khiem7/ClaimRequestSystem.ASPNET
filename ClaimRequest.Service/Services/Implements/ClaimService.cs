@@ -46,7 +46,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
 
         #region Nguyen_Anh_Quan
-        public async Task<CancelClaimResponse> CancelClaim(CancelClaimRequest cancelClaimRequest)
+        public async Task<CancelClaimResponse> CancelClaim(Guid claimId, CancelClaimRequest cancelClaimRequest)
         {
             try
             {
@@ -55,8 +55,15 @@ namespace ClaimRequest.BLL.Services.Implements
                     throw new InvalidOperationException("Database context is not initialized.");
                 }
 
+                // Extract user ID from JWT
+                var userId = _httpContextAccessor.HttpContext.User.FindFirst("StaffId")?.Value;
+                if (userId == null)
+                {
+                    throw new UnauthorizedAccessException("User ID not found in JWT.");
+                }
+
                 // Get claim by ID first before starting the transaction
-                var claim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(cancelClaimRequest.ClaimId)
+                var claim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(claimId)
                             ?? throw new KeyNotFoundException("Claim not found.");
 
                 // Validate claim status and claimer BEFORE starting transaction
@@ -65,7 +72,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     throw new InvalidOperationException("Claim cannot be cancelled as it is not in Draft status.");
                 }
 
-                if (claim.ClaimerId != cancelClaimRequest.ClaimerId)
+                if (claim.ClaimerId.ToString() != userId)
                 {
                     throw new InvalidOperationException("Claim cannot be cancelled as you are not the claimer.");
                 }
@@ -75,12 +82,15 @@ namespace ClaimRequest.BLL.Services.Implements
                     // Update claim status
                     claim.Status = ClaimStatus.Cancelled;
                     claim.UpdateAt = DateTime.UtcNow;
+                    claim.Remark = cancelClaimRequest.Remark;
 
                     // Update claim
                     _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
 
                     // Log the change of claim status
-                    _logger.LogInformation("Cancelled claim by {ClaimerId} on {Time}", cancelClaimRequest.ClaimerId, claim.UpdateAt);
+                    _logger.LogInformation("Cancelled claim by {ClaimerId} on {Time}", userId, claim.UpdateAt);
+
+                    await LogChangeAsync(claimId, "Claim Status", "Draft", ClaimStatus.Cancelled.ToString(), userId);
 
                     // Map and return response
                     return _mapper.Map<CancelClaimResponse>(claim);
