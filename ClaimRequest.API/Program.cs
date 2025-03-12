@@ -202,6 +202,8 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+app.UseSwagger();
+app.UseSwaggerUI();
 
 // Configure the HTTP request pipeline.
 //if (app.Environment.IsDevelopment())
@@ -212,8 +214,7 @@ var app = builder.Build();
 //        app.ApplyMigrations();
 //    }
 
-//    app.UseSwagger();
-//    app.UseSwaggerUI();
+
 //}
 
 // Add the ExceptionHandlerMiddleware to the pipeline
