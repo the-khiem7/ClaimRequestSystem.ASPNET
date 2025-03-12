@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Security.Claims;
 using AutoMapper;
 using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
@@ -416,9 +417,18 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task<bool> ApproveClaim(Guid approverId, Guid id)
+        public async Task<bool> ApproveClaim(ClaimsPrincipal user, Guid id)
         {
-            return await _unitOfWork.ProcessInTransactionAsync(async () =>
+            var approverIdClaim = user.FindFirst("StaffId")?.Value;
+            if (string.IsNullOrEmpty(approverIdClaim))
+            {
+                throw new UnauthorizedAccessException("Approver ID not found in token.");
+            }
+
+            var approverId = Guid.Parse(approverIdClaim);
+            var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+
+            return await executionStrategy.ExecuteAsync(async () =>
             {
                 var claimRepo = _unitOfWork.GetRepository<Claim>();
                 var claimApproverRepo = _unitOfWork.GetRepository<ClaimApprover>();
@@ -430,7 +440,36 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 if (pendingClaim == null)
                 {
-                    throw new NotFoundException($"Claim with ID {id} not found.");
+                    var claimRepo = _unitOfWork.GetRepository<Claim>();
+                    var claimApproverRepo = _unitOfWork.GetRepository<ClaimApprover>();
+
+                    var pendingClaim = (await claimRepo.SingleOrDefaultAsync(
+                        predicate: s => s.Id == id,
+                        include: s => s.Include(c => c.ClaimApprovers)
+                    )).ValidateExists(id);
+
+                    if (pendingClaim.Status != ClaimStatus.Pending)
+                    {
+                        throw new BadRequestException($"Claim with ID {id} is not in pending state.");
+                    }
+
+                    var isApproverAllowed = pendingClaim.ClaimApprovers
+                        .Any(ca => ca.ApproverId == approverId);
+
+                    if (!isApproverAllowed)
+                    {
+                        throw new UnauthorizedAccessException($"Approver with ID {approverId} does not have permission to this claim");
+                    }
+
+                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approverId);
+                    pendingClaim.Status = ClaimStatus.Approved;
+
+                    claimRepo.UpdateAsync(pendingClaim);
+
+                    await _unitOfWork.CommitAsync();
+                    await transaction.CommitAsync();
+
+                    return true;
                 }
 
                 if (pendingClaim.Status != ClaimStatus.Pending)
@@ -454,6 +493,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 return true;
             });
         }
+
 
         public async Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest)
         {

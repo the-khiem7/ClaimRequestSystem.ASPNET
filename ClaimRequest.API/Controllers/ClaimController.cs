@@ -175,34 +175,9 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ApproveClaim([FromRoute] Guid id)
         {
-            var approverIdClaim = User.FindFirst("StaffId")?.Value;
-            if (string.IsNullOrEmpty(approverIdClaim))
-            {
-                return Unauthorized(new ApiResponse<object>
-                {
-                    Message = "Approver ID not found in token.",
-                    Data = null,
-                    StatusCode = StatusCodes.Status401Unauthorized
-                });
-            }
+            var result = await _claimService.ApproveClaim(User, id);
 
-            var approverId = Guid.Parse(approverIdClaim);
-            var result = await _claimService.ApproveClaim(approverId, id);
-
-            if (result)
-            {
-                var successResponse = ApiResponseBuilder.BuildResponse(
-                    message: "Claim approved successfully!",
-                    data: true,
-                    statusCode: StatusCodes.Status200OK);
-                return Ok(successResponse);
-            }
-
-            var errorResponse = ApiResponseBuilder.BuildResponse(
-                message: "Approval failed.",
-                data: false,
-                statusCode: StatusCodes.Status400BadRequest);
-            return BadRequest(errorResponse);
+            return result ? Ok("Claim approved.") : BadRequest("Approval failed.");
         }
 
         [Authorize(Policy = "CanReturnClaim")]
