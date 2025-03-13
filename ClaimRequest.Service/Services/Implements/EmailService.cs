@@ -231,7 +231,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-
         public async Task SendEmailAsync(string recipientEmail, string subject, string body)
         {
             try
