@@ -329,7 +329,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     predicate: predicate,
                     selector: c => _mapper.Map<ViewClaimResponse>(c),
                     page: pageNumber,
-                    size: pageSize
+                    size: pageSize 
                 );
 
                 return response;
