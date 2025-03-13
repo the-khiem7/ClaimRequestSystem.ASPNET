@@ -17,6 +17,8 @@
 		<PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
 		<PackageReference Include="CloudinaryDotNet" Version="1.27.4" />
 		<PackageReference Include="EPPlus" Version="7.6.0" />
+		<PackageReference Include="Metalama.Extensions.DependencyInjection" Version="2025.0.9" />
+		<PackageReference Include="Metalama.Framework" Version="2025.0.9" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="2.3.0" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
