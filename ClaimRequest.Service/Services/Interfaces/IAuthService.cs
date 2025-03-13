@@ -6,7 +6,6 @@ namespace ClaimRequest.BLL.Services.Interfaces
     public interface IAuthService
     {
         Task<LoginResponse> Login(LoginRequest loginRequest);
-        Task<bool> ForgotPassword(ForgotPasswordRequest forgotPasswordRequest);
-
+        Task<ForgotPasswordResponse> ForgotPassword(ForgotPasswordRequest forgotPasswordRequest);
     }
 }
