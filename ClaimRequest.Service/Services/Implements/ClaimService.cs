@@ -314,7 +314,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 Expression<Func<Claim, bool>> predicate = selectedView switch
                 {
-                    ViewMode.AdminMode => c => true,
+                    ViewMode.AdminMode => c => !status.HasValue || c.Status == status.Value,
                     ViewMode.ClaimerMode => c => c.ClaimerId == loggedUserId && (!status.HasValue || c.Status == status.Value),
                     ViewMode.ApproverMode => c => c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) && c.Status == ClaimStatus.Pending,
                     ViewMode.FinanceMode => c => c.FinanceId == loggedUserId && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid),
