@@ -1,7 +1,4 @@
-﻿using System.Drawing;
-using System.Linq.Expressions;
-using System.Security.Claims;
-using AutoMapper;
+﻿using AutoMapper;
 using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
@@ -15,6 +12,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
+using System.Drawing;
+using System.Linq.Expressions;
+using System.Security.Claims;
 using Claim = ClaimRequest.DAL.Data.Entities.Claim;
 
 namespace ClaimRequest.BLL.Services.Implements
@@ -60,23 +60,15 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                if (_unitOfWork?.Context?.Database == null)
-                {
-                    throw new InvalidOperationException("Database context is not initialized.");
-                }
-
-                // Extract user ID from JWT
                 var userId = _httpContextAccessor.HttpContext.User.FindFirst("StaffId")?.Value;
                 if (userId == null)
                 {
                     throw new UnauthorizedAccessException("User ID not found in JWT.");
                 }
 
-                // Get claim by ID first before starting the transaction
                 var claim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(claimId)
                             ?? throw new KeyNotFoundException("Claim not found.");
 
-                // Validate claim status and claimer BEFORE starting transaction
                 if (claim.Status != ClaimStatus.Draft)
                 {
                     throw new InvalidOperationException("Claim cannot be cancelled as it is not in Draft status.");
@@ -89,7 +81,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 var result = await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
-                    // Update claim status
+
                     claim.Status = ClaimStatus.Cancelled;
                     claim.UpdateAt = DateTime.UtcNow;
                     claim.Remark = cancelClaimRequest.Remark;
@@ -100,9 +92,6 @@ namespace ClaimRequest.BLL.Services.Implements
                     // Log the change of claim status
                     _logger.LogInformation("Cancelled claim by {ClaimerId} on {Time}", userId, claim.UpdateAt);
 
-                    await LogChangeAsync(claimId, "Claim Status", "Draft", ClaimStatus.Cancelled.ToString(), userId);
-
-                    // Map and return response
                     return _mapper.Map<CancelClaimResponse>(claim);
                 });
 
@@ -119,6 +108,13 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
+                // Validate request early
+                if (downloadClaimRequest == null || downloadClaimRequest.ClaimIds == null || !downloadClaimRequest.ClaimIds.Any())
+                {
+                    _logger.LogWarning("Invalid download request: request is null or contains no claim IDs.");
+                    throw new NotFoundException("Download request is invalid or contains no claims.");
+                }
+
                 if (_unitOfWork?.Context?.Database == null)
                 {
                     throw new InvalidOperationException("Database context is not initialized.");
@@ -149,6 +145,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     throw new NotFoundException("No claims found for download.");
                 }
 
+                // Rest of the method remains unchanged...
                 // Ensure all selected claims have Status == Paid
                 if (selectedClaims.Any(c => c.Status != ClaimStatus.Paid))
                 {

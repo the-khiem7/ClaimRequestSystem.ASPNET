@@ -1,7 +1,4 @@
-﻿using System;
-using System.Security.Claims;
-using System.Threading.Tasks;
-using AutoMapper;
+﻿using AutoMapper;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Requests.Claim;
@@ -9,56 +6,41 @@ using ClaimRequest.DAL.Data.Responses.Claim;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System;
+using System.Security.Claims;
+using System.Threading.Tasks;
 using Xunit;
+using Xunit.Abstractions;
+using Xunit.Sdk;
+using ClaimEntity = ClaimRequest.DAL.Data.Entities.Claim;
 
 namespace ClaimRequest.UnitTest.Services
 {
     public class CancelClaimTests : IDisposable
     {
+        private readonly ITestOutputHelper _testOutputHelper;
         private readonly Mock<IUnitOfWork<ClaimRequestDbContext>> _mockUnitOfWork;
-        private readonly Mock<ILogger<DAL.Data.Entities.Claim>> _mockLogger;
+        private readonly Mock<ILogger<ClaimEntity>> _mockLogger;
         private readonly Mock<IMapper> _mockMapper;
-        private readonly Mock<IDbContextTransaction> _mockTransaction;
         private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
-        private readonly Mock<IGenericRepository<DAL.Data.Entities.Claim>> _mockClaimRepository;
+        private readonly Mock<IGenericRepository<ClaimEntity>> _mockClaimRepository;
         private readonly ClaimService _claimService;
-        private readonly ClaimRequestDbContext _realDbContext;
 
-        public CancelClaimTests()
+        public CancelClaimTests(ITestOutputHelper testOutputHelper)
         {
-            // Initialize mocks
+            _testOutputHelper = testOutputHelper;
             _mockUnitOfWork = new Mock<IUnitOfWork<ClaimRequestDbContext>>();
-            _mockLogger = new Mock<ILogger<DAL.Data.Entities.Claim>>();
+            _mockLogger = new Mock<ILogger<ClaimEntity>>();
             _mockMapper = new Mock<IMapper>();
-            _mockTransaction = new Mock<IDbContextTransaction>();
             _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
-            _mockClaimRepository = new Mock<IGenericRepository<DAL.Data.Entities.Claim>>();
+            _mockClaimRepository = new Mock<IGenericRepository<ClaimEntity>>();
 
-            // Setup real DbContext with in-memory database
-            var options = new DbContextOptionsBuilder<ClaimRequestDbContext>()
-                .UseInMemoryDatabase("TestDb")
-                .Options;
+            _mockUnitOfWork.Setup(uow => uow.GetRepository<ClaimEntity>()).Returns(_mockClaimRepository.Object);
+            _mockUnitOfWork.Setup(uow => uow.ProcessInTransactionAsync(It.IsAny<Func<Task<CancelClaimResponse>>>()))
+                .Returns<Func<Task<CancelClaimResponse>>>(operation => operation());
 
-            _realDbContext = new ClaimRequestDbContext(options);
-            _realDbContext.Database.EnsureDeleted();
-            _realDbContext.Database.EnsureCreated();
-
-            _mockUnitOfWork.Setup(uow => uow.Context).Returns(_realDbContext);
-
-            // Setup unit of work transaction handling
-            _mockUnitOfWork.Setup(uow => uow.BeginTransactionAsync())
-                .ReturnsAsync(_mockTransaction.Object);
-            _mockUnitOfWork.Setup(uow => uow.CommitTransactionAsync(It.IsAny<IDbContextTransaction>()))
-                .Returns(Task.CompletedTask);
-            _mockUnitOfWork.Setup(uow => uow.RollbackTransactionAsync(It.IsAny<IDbContextTransaction>()))
-                .Returns(Task.CompletedTask);
-            _mockUnitOfWork.Setup(uow => uow.CommitAsync()).ReturnsAsync(1);
-            _mockUnitOfWork.Setup(uow => uow.GetRepository<DAL.Data.Entities.Claim>()).Returns(_mockClaimRepository.Object);
-
-            // Initialize service
             _claimService = new ClaimService(
                 _mockUnitOfWork.Object,
                 _mockLogger.Object,
@@ -67,147 +49,167 @@ namespace ClaimRequest.UnitTest.Services
             );
         }
 
+        public void Dispose() => GC.SuppressFinalize(this);
+
+        private ClaimsPrincipal CreateClaimsPrincipal(Guid userId) =>
+            new ClaimsPrincipal(new ClaimsIdentity(new[] { new System.Security.Claims.Claim("StaffId", userId.ToString()) }));
+        private void LogTestStart(string testName)
+        {
+            _testOutputHelper.WriteLine($"[Test Start] {testName}");
+        }
+
+        private void LogTestFinish(string testName)
+        {
+            _testOutputHelper.WriteLine($"[Test Finish] {testName}");
+        }
+
         [Fact]
-        public async Task CancelClaim_Should_Cancel_Valid_Claim()
+        public async Task CancelClaim_ShouldReturn_CancelClaimResponse_WhenSuccessful()
         {
             // Arrange
             var claimId = Guid.NewGuid();
-            var userId = Guid.NewGuid().ToString();  // Simulated StaffId from JWT
-            var claimerId = Guid.Parse(userId);
-            var claim = new DAL.Data.Entities.Claim { Id = claimId, ClaimerId = claimerId, Status = ClaimStatus.Draft };
-            var cancelRequest = new CancelClaimRequest { Remark = "Cancelled by user" };
-            var cancelResponse = new CancelClaimResponse
+            var userId = Guid.NewGuid();
+            var cancelClaimRequest = new CancelClaimRequest { Remark = "User requested cancellation" };
+            var claim = new ClaimEntity { Id = claimId, ClaimerId = userId, Status = ClaimStatus.Draft };
+            var expectedResponse = new CancelClaimResponse
             {
                 ClaimId = claimId,
-                ClaimerId = claimerId,
-                Status = "Cancelled",
-                UpdateAt = DateTime.UtcNow
+                Status = ClaimStatus.Cancelled.ToString(),
+                Remark = cancelClaimRequest.Remark
             };
 
-            // 🔹 Ensure HttpContextAccessor properly returns StaffId
-            var mockHttpContext = new DefaultHttpContext();
-            var claimsIdentity = new ClaimsIdentity(new[]
-            {
-        new System.Security.Claims.Claim("StaffId", userId)
-    }, "mockAuthType");  // ✅ Ensure an authentication type is set
-
-            var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
-            mockHttpContext.User = claimsPrincipal;
-
-            _mockHttpContextAccessor.Setup(h => h.HttpContext).Returns(mockHttpContext);
-
-            // ✅ Explicitly mock `FindFirst("StaffId")`
-            _mockHttpContextAccessor.Setup(h => h.HttpContext.User.FindFirst("StaffId"))
-                .Returns(new System.Security.Claims.Claim("StaffId", userId));
-
-            // ✅ Mock identity to avoid null issues
-            _mockHttpContextAccessor.Setup(h => h.HttpContext.User.Identity)
-                .Returns(claimsIdentity);
-
-            // Mock claim repository to return a valid claim
-            _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId))
-                .ReturnsAsync(claim);
-
-            // Mock transaction execution
-            _mockUnitOfWork.Setup(uow => uow.ProcessInTransactionAsync(It.IsAny<Func<Task<CancelClaimResponse>>>()))
-                .Returns((Func<Task<CancelClaimResponse>> func) => func());
-
-            // Mock claim update
-            _mockClaimRepository.Setup(repo => repo.UpdateAsync(It.IsAny<DAL.Data.Entities.Claim>()))
-                .Verifiable();
-
-            // Mock response mapping
-            _mockMapper.Setup(m => m.Map<CancelClaimResponse>(It.IsAny<DAL.Data.Entities.Claim>()))
-                .Returns(cancelResponse);
-
-            // ✅ Inject the correct mock instance
-            var _claimService = new ClaimService(
-                (IUnitOfWork<ClaimRequestDbContext>)_mockClaimRepository.Object,
-                (ILogger<DAL.Data.Entities.Claim>)_mockUnitOfWork.Object,
-                _mockMapper.Object,
-                _mockHttpContextAccessor.Object
-            );
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(new DefaultHttpContext { User = CreateClaimsPrincipal(userId) });
+            _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId)).ReturnsAsync(claim);
+            _mockClaimRepository.Setup(repo => repo.UpdateAsync(It.IsAny<ClaimEntity>())).Verifiable();
+            _mockMapper.Setup(m => m.Map<CancelClaimResponse>(It.IsAny<ClaimEntity>())).Returns(expectedResponse);
 
             // Act
-            var result = await _claimService.CancelClaim(claimId, cancelRequest);
+            var result = await _claimService.CancelClaim(claimId, cancelClaimRequest);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal("Cancelled", result.Status);
-        }
-
-
-
-
-        //[Fact]
-        //public async Task CancelClaim_Should_Throw_Exception_When_Claim_Not_Found()
-        //{
-        //    // Arrange
-        //    var claimId = Guid.NewGuid();
-        //    var cancelRequest = new CancelClaimRequest { Remark = "Cancelled by user" };
-
-        //    // Setup repository mock to return null (claim not found)
-        //    _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId))
-        //        .ReturnsAsync((Claim?)null);
-
-        //    // Act & Assert
-        //    await Assert.ThrowsAsync<KeyNotFoundException>(() => _claimService.CancelClaim(claimId, cancelRequest));
-
-        //    // Ensure transaction is not started if claim is not found
-        //    _mockUnitOfWork.Verify(uow => uow.BeginTransactionAsync(), Times.Never);
-        //}
-
-        [Fact]
-        public async Task CancelClaim_Should_Throw_Exception_When_Claim_Not_In_Draft_Status()
-        {
-            // Arrange
-            var claimId = Guid.NewGuid();
-            var claimerId = Guid.NewGuid();
-            var claim = new DAL.Data.Entities.Claim { Id = claimId, ClaimerId = claimerId, Status = ClaimStatus.Approved }; // Not Draft
-            var cancelRequest = new CancelClaimRequest { Remark = "Cancelled by user" };
-
-            // Setup repository mock
-            _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId))
-                .ReturnsAsync(claim);
-
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<NullReferenceException>(() => _claimService.CancelClaim(claimId, cancelRequest));
-
-            // Ensure transaction is not started if claim status is not Draft
-            _mockUnitOfWork.Verify(uow => uow.BeginTransactionAsync(), Times.Never);
+            Assert.Equal(expectedResponse.Status, result.Status);
+            Assert.Equal(expectedResponse.Remark, result.Remark);
+            _mockClaimRepository.Verify(repo => repo.UpdateAsync(It.IsAny<ClaimEntity>()), Times.Once);
         }
 
         [Fact]
-        public async Task CancelClaim_Should_Throw_Exception_When_ClaimerId_Does_Not_Match()
+        public async Task CancelClaim_ShouldThrowException_WhenClaimNotFound()
         {
             // Arrange
             var claimId = Guid.NewGuid();
-            var claimerId = Guid.NewGuid();
-            var differentClaimerId = Guid.NewGuid();
-            var claim = new DAL.Data.Entities.Claim { Id = claimId, ClaimerId = claimerId, Status = ClaimStatus.Draft };
-            var cancelRequest = new CancelClaimRequest { Remark = "Cancelled by user" };
+            var userId = Guid.NewGuid();
+            var cancelClaimRequest = new CancelClaimRequest { Remark = "Attempt to cancel non-existing claim" };
 
-            // Setup repository mock
-            _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId))
-                .ReturnsAsync(claim);
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(new DefaultHttpContext { User = CreateClaimsPrincipal(userId) });
+            _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId)).ReturnsAsync((ClaimEntity)null);
 
             // Act & Assert
-            var exception = await Assert.ThrowsAsync<NullReferenceException>(() => _claimService.CancelClaim(claimId, cancelRequest));
-
-            // Ensure transaction is not started if claimerId does not match
-            _mockUnitOfWork.Verify(uow => uow.BeginTransactionAsync(), Times.Never);
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _claimService.CancelClaim(claimId, cancelClaimRequest));
+            Assert.Equal("Claim not found.", exception.Message);
         }
 
-        public void Dispose()
+        [Fact]
+        public async Task CancelClaim_ShouldThrowException_WhenClaimCannotBeCancelled()
         {
-            // Ensure the database is cleaned up and mocks are reset after each test
-            _realDbContext.Database.EnsureDeleted();
-            _mockTransaction.Reset();
-            _mockClaimRepository.Reset();
-            _mockMapper.Reset();
-            _mockHttpContextAccessor.Reset();
-            _mockUnitOfWork.Reset();
-            GC.SuppressFinalize(this);
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var cancelClaimRequest = new CancelClaimRequest { Remark = "User attempted cancellation" };
+            var claim = new ClaimEntity { Id = claimId, ClaimerId = userId, Status = ClaimStatus.Approved };
+
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(new DefaultHttpContext { User = CreateClaimsPrincipal(userId) });
+            _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId)).ReturnsAsync(claim);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _claimService.CancelClaim(claimId, cancelClaimRequest));
+            Assert.Equal("Claim cannot be cancelled as it is not in Draft status.", exception.Message);
+        }
+
+        [Fact]
+        public async Task CancelClaim_ShouldThrowException_OnTransactionFailure()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var cancelClaimRequest = new CancelClaimRequest { Remark = "Simulate error during cancellation" };
+            var claim = new ClaimEntity { Id = claimId, ClaimerId = userId, Status = ClaimStatus.Draft };
+
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(new DefaultHttpContext { User = CreateClaimsPrincipal(userId) });
+            _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId)).ReturnsAsync(claim);
+            _mockUnitOfWork.Setup(uow => uow.ProcessInTransactionAsync(It.IsAny<Func<Task<CancelClaimResponse>>>()))
+                           .ThrowsAsync(new Exception("Simulated Exception"));
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<Exception>(() => _claimService.CancelClaim(claimId, cancelClaimRequest));
+            Assert.Equal("Simulated Exception", exception.Message);
+        }
+
+        [Fact]
+        public async Task CancelClaim_ShouldThrowException_WhenUserNotAuthorized()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var differentUserId = Guid.NewGuid();
+            var cancelClaimRequest = new CancelClaimRequest { Remark = "Unauthorized cancellation" };
+            var claim = new ClaimEntity { Id = claimId, ClaimerId = userId, Status = ClaimStatus.Draft };
+
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(new DefaultHttpContext { User = CreateClaimsPrincipal(differentUserId) });
+            _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId)).ReturnsAsync(claim);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _claimService.CancelClaim(claimId, cancelClaimRequest));
+            Assert.Equal("Claim cannot be cancelled as you are not the claimer.", exception.Message);
+        }
+
+        [Fact]
+        public async Task CancelClaim_ShouldThrowException_WhenRequestIsNull()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(new DefaultHttpContext { User = CreateClaimsPrincipal(userId) });
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _claimService.CancelClaim(claimId, null));
+            Assert.Equal("Claim not found.", exception.Message);
+        }
+
+        [Fact]
+        public async Task CancelClaim_ShouldThrowException_WhenUserContextMissing()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var cancelClaimRequest = new CancelClaimRequest { Remark = "No user context" };
+            var claim = new ClaimEntity { Id = claimId, ClaimerId = Guid.NewGuid(), Status = ClaimStatus.Draft };
+
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(new DefaultHttpContext()); // No user set
+            _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId)).ReturnsAsync(claim);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _claimService.CancelClaim(claimId, cancelClaimRequest));
+            Assert.Equal("User ID not found in JWT.", exception.Message);
+        }
+
+        [Theory]
+        [InlineData(ClaimStatus.Approved)]
+        [InlineData(ClaimStatus.Rejected)]
+        [InlineData(ClaimStatus.Pending)]
+        public async Task CancelClaim_ShouldThrowException_WhenStatusNotDraft(ClaimStatus status)
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var cancelClaimRequest = new CancelClaimRequest { Remark = "Invalid status" };
+            var claim = new ClaimEntity { Id = claimId, ClaimerId = userId, Status = status };
+
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(new DefaultHttpContext { User = CreateClaimsPrincipal(userId) });
+            _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId)).ReturnsAsync(claim);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _claimService.CancelClaim(claimId, cancelClaimRequest));
+            Assert.Equal("Claim cannot be cancelled as it is not in Draft status.", exception.Message);
         }
     }
 }
