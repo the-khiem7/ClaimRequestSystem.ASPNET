@@ -314,10 +314,10 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 Expression<Func<Claim, bool>> predicate = selectedView switch
                 {
-                    ViewMode.AdminMode => c => true, 
+                    ViewMode.AdminMode => c => true,
                     ViewMode.ClaimerMode => c => c.ClaimerId == loggedUserId && (!status.HasValue || c.Status == status.Value),
                     ViewMode.ApproverMode => c => c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) && c.Status == ClaimStatus.Pending,
-                    ViewMode.FinanceMode => c => c.FinanceId == loggedUserId && (c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid),
+                    ViewMode.FinanceMode => c => c.FinanceId == loggedUserId && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid),
                     _ => throw new BadRequestException("Invalid view mode.")
                 };
 
@@ -329,7 +329,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     predicate: predicate,
                     selector: c => _mapper.Map<ViewClaimResponse>(c),
                     page: pageNumber,
-                    size: pageSize 
+                    size: pageSize
                 );
 
                 return response;
