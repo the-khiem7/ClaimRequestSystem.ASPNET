@@ -94,6 +94,7 @@ builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 
 //Serilize enum to string
 builder.Services.AddControllers().AddJsonOptions(options =>
@@ -201,19 +202,20 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+app.UseSwagger();
+app.UseSwaggerUI();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    // Only apply migrations if explicitly enabled in configuration
-    if (builder.Configuration.GetValue<bool>("ApplyMigrations", false))
-    {
-        app.ApplyMigrations();
-    }
+//if (app.Environment.IsDevelopment())
+//{
+//    // Only apply migrations if explicitly enabled in configuration
+//    if (builder.Configuration.GetValue<bool>("ApplyMigrations", false))
+//    {
+//        app.ApplyMigrations();
+//    }
 
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+
+//}
 
 // Add the ExceptionHandlerMiddleware to the pipeline
 // comment lai doan code phia duoi neu chuong khong doc duoc loi tu swagger
