@@ -1,14 +1,15 @@
-
 using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Project;
 using ClaimRequest.DAL.Data.Responses.Project;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClaimRequest.API.Controllers
 {
     [ApiController]
+    [Authorize(Policy = "CanManageProjects")]
     public class ProjectsController : BaseController<ProjectsController>
     {
         private readonly IProjectService _projectService;
@@ -91,9 +92,7 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
-
-
-        [HttpDelete(ApiEndPointConstant.Projects.DeleteProjectEndpoint)]
+        [HttpPut(ApiEndPointConstant.Projects.DeleteProjectEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
@@ -116,7 +115,7 @@ namespace ClaimRequest.API.Controllers
                 {
                     StatusCode = StatusCodes.Status200OK,
                     Message = "Project deleted successfully",
-                    IsSuccess = true, // chỗ này xem lại
+                    IsSuccess = true,
                     Data = null
                 });
             }
