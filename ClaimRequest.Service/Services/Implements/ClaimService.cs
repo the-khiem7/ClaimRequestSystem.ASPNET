@@ -314,10 +314,10 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 Expression<Func<Claim, bool>> predicate = selectedView switch
                 {
-                    ViewMode.AdminMode => c => true, 
+                    ViewMode.AdminMode => c => !status.HasValue || c.Status == status.Value,
                     ViewMode.ClaimerMode => c => c.ClaimerId == loggedUserId && (!status.HasValue || c.Status == status.Value),
                     ViewMode.ApproverMode => c => c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) && c.Status == ClaimStatus.Pending,
-                    ViewMode.FinanceMode => c => c.FinanceId == loggedUserId && (c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid),
+                    ViewMode.FinanceMode => c => c.FinanceId == loggedUserId && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid),
                     _ => throw new BadRequestException("Invalid view mode.")
                 };
 
@@ -354,6 +354,30 @@ namespace ClaimRequest.BLL.Services.Implements
                 )).ValidateExists(id);
 
                 return _mapper.Map<ViewClaimResponse>(claim.c);
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while retrieving the claim.");
+                throw;
+            }
+        }
+
+        public async Task<Claim> AddEmailInfo(Guid id)
+        {
+            try
+            {
+                var claimRepository = _unitOfWork.GetRepository<Claim>();
+                var claim = (await claimRepository.SingleOrDefaultAsync(
+                    c => new { c, c.Claimer, c.Project },
+                    c => c.Id == id,
+                    include: q => q.Include(c => c.Claimer).Include(c => c.Project)
+                )).ValidateExists(id);
+
+                return claim.c;
             }
             catch (NotFoundException)
             {
