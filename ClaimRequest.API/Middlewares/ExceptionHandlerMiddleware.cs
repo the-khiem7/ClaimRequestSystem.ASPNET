@@ -117,6 +117,9 @@ namespace ClaimRequest.API.Middlewares
 
                 SecurityException =>
                     (HttpStatusCode.Forbidden, "Access forbidden", "You don't have sufficient permissions"),
+
+                PasswordExpiredException =>
+                    (HttpStatusCode.Forbidden, "Login Suspended", "Your password has expired. Please reset your password"),
                 #endregion
 
                 #region 404 Not Found
