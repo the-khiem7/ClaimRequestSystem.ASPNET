@@ -33,6 +33,13 @@ namespace ClaimRequest.DAL.Mappers
                 .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
                 .ForMember(dest => dest.TotalWorkingHours, opt => opt.MapFrom(src => src.TotalWorkingHours))
                 .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(_ => DateTime.UtcNow));
+            // Claim -> UpdateClaimResponse
+            CreateMap<Claim, UpdateClaimResponse>()
+                .ForMember(dest => dest.ClaimId, opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
+                .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
+                .ForMember(dest => dest.TotalWorkingHours, opt => opt.MapFrom(src => src.TotalWorkingHours))
+                .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(src => src.UpdateAt));
 
             // CancelClaimRequest -> Claim
             CreateMap<CancelClaimRequest, Claim>()
@@ -54,16 +61,6 @@ namespace ClaimRequest.DAL.Mappers
                 .ForMember(dest => dest.ProjectStartDate, opt => opt.MapFrom(src => src.Project.StartDate))
                 .ForMember(dest => dest.ProjectEndDate, opt => opt.MapFrom(src => src.Project.EndDate));
 
-            CreateMap<Claim, ApproveClaimResponse>()
-            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => "Approved"))
-            .ForMember(dest => dest.Remark, opt => opt.MapFrom(src => src.Remark))
-            .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(src => DateTime.UtcNow))
-            .ForMember(dest => dest.ClaimerId, opt => opt.MapFrom(src => src.ClaimerId))
-            .ForMember(dest => dest.ApproverId, opt => opt.Ignore());
-
-            CreateMap<ApproveClaimRequest, Claim>();
-
             // Add missing mappings
             CreateMap<ReturnClaimRequest, Claim>()
                 .ForMember(dest => dest.Remark, opt => opt.MapFrom(src => src.Remark))
@@ -74,6 +71,15 @@ namespace ClaimRequest.DAL.Mappers
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
                 .ForMember(dest => dest.ApproverId, opt => opt.MapFrom(src => src.ClaimApprovers.FirstOrDefault().ApproverId))
                 .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(src => src.UpdateAt));
+
+            CreateMap<Claim, SubmitClaimRequest>()
+                .ForMember(dest => dest.ClaimerId, opt => opt.MapFrom(src => src.Claimer.Id));
+
+            CreateMap<Claim, SubmitClaimResponse>()
+                .ForMember(dest => dest.ClaimerId, opt => opt.MapFrom(src => src.Claimer.Id));
+                
+
+
         }
     }
 }

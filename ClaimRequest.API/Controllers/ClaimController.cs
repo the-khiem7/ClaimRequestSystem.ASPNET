@@ -1,15 +1,19 @@
 ﻿using ClaimRequest.API.Constants;
+using ClaimRequest.API.Extensions;
+using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClaimRequest.API.Controllers
 {
     [ApiController]
+    [Authorize(Policy = "RequireAnyRole")]
     public class ClaimController : BaseController<ClaimController>
     {
         #region Create Class Referrence
@@ -23,7 +27,7 @@ namespace ClaimRequest.API.Controllers
         }
         #endregion
 
-
+        [Authorize(Policy = "CanCreateClaim")]
         [HttpPost(ApiEndPointConstant.Claim.ClaimsEndpoint)]
         [ProducesResponseType(typeof(CreateClaimResponse), StatusCodes.Status201Created)]
         public async Task<IActionResult> CreateClaim([FromBody] CreateClaimRequest createClaimRequest)
@@ -37,17 +41,20 @@ namespace ClaimRequest.API.Controllers
             return CreatedAtAction(nameof(CreateClaim), response);
         }
 
+        [Authorize(Policy = "CanViewClaims")]
         [HttpGet(ApiEndPointConstant.Claim.ClaimsEndpoint)]
         [ProducesResponseType(typeof(IEnumerable<ViewClaimResponse>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status)
+        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status, [FromQuery] ClaimService.ViewMode? viewMode, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var response = await _claimService.GetClaims(status);
+            viewMode ??= Enum.Parse<ClaimService.ViewMode>("ClaimerMode");
+            var response = await _claimService.GetClaims(pageNumber, pageSize, status, viewMode.ToString());
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: "Get claims successfully!",
                 data: response,
                 statusCode: StatusCodes.Status200OK));
         }
 
+        [Authorize(Policy = "CanViewClaims")]
         [HttpGet(ApiEndPointConstant.Claim.ClaimEndpointById)]
         [ProducesResponseType(typeof(ViewClaimResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -60,6 +67,7 @@ namespace ClaimRequest.API.Controllers
                 statusCode: StatusCodes.Status200OK));
         }
 
+        [Authorize(Policy = "CanUpdateClaim")]
         [HttpPut(ApiEndPointConstant.Claim.UpdateClaimEndpoint)]
         [ProducesResponseType(typeof(UpdateClaimResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -101,6 +109,8 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
+
+        [Authorize(Policy = "CanRejectClaim")]
         [HttpPut(ApiEndPointConstant.Claim.RejectClaimEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -122,6 +132,7 @@ namespace ClaimRequest.API.Controllers
             return Ok(successResponse);
         }
 
+        [Authorize(Policy = "CanCancelClaim")]
         [HttpPut(ApiEndPointConstant.Claim.CancelClaimEndpoint)]
         [ProducesResponseType(typeof(CancelClaimResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> CancelClaim([FromBody] CancelClaimRequest cancelClaimRequest)
@@ -135,6 +146,7 @@ namespace ClaimRequest.API.Controllers
             return Ok(response);
         }
 
+        [Authorize(Policy = "CanDownloadClaim")]
         [HttpGet(ApiEndPointConstant.Claim.DownloadClaimEndpoint)]
         [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
         public async Task<IActionResult> DownloadClaim([FromQuery] DownloadClaimRequest downloadClaimRequest)
@@ -151,34 +163,20 @@ namespace ClaimRequest.API.Controllers
             return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
 
+        [Authorize(Policy = "CanApproveClaim")]
         [HttpPut(ApiEndPointConstant.Claim.ApproveClaimEndpoint)]
-        [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id, [FromBody] ApproveClaimRequest approveClaimRequest)
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id)
         {
-            try
-            {
-                var response = await _claimService.ApproveClaim(id, approveClaimRequest);
-                return Ok(response);
-            }
-            catch (NotFoundException ex)
-            {
-                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
-                return NotFound(new { message = ex.Message });
-            }
-            catch (BadRequestException ex)
-            {
-                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error approving claim with ID {Id}: {Message}", id, ex.Message);
-                return StatusCode(500, new { message = ex.Message });
-            }
+            var result = await _claimService.ApproveClaim(User, id);
+
+            return result ? Ok("Claim approved.") : BadRequest("Approval failed.");
         }
 
+        [Authorize(Policy = "CanReturnClaim")]
         [HttpPut(ApiEndPointConstant.Claim.ReturnClaimEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<ReturnClaimResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -218,6 +216,61 @@ namespace ClaimRequest.API.Controllers
                 );
                 return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
             }
+        }
+
+        [Authorize(Policy = "CanSubmitClaim")]
+        [HttpPut(ApiEndPointConstant.Claim.SubmitClaimEndpoint)]
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> SubmitClaim(Guid id)
+        {
+            try
+            {
+                var result = await _claimService.SubmitClaim(id);
+                if (!result)
+                {
+                    _logger.LogError("Submit claim failed");
+                    return NotFound(new { message = "Submit claim failed" });
+                }
+
+                var successResponse = ApiResponseBuilder.BuildResponse(
+                    StatusCodes.Status200OK,
+                    "Claim submitted successfully",
+                    result
+                );
+                return Ok(successResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error submitting claim with ID {ClaimId}", id);
+
+                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status500InternalServerError,
+                    "An error occurred while submitting the claim",
+                    "Internal server error"
+                );
+                return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+            }
+        }
+
+        [Authorize(Policy = "CanProcessPayment")]
+        [HttpPut(ApiEndPointConstant.Claim.PaidClaimEndpoint)]
+        [ProducesResponseType(typeof(CreateClaimResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        [ValidateModelAttributes]
+        public async Task<IActionResult> PayClaim([FromRoute] Guid id, [FromQuery] Guid financeId)
+        {
+            var response = await _claimService.PaidClaim(id, financeId);
+
+            return Ok(ApiResponseBuilder.BuildResponse(
+                message: "Claim paid successfully.",
+                data: response,
+                statusCode: StatusCodes.Status200OK
+            ));
         }
     }
 }

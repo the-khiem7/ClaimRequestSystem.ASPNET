@@ -1,4 +1,6 @@
-﻿namespace ClaimRequest.DAL.Data.Responses.Claim
+﻿using ClaimRequest.DAL.Data.Entities;
+
+namespace ClaimRequest.DAL.Data.Responses.Claim
 {
     public class ViewClaimResponse
     {
@@ -8,5 +10,7 @@
         public DateOnly ProjectStartDate { get; set; }
         public DateOnly ProjectEndDate { get; set; }
         public decimal TotalWorkingHours { get; set; }
+        public decimal Amount { get; set; }
+        public ClaimStatus status { get; set; }
     }
 }
