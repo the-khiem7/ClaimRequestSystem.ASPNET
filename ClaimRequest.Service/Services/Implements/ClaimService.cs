@@ -2,6 +2,7 @@
 using System.Linq.Expressions;
 using System.Security.Claims;
 using AutoMapper;
+using ClaimRequest.BLL.Aspects;
 using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
@@ -10,6 +11,7 @@ using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
 using ClaimRequest.DAL.Repositories.Interfaces;
+using Metalama.Framework.Aspects;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -19,7 +21,8 @@ using Claim = ClaimRequest.DAL.Data.Entities.Claim;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
-    public class ClaimService : BaseService<Claim>, IClaimService
+    [LoggerAspect]
+    public class ClaimService : BaseService<Claim>, IClaimService, IAspect
     {
         public enum ViewMode
         {
