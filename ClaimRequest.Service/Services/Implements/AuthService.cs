@@ -4,6 +4,7 @@ using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
+using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Auth;
 using ClaimRequest.DAL.Data.Responses.Auth;
 using ClaimRequest.DAL.Repositories.Interfaces;
@@ -41,6 +42,16 @@ namespace ClaimRequest.BLL.Services.Implements
                 ? true
                 : throw new UnauthorizedAccessException("Invalid password");
 
+            // Kiểm tra nếu LastChangePassword null hoặc thời gian đổi mật khẩu
+            // so với hiện tại đã 3 tiếng thì yêu cầu đổi mật khẩu
+            DateTime? lastChangePassword = staff.LastChangePassword;
+            bool isPasswordExpired = lastChangePassword == null || lastChangePassword <= DateTime.UtcNow.AddHours(-3);
+
+            if (isPasswordExpired)
+            {
+                throw new PasswordExpiredException("Your password has expired. Please reset your password.");
+            }
+
             LoginResponse loginResponse = new LoginResponse(staff);
             Tuple<string, Guid> guidSecurityClaim = new Tuple<string, Guid>("StaffId", staff.Id);
             var token = _jwtUtil.GenerateJwtToken(staff, guidSecurityClaim);
@@ -74,9 +85,9 @@ namespace ClaimRequest.BLL.Services.Implements
                 }
 
                 staff.Password = await PasswordUtil.HashPassword(forgotPasswordRequest.NewPassword);
+                staff.LastChangePassword = DateTime.UtcNow; // Cập nhật ngày đổi mật khẩu
 
                 staffRepository.UpdateAsync(staff);
-
                 await _unitOfWork.CommitAsync();
 
                 return new ForgotPasswordResponse
