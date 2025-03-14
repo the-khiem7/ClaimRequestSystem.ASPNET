@@ -112,11 +112,9 @@ namespace ClaimRequest.BLL.Services.Implements
             var response = new SendOtpEmailResponse();
             try
             {
-                // Generate OTP using OtpUtil
                 var otp = OtpUtil.GenerateOtp(request.Email);
                 await _otpService.CreateOtpEntity(request.Email, otp);
 
-                // Create email request
                 var emailRequest = new SendMailRequest
                 {
                     To = request.Email,
@@ -124,7 +122,6 @@ namespace ClaimRequest.BLL.Services.Implements
                     Body = $"Your OTP code is: {otp}"
                 };
 
-                // Send email
                 var emailSent = await SendEmailAsync(emailRequest);
                 response.Success = emailSent;
                 response.Message = emailSent ? "OTP email sent successfully." : "Failed to send OTP email.";
@@ -135,7 +132,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 response.Success = false;
                 response.Message = "An error occurred while sending the OTP email.";
             }
-
             return response;
         }
     }
