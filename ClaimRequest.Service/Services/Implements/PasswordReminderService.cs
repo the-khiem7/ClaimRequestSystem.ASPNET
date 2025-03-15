@@ -42,11 +42,12 @@ namespace ClaimRequest.BLL.Services.Implements
                             predicate: s => s.LastChangePassword == null || s.LastChangePassword <= timePasswordExpired
                         );
 
-                        var semaphore = new SemaphoreSlim(10);
+                        var semaphore = new SemaphoreSlim(1);
                         var tasks = new List<Task>();
 
                         foreach (var staff in staffToRemind)
                         {
+                            _logger.LogInformation($"Sending email to: {staff.Email}, LastChangePassword: {staff.LastChangePassword}");
                             var otp = OtpUtil.GenerateOtp(staff.Email);
                             await otpService.CreateOtpEntity(staff.Email, otp); 
 

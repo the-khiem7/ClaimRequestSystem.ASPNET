@@ -24,6 +24,8 @@ ConfigureDatabase();
 ConfigureAuthentication();
 ConfigureSwagger();
 
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddHostedService<PasswordReminderService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
