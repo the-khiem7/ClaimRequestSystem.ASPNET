@@ -1,4 +1,6 @@
-﻿using System.Linq.Expressions;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Linq.Expressions;
+using System.Security.Claims;
 using AutoMapper;
 using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
@@ -92,5 +94,58 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
+        public async Task<ChangePasswordResponse> ChangePassword(ChangePasswordRequest changePasswordRequest)
+        {
+            try
+            {
+                var staffRepository = _unitOfWork.GetRepository<Staff>();
+                var staff = await staffRepository.SingleOrDefaultAsync(
+                    predicate: s => s.Email == changePasswordRequest.Email && s.IsActive
+                );
+
+                if (staff == null)
+                {
+                    throw new Exception("Staff not found or inactive.");
+                }
+
+                bool oldPasswordVerify = await PasswordUtil.VerifyPassword(changePasswordRequest.OldPassword, staff.Password);
+                if (!oldPasswordVerify)
+                {
+                    throw new UnauthorizedAccessException("Invalid old password");
+                }
+
+                if (changePasswordRequest.NewPassword == changePasswordRequest.OldPassword)
+                {
+                    throw new Exception("New password must be different from the old password.");
+                }
+
+                var otpValidationResult = await _otpService.ValidateOtp(changePasswordRequest.Email, changePasswordRequest.Otp);
+                if (!otpValidationResult.Success)
+                {
+                    return new ChangePasswordResponse
+                    {
+                        Success = false,
+                        AttemptsLeft = otpValidationResult.AttemptsLeft
+                    };
+                }
+
+                staff.Password = await PasswordUtil.HashPassword(changePasswordRequest.NewPassword);
+
+                staffRepository.UpdateAsync(staff);
+
+                await _unitOfWork.CommitAsync();
+
+                return new ChangePasswordResponse
+                {
+                    Success = true,
+                    AttemptsLeft = otpValidationResult.AttemptsLeft
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error changing password: {Message}", ex.Message);
+                throw;
+            }
+        }
     }
 }
