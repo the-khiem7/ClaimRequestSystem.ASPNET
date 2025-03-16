@@ -94,7 +94,7 @@ namespace ClaimRequest.API.Controllers
                         new { AttemptsLeft = result.AttemptsLeft },
                         StatusCodes.Status400BadRequest,
                         "Failed to change password",
-                        "Unable to change password with the provided information"
+                        result.Message 
                     )
                 );
             }
@@ -102,7 +102,7 @@ namespace ClaimRequest.API.Controllers
             return Ok(
                 ApiResponseBuilder.BuildResponse<object>(
                     StatusCodes.Status200OK,
-                    "Password changed successfully",
+                    result.Message, 
                     new { AttemptsLeft = result.AttemptsLeft }
                 )
             );

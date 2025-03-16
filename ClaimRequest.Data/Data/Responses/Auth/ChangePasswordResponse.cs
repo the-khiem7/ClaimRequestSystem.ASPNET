@@ -10,5 +10,6 @@ namespace ClaimRequest.DAL.Data.Responses.Auth
     {
         public bool Success { get; set; }
         public int AttemptsLeft { get; set; }
+        public string Message { get; set; }
     }
 }

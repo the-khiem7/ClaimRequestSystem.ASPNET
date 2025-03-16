@@ -111,7 +111,33 @@ namespace ClaimRequest.BLL.Services.Implements
                 bool oldPasswordVerify = await PasswordUtil.VerifyPassword(changePasswordRequest.OldPassword, staff.Password);
                 if (!oldPasswordVerify)
                 {
-                    throw new UnauthorizedAccessException("Invalid old password");
+                    var otpRepository = _unitOfWork.GetRepository<Otp>();
+                    var otpEntity = await otpRepository.SingleOrDefaultAsync(
+                        predicate: o => o.Email == changePasswordRequest.Email
+                    );
+
+                    int attemptsLeft = 0;
+                    if (otpEntity != null)
+                    {
+                        if (otpEntity.AttemptLeft > 0)
+                        {
+                            otpEntity.AttemptLeft -= 1;
+                            attemptsLeft = otpEntity.AttemptLeft;
+                            otpRepository.UpdateAsync(otpEntity);
+                            await _unitOfWork.CommitAsync();
+                        }
+                        else
+                        {
+                            attemptsLeft = otpEntity.AttemptLeft;
+                        }
+                    }
+
+                    return new ChangePasswordResponse
+                    {
+                        Success = false,
+                        AttemptsLeft = attemptsLeft,
+                        Message = "Invalid old password"
+                    };
                 }
 
                 if (changePasswordRequest.NewPassword == changePasswordRequest.OldPassword)
@@ -125,7 +151,8 @@ namespace ClaimRequest.BLL.Services.Implements
                     return new ChangePasswordResponse
                     {
                         Success = false,
-                        AttemptsLeft = otpValidationResult.AttemptsLeft
+                        AttemptsLeft = otpValidationResult.AttemptsLeft,
+                        Message = otpValidationResult.Message
                     };
                 }
 
@@ -138,7 +165,8 @@ namespace ClaimRequest.BLL.Services.Implements
                 return new ChangePasswordResponse
                 {
                     Success = true,
-                    AttemptsLeft = otpValidationResult.AttemptsLeft
+                    AttemptsLeft = otpValidationResult.AttemptsLeft,
+                    Message = "Password changed successfully"
                 };
             }
             catch (Exception ex)
