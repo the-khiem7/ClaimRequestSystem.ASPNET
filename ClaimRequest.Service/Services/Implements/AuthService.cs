@@ -47,7 +47,8 @@ namespace ClaimRequest.BLL.Services.Implements
             loginResponse.AccessToken = token;
             return loginResponse;
         }
-        public async Task<bool> ForgotPassword(ForgotPasswordRequest forgotPasswordRequest)
+
+        public async Task<ForgotPasswordResponse> ForgotPassword(ForgotPasswordRequest forgotPasswordRequest)
         {
             try
             {
@@ -65,16 +66,24 @@ namespace ClaimRequest.BLL.Services.Implements
                 var otpValidationResult = await _otpService.ValidateOtp(forgotPasswordRequest.Email, forgotPasswordRequest.Otp);
                 if (!otpValidationResult.Success)
                 {
-                    throw new Exception("Invalid or expired OTP.");
+                    return new ForgotPasswordResponse
+                    {
+                        Success = false,
+                        AttemptsLeft = otpValidationResult.AttemptsLeft
+                    };
                 }
 
                 staff.Password = await PasswordUtil.HashPassword(forgotPasswordRequest.NewPassword);
-  
+
                 staffRepository.UpdateAsync(staff);
-                
+
                 await _unitOfWork.CommitAsync();
 
-                return true;
+                return new ForgotPasswordResponse
+                {
+                    Success = true,
+                    AttemptsLeft = otpValidationResult.AttemptsLeft
+                };
             }
             catch (Exception ex)
             {
