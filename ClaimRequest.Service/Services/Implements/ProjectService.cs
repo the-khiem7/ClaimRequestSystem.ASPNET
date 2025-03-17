@@ -127,6 +127,7 @@ namespace ClaimRequest.BLL.Services.Implements
                         include: q => q
                             .Include(p => p.ProjectManager)
                             .Include(p => p.ProjectStaffs)
+                                .ThenInclude(ps => ps.Staff) // Load Staff, including Department
                     )).ValidateExists(id);
 
                 return _mapper.Map<CreateProjectResponse>(project);
@@ -144,10 +145,11 @@ namespace ClaimRequest.BLL.Services.Implements
             {
                 var projects = await _unitOfWork.GetRepository<Project>()
                     .GetListAsync(
-                        predicate: p => p.IsActive, 
+                        predicate: p => p.IsActive,
                         include: q => q
                             .Include(p => p.ProjectManager)
                             .Include(p => p.ProjectStaffs)
+                                .ThenInclude(ps => ps.Staff) // Load Staff, including Department
                     );
 
                 return _mapper.Map<IEnumerable<CreateProjectResponse>>(projects);
