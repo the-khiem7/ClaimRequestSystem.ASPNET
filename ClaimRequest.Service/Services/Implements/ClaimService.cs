@@ -305,7 +305,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 {
                     ViewMode.AdminMode => c => !status.HasValue || c.Status == status.Value,
                     ViewMode.ClaimerMode => c => c.ClaimerId == loggedUserId && (!status.HasValue || c.Status == status.Value),
-                    ViewMode.ApproverMode => c => c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Pending ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Pending),
+                    ViewMode.ApproverMode => c => c.ClaimApprovers != null && c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Pending ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Pending),
                     ViewMode.FinanceMode => c => c.FinanceId == loggedUserId && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid),
                     _ => throw new BadRequestException("Invalid view mode.")
                 };
