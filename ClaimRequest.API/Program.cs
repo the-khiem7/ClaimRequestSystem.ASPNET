@@ -85,6 +85,8 @@ void RegisterApplicationServices()
     builder.Services.AddScoped<IAuthService, AuthService>();
     builder.Services.AddScoped<IOtpService, OtpService>();
     builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+    builder.Services.AddScoped<IEmailService, EmailService>();
+    builder.Services.AddHostedService<PasswordReminderService>();
     builder.Services.AddScoped<IVnPayService, VnPayService>();
     builder.Services.AddScoped<IGenericRepository<Claim>, GenericRepository<Claim>>();
     builder.Services.AddScoped<IGenericRepository<Payment>, GenericRepository<Payment>>();
@@ -225,6 +227,9 @@ void ConfigureMiddleware()
 
     // Add custom exception handling middleware
     app.UseMiddleware<ExceptionHandlerMiddleware>();
+
+    // Add custom middleware to allow only password reset requests
+    app.UseMiddleware<ResetPasswordOnlyMiddleware>();
 
     // FOR DOCKER COMPOSE => OFF THIS
     app.UseHttpsRedirection();
