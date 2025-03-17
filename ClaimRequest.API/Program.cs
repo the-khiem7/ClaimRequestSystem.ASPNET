@@ -24,10 +24,7 @@ ConfigureDatabase();
 ConfigureAuthentication();
 ConfigureSwagger();
 
-builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddHostedService<PasswordReminderService>();
 var app = builder.Build();
-app.UseMiddleware<ResetPasswordOnlyMiddleware>();
 
 // Configure the HTTP request pipeline
 ConfigureMiddleware();
@@ -87,6 +84,8 @@ void RegisterApplicationServices()
     builder.Services.AddScoped<IAuthService, AuthService>();
     builder.Services.AddScoped<IOtpService, OtpService>();
     builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+    builder.Services.AddScoped<IEmailService, EmailService>();
+    builder.Services.AddHostedService<PasswordReminderService>();
 }
 
 // Method to configure the database
@@ -224,6 +223,9 @@ void ConfigureMiddleware()
 
     // Add custom exception handling middleware
     app.UseMiddleware<ExceptionHandlerMiddleware>();
+
+    // Add custom middleware to allow only password reset requests
+    app.UseMiddleware<ResetPasswordOnlyMiddleware>();
 
     // FOR DOCKER COMPOSE => OFF THIS
     app.UseHttpsRedirection();
