@@ -27,6 +27,7 @@ ConfigureSwagger();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHostedService<PasswordReminderService>();
 var app = builder.Build();
+app.UseMiddleware<ResetPasswordOnlyMiddleware>();
 
 // Configure the HTTP request pipeline
 ConfigureMiddleware();

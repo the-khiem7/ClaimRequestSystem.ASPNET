@@ -38,7 +38,7 @@ namespace ClaimRequest.BLL.Services.Implements
                         // Chỉ lấy staff có LastChangePassword là null hoặc có thời gian đổi mật khẩu
                         // so với hiện tại đã 3 tiếng trước
                         var staffToRemind = await unitOfWork.GetRepository<Staff>().GetListAsync(
-                            predicate: s => s.LastChangePassword == null || s.LastChangePassword <= timePasswordExpired
+                            predicate: s => s.LastChangePassword != null && s.LastChangePassword <= timePasswordExpired
                         );
 
                         var semaphore = new SemaphoreSlim(10);
