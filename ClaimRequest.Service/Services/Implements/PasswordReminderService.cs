@@ -6,7 +6,6 @@ using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Org.BouncyCastle.Asn1.Ocsp;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -42,7 +41,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             predicate: s => s.LastChangePassword == null || s.LastChangePassword <= timePasswordExpired
                         );
 
-                        var semaphore = new SemaphoreSlim(1);
+                        var semaphore = new SemaphoreSlim(10);
                         var tasks = new List<Task>();
 
                         foreach (var staff in staffToRemind)
