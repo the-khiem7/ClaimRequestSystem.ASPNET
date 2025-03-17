@@ -49,9 +49,9 @@ namespace ClaimRequest.API.Extensions
             options.AddPolicy("CanReturnClaim", policy => 
                 policy.RequireRole(SystemRole.Approver.ToString(), SystemRole.Finance.ToString()));
                 
-            options.AddPolicy("CanCancelClaim", policy => 
-                policy.RequireRole(SystemRole.Staff.ToString()));
-                
+            options.AddPolicy("CanCancelClaim", policy =>
+                policy.RequireRole(RoleConstants.AllRoles));
+
             options.AddPolicy("CanProcessPayment", policy => 
                 policy.RequireRole(SystemRole.Finance.ToString()));
                 
