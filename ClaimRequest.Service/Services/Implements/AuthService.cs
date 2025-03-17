@@ -55,14 +55,9 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             var staffRepository = _unitOfWork.GetRepository<Staff>();
 
-            var staff = await staffRepository.SingleOrDefaultAsync(
+            var staff = (await staffRepository.SingleOrDefaultAsync(
                 predicate: s => s.Email == forgotPasswordRequest.Email && s.IsActive
-            );
-
-            if (staff == null)
-            {
-                throw new InvalidOperationException("Staff not found or inactive.");
-            }
+            )).ValidateExists(customMessage: "Staff not found or inactive.");
 
             var otpValidationResult = await _otpService.ValidateOtp(forgotPasswordRequest.Email, forgotPasswordRequest.Otp);
             if (!otpValidationResult.Success)
@@ -85,14 +80,9 @@ namespace ClaimRequest.BLL.Services.Implements
         public async Task<ChangePasswordResponse> ChangePassword(ChangePasswordRequest changePasswordRequest)
         {
             var staffRepository = _unitOfWork.GetRepository<Staff>();
-            var staff = await staffRepository.SingleOrDefaultAsync(
+            var staff = (await staffRepository.SingleOrDefaultAsync(
                 predicate: s => s.Email == changePasswordRequest.Email && s.IsActive
-            );
-
-            if (staff == null)
-            {
-                throw new InvalidOperationException("Staff not found or inactive.");
-            }
+            )).ValidateExists(customMessage: "Staff not found or inactive.");
 
             var otpRepository = _unitOfWork.GetRepository<Otp>();
             var otpEntity = await otpRepository.SingleOrDefaultAsync(
