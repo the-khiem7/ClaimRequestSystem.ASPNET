@@ -14,6 +14,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Linq.Expressions;
 using ClaimRequest.DAL.Data.Exceptions;
+using ClaimRequest.DAL.Data.Requests.Paging;
+using ClaimRequest.DAL.Data.Requests.Staff;
+using ClaimRequest.DAL.Data.Responses.Staff;
+using ClaimRequest.DAL.Data.Responses.Paging;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -38,7 +42,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 {
                     throw new ArgumentNullException(nameof(createStaffRequest), "Request data cannot be null.");
                 }
-
                 //// Sử dụng ExecutionStrategy để retry nếu có lỗi tạm thời trong DB
                 //var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
@@ -77,6 +80,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 //        throw;
                 //    }
                 //});
+
                 return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
                     var existingStaff = await _unitOfWork.GetRepository<Staff>()
@@ -151,35 +155,6 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                //var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-
-                //return await executionStrategy.ExecuteAsync(async () =>
-                //{
-                //    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
-                //    try
-                //    {
-                //        var existingStaff = (await _unitOfWork.GetRepository<Staff>()
-                //            .SingleOrDefaultAsync(
-                //                predicate: s => s.Id == id && s.IsActive,
-                //                orderBy: null,
-                //                include: null
-                //            )).ValidateExists(id, "Can't update because this staff");
-
-                //        // Update properties
-                //        _mapper.Map(updateStaffRequest, existingStaff);
-
-                //        _unitOfWork.GetRepository<Staff>().UpdateAsync(existingStaff);
-                //        await _unitOfWork.CommitAsync(); // save changes
-                //        await transaction.CommitAsync(); // thuc hien commit transaction => thay doi duoc luu vao db
-
-                //        return _mapper.Map<UpdateStaffResponse>(existingStaff);
-                //    }
-                //    catch (Exception)
-                //    {
-                //        await transaction.RollbackAsync();
-                //        throw;
-                //    }
-                //});
                 return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
                     var existingStaff = (await _unitOfWork.GetRepository<Staff>()
@@ -208,35 +183,6 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                //var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-
-                //return await executionStrategy.ExecuteAsync(async () =>
-                //{
-                //    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
-                //    try
-                //    {
-                //        var staff = (await _unitOfWork.GetRepository<Staff>()
-                //            .SingleOrDefaultAsync(
-                //                predicate: s => s.Id == id && s.IsActive,
-                //                orderBy: null,
-                //                include: null
-                //            )).ValidateExists(id, "Can't delete because this staff");
-
-                //        // Soft delete
-                //        staff.IsActive = false;
-                //        _unitOfWork.GetRepository<Staff>().UpdateAsync(staff);
-
-                //        await _unitOfWork.CommitAsync();
-                //        await transaction.CommitAsync();
-
-                //        return true;
-                //    }
-                //    catch (Exception)
-                //    {
-                //        await transaction.RollbackAsync();
-                //        throw;
-                //    }
-                //});
                 return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
                     var staff = (await _unitOfWork.GetRepository<Staff>()
@@ -424,6 +370,32 @@ namespace ClaimRequest.BLL.Services.Implements
                     return BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
                 }
             }
+        }
+
+        public async Task<PagingResponse<CreateStaffResponse>> GetPagedStaffs(PagingRequest pagingRequest)
+        {
+            var pagedStaffs = await _unitOfWork.GetRepository<Staff>()
+                .GetPagingListAsync(
+                    predicate: null,
+                    orderBy: q => q.OrderBy(s => s.Name),
+                    include: null,
+                    page: pagingRequest.Page,
+                    size: pagingRequest.PageSize
+                );
+
+            var response = new PagingResponse<CreateStaffResponse>
+            {
+                Items = _mapper.Map<IEnumerable<CreateStaffResponse>>(pagedStaffs.Items),
+                Meta = new PaginationMeta
+                {
+                    TotalPages = pagedStaffs.Meta.TotalPages,
+                    TotalItems = pagedStaffs.Meta.TotalItems,
+                    CurrentPage = pagedStaffs.Meta.CurrentPage,
+                    PageSize = pagedStaffs.Meta.PageSize
+                }
+            };
+
+            return response;
         }
     }
 }

@@ -68,6 +68,9 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 var claim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(claimId)
                             ?? throw new KeyNotFoundException("Claim not found.");
+                    // Get claim by ID first before starting the transaction
+                    var claim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(cancelClaimRequest.ClaimId)
+                                ?? throw new KeyNotFoundException("Claim not found.");
 
                 if (claim.Status != ClaimStatus.Draft)
                 {
@@ -457,6 +460,11 @@ namespace ClaimRequest.BLL.Services.Implements
 
         public async Task<bool> ApproveClaim(ClaimsPrincipal user, Guid id)
         {
+            if (user == null)
+            {
+                throw new UnauthorizedAccessException("User is not authorized.");
+            }
+
             var approverIdClaim = user.FindFirst("StaffId")?.Value;
             if (string.IsNullOrEmpty(approverIdClaim))
             {
@@ -466,47 +474,31 @@ namespace ClaimRequest.BLL.Services.Implements
             var approverId = Guid.Parse(approverIdClaim);
             var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
-            return await executionStrategy.ExecuteAsync(async () =>
+            var claimRepo = _unitOfWork.GetRepository<Claim>();
+
+            var pendingClaim = (await claimRepo.SingleOrDefaultAsync(
+                    predicate: s => s.Id == id,
+                    include: s => s.Include(c => c.ClaimApprovers)
+                )).ValidateExists(id);
+
+            if (pendingClaim.Status != ClaimStatus.Pending)
             {
-                await using var transaction = await _unitOfWork.BeginTransactionAsync();
-                try
-                {
-                    var claimRepo = _unitOfWork.GetRepository<Claim>();
-                    var claimApproverRepo = _unitOfWork.GetRepository<ClaimApprover>();
+                throw new BadRequestException($"Claim with ID {id} is not in pending state.");
+            }
 
-                    var pendingClaim = (await claimRepo.SingleOrDefaultAsync(
-                        predicate: s => s.Id == id,
-                        include: s => s.Include(c => c.ClaimApprovers)
-                    )).ValidateExists(id);
+            var isApproverAllowed = pendingClaim.ClaimApprovers
+                    .Any(ca => ca.ApproverId == approverId);
 
-                    if (pendingClaim.Status != ClaimStatus.Pending)
-                    {
-                        throw new BadRequestException($"Claim with ID {id} is not in pending state.");
-                    }
-
-                    var isApproverAllowed = pendingClaim.ClaimApprovers
-                        .Any(ca => ca.ApproverId == approverId);
-
-                    if (!isApproverAllowed)
-                    {
-                        throw new UnauthorizedAccessException($"Approver with ID {approverId} does not have permission to this claim");
-                    }
-
-                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approverId);
-                    pendingClaim.Status = ClaimStatus.Approved;
-
-                    claimRepo.UpdateAsync(pendingClaim);
-
-                    await _unitOfWork.CommitAsync();
-                    await transaction.CommitAsync();
-
-                    return true;
-                }
-                catch (Exception)
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
+            if (!isApproverAllowed)
+            {
+                throw new UnauthorizedAccessException($"You don't have permission to perform this action");
+            }
+            return await _unitOfWork.ProcessInTransactionAsync(async () =>
+            {
+                _logger.LogInformation("Approving claim {ClaimId} by approver {ApproverId}", id, approverId);
+                pendingClaim.Status = ClaimStatus.Approved;
+                claimRepo.UpdateAsync(pendingClaim);
+                return true;
             });
         }
 

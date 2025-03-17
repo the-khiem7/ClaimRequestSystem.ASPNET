@@ -18,5 +18,6 @@
         public decimal Salary { get; set; }
 
         public bool IsActive { get; set; }
+        public string? Avatar { get; set; }
     }
 }
