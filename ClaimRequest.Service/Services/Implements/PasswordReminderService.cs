@@ -55,12 +55,11 @@ namespace ClaimRequest.BLL.Services.Implements
                             {
                                 try
                                 {
-                                    await emailService.SendEmailAsync(new SendMailRequest
-                                    {
-                                        To = staff.Email,
-                                        Subject = "Reminder: Change Your Password",
-                                        Body = $"Hi {staff.Name}, you haven't changed your password for a while. For security reasons, please update it. Here is your OTP to proceed: {otp}"
-                                    });
+                                    await emailService.SendEmailAsync(
+                                        staff.Email,
+                                        "Reminder: Change Your Password",
+                                        $"Hi {staff.Name}, you haven't changed your password for a while. For security reasons, please update it. Here is your OTP to proceed: {otp}"
+                                    );
                                 }
                                 finally
                                 {
