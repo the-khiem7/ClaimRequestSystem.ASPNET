@@ -30,7 +30,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     {
                         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork<ClaimRequestDbContext>>();
                         var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-                        var otpService = scope.ServiceProvider.GetRequiredService<IOtpService>(); 
+                        var otpService = scope.ServiceProvider.GetRequiredService<IOtpService>();
 
                         DateTime timePasswordExpired = DateTime.UtcNow.AddHours(-3);
 
@@ -48,19 +48,18 @@ namespace ClaimRequest.BLL.Services.Implements
                         {
                             _logger.LogInformation($"Sending email to: {staff.Email}, LastChangePassword: {staff.LastChangePassword}");
                             var otp = OtpUtil.GenerateOtp(staff.Email);
-                            await otpService.CreateOtpEntity(staff.Email, otp); 
+                            await otpService.CreateOtpEntity(staff.Email, otp);
 
                             await semaphore.WaitAsync();
                             tasks.Add(Task.Run(async () =>
                             {
                                 try
                                 {
-                                    await emailService.SendEmailAsync(new SendMailRequest
-                                    {
-                                        To = staff.Email,
-                                        Subject = "Reminder: Change Your Password",
-                                        Body = $"Hi {staff.Name}, you haven't changed your password for a while. For security reasons, please update it. Here is your OTP to proceed: {otp}"
-                                    });
+                                    await emailService.SendEmailAsync(
+                                        staff.Email,
+                                        "Reminder: Change Your Password",
+                                        $"Hi {staff.Name}, you haven't changed your password for a while. For security reasons, please update it. Here is your OTP to proceed: {otp}"
+                                    );
                                 }
                                 finally
                                 {
