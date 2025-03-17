@@ -82,15 +82,21 @@ namespace ClaimRequest.Tests.Services
             var staff = new Staff { Id = id, Email = "test@fpt.edu.vn", IsActive = true };
             var response = new CreateStaffResponse { Id = id, Email = staff.Email };
 
-            _mockStaffRepository.Setup(r => r.SingleOrDefaultAsync(It.IsAny<Expression<Func<Staff, bool>>>(), null, null)).ReturnsAsync(staff);
-            _mockMapper.Setup(m => m.Map<CreateStaffResponse>(staff)).Returns(response);
+            _mockMapper.Setup(m => m.Map<Staff>(request)).Returns(staffEntity);
+            _mockMapper.Setup(m => m.Map<CreateStaffResponse>(staffEntity)).Returns(response);
+            _mockStaffRepository.Setup(r => r.SingleOrDefaultAsync(It.IsAny<Expression<Func<Staff, bool>>>(), null, null))
+                .ReturnsAsync((Staff?)null); // No existing staff with same email
+            _mockStaffRepository.Setup(r => r.InsertAsync(It.IsAny<Staff>())).Returns(Task.CompletedTask);
+            _mockUnitOfWork.Setup(u => u.CommitAsync()).ReturnsAsync(1);
+            _mockUnitOfWork.Setup(u => u.ProcessInTransactionAsync(It.IsAny<Func<Task<CreateStaffResponse>>>()))
+                .Returns((Func<Task<CreateStaffResponse>> operation) => operation());
 
             // Act
-            var result = await _staffService.GetStaffById(id);
+            var result = await _staffService.CreateStaff(request);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(id, result.Id);
+            Assert.Equal(request.Email, result.Email);
         }
 
         //[Fact]

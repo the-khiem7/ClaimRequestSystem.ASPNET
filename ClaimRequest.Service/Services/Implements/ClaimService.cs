@@ -60,14 +60,12 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                if (_unitOfWork?.Context?.Database == null)
-                {
-                    throw new InvalidOperationException("Database context is not initialized.");
-                }
-
                 // Get claim by ID first before starting the transaction
                 var claim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(cancelClaimRequest.ClaimId)
                             ?? throw new KeyNotFoundException("Claim not found.");
+                    // Get claim by ID first before starting the transaction
+                    var claim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(cancelClaimRequest.ClaimId)
+                                ?? throw new KeyNotFoundException("Claim not found.");
 
                 // Validate claim status and claimer BEFORE starting transaction
                 if (claim.Status != ClaimStatus.Draft)
@@ -256,34 +254,36 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var claimRepository = _unitOfWork.GetRepository<Claim>();
-                var claim = await claimRepository.GetByIdAsync(Id);
-
-                if (claim == null)
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
-                    throw new KeyNotFoundException("Claim not found");
-                }
+                    var claimRepository = _unitOfWork.GetRepository<Claim>();
+                    var claim = await claimRepository.GetByIdAsync(id);
 
-                if (request.StartDate >= request.EndDate)
-                {
-                    _logger.LogError("Start Date {StartDate} must be earlier than End Date {EndDate}.", request.StartDate, request.EndDate);
-                    throw new InvalidOperationException("Start Date must be earlier than End Date.");
-                }
+                    if (claim == null)
+                    {
+                        throw new KeyNotFoundException("Claim not found");
+                    }
 
-                claim.StartDate = request.StartDate;
-                claim.EndDate = request.EndDate;
-                claim.TotalWorkingHours = request.TotalWorkingHours;
-                claim.UpdateAt = DateTime.UtcNow;
+                    if (request.StartDate >= request.EndDate)
+                    {
+                        _logger.LogError("Start Date {StartDate} must be earlier than End Date {EndDate}.", request.StartDate, request.EndDate);
+                        throw new InvalidOperationException("Start Date must be earlier than End Date.");
+                    }
 
-                claimRepository.UpdateAsync(claim);
-                await _unitOfWork.CommitAsync();
+                    claim.StartDate = request.StartDate;
+                    claim.EndDate = request.EndDate;
+                    claim.TotalWorkingHours = request.TotalWorkingHours;
+                    claim.UpdateAt = DateTime.UtcNow;
 
-                _logger.LogInformation("Successfully updated claim with ID {ClaimId}.", Id);
-                return _mapper.Map<UpdateClaimResponse>(claim);
+                    claimRepository.UpdateAsync(claim);
+
+                    _logger.LogInformation("Successfully updated claim with ID {ClaimId}.", id);
+                    return _mapper.Map<UpdateClaimResponse>(claim);
+                });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating claim with ID {ClaimId}: {Message}", Id, ex.Message);
+                _logger.LogError(ex, "Error updating claim with ID {ClaimId}: {Message}", id, ex.Message);
                 throw;
             }
         }
@@ -320,7 +320,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     predicate: predicate,
                     selector: c => _mapper.Map<ViewClaimResponse>(c),
                     page: pageNumber,
-                    size: pageSize 
+                    size: pageSize
                 );
 
                 return response;
@@ -331,7 +331,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-
 
         public async Task<ViewClaimResponse> GetClaimById(Guid id)
         {
@@ -416,25 +415,11 @@ namespace ClaimRequest.BLL.Services.Implements
                     }
                     var approverName = approver.Name ?? "Unknown Approver";
 
-                        var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
-                        .SingleOrDefaultAsync(
-                            predicate: ps => ps.StaffId == rejectClaimRequest.ApproverId
-                            && ps.ProjectId == pendingClaim.ProjectId
-                            );
-
-                        // Check if approver belongs in the claim's project
-                        if (projectStaff == null)
-                        {
-                            throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} is not in the right project to reject this claim.");
-                        }
-
-                        // If the claim has not been check then update
-                        var newApprover = new ClaimApprover
-                        {
-                            ClaimId = pendingClaim.Id,
-                            ApproverId = rejectClaimRequest.ApproverId,
-                        };
-                        await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(newApprover);
+                    await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(new ClaimApprover
+                    {
+                        ClaimId = pendingClaim.Id,
+                        ApproverId = rejectClaimRequest.ApproverId
+                    });
 
                     _mapper.Map(rejectClaimRequest, pendingClaim);
                     _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
@@ -453,6 +438,11 @@ namespace ClaimRequest.BLL.Services.Implements
 
         public async Task<bool> ApproveClaim(ClaimsPrincipal user, Guid id)
         {
+            if (user == null)
+            {
+                throw new UnauthorizedAccessException("User is not authorized.");
+            }
+
             var approverIdClaim = user.FindFirst("StaffId")?.Value;
             if (string.IsNullOrEmpty(approverIdClaim))
             {
@@ -460,52 +450,34 @@ namespace ClaimRequest.BLL.Services.Implements
             }
 
             var approverId = Guid.Parse(approverIdClaim);
-            var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
-            return await executionStrategy.ExecuteAsync(async () =>
+            var claimRepo = _unitOfWork.GetRepository<Claim>();
+
+            var pendingClaim = (await claimRepo.SingleOrDefaultAsync(
+                    predicate: s => s.Id == id,
+                    include: s => s.Include(c => c.ClaimApprovers)
+                )).ValidateExists(id);
+
+            if (pendingClaim.Status != ClaimStatus.Pending)
             {
-                await using var transaction = await _unitOfWork.BeginTransactionAsync();
-                try
-                {
-                    var claimRepo = _unitOfWork.GetRepository<Claim>();
-                    var claimApproverRepo = _unitOfWork.GetRepository<ClaimApprover>();
+                throw new BadRequestException($"Claim with ID {id} is not in pending state.");
+            }
 
-                    var pendingClaim = (await claimRepo.SingleOrDefaultAsync(
-                        predicate: s => s.Id == id,
-                        include: s => s.Include(c => c.ClaimApprovers)
-                    )).ValidateExists(id);
+            var isApproverAllowed = pendingClaim.ClaimApprovers
+                    .Any(ca => ca.ApproverId == approverId);
 
-                    if (pendingClaim.Status != ClaimStatus.Pending)
-                    {
-                        throw new BadRequestException($"Claim with ID {id} is not in pending state.");
-                    }
-
-                    var isApproverAllowed = pendingClaim.ClaimApprovers
-                        .Any(ca => ca.ApproverId == approverId);
-
-                    if (!isApproverAllowed)
-                    {
-                        throw new UnauthorizedAccessException($"Approver with ID {approverId} does not have permission to this claim");
-                    }
-
-                    _logger.LogInformation("Approving claim with ID: {Id} by approver: {ApproveId}", id, approverId);
-                    pendingClaim.Status = ClaimStatus.Approved;
-
-                    claimRepo.UpdateAsync(pendingClaim);
-
-                    await _unitOfWork.CommitAsync();
-                    await transaction.CommitAsync();
-
-                    return true;
-                }
-                catch (Exception)
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
+            if (!isApproverAllowed)
+            {
+                throw new UnauthorizedAccessException($"You don't have permission to perform this action");
+            }
+            return await _unitOfWork.ProcessInTransactionAsync(async () =>
+            {
+                _logger.LogInformation("Approving claim {ClaimId} by approver {ApproverId}", id, approverId);
+                pendingClaim.Status = ClaimStatus.Approved;
+                claimRepo.UpdateAsync(pendingClaim);
+                return true;
             });
         }
-
 
         public async Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest)
         {
@@ -556,11 +528,9 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-                return await executionStrategy.ExecuteAsync(async () =>
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
                     var claim = (await _unitOfWork.GetRepository<Claim>().GetByIdAsync(id)).ValidateExists(id);
-
                     if (claim.Status != ClaimStatus.Draft)
                     {
                         throw new BusinessException("Claim cannot be submitted as it is not in Draft status.");
@@ -572,33 +542,17 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw new BusinessException("No eligible approver found for this claim.");
                     }
 
-                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
-                    try
-                    {
-                        claim.Status = ClaimStatus.Pending;
-                        claim.UpdateAt = DateTime.UtcNow;
+                    claim.Status = ClaimStatus.Pending;
+                    claim.UpdateAt = DateTime.UtcNow;
+                    _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
+                    await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(approver);
+                    _logger.LogInformation(
+                        "Submitted claim {ClaimId} by {ClaimerId} on {Time}. Approver: {ApproverId}", id,
+                        claim.ClaimerId, claim.UpdateAt, approver.ApproverId);
+                    await LogChangeAsync(id, "Claim Status", "Draft", "Pending", "Claimer");
 
-                        _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
-                        await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(approver);
-
-                        await _unitOfWork.CommitAsync();
-                        await _unitOfWork.CommitTransactionAsync(transaction);
-
-                        _logger.LogInformation("Submitted claim {ClaimId} by {ClaimerId} on {Time}. Approver: {ApproverId}",
-                            id, claim.ClaimerId, claim.UpdateAt, approver.ApproverId);
-
-                        await LogChangeAsync(id, "Claim Status", "Draft", "Pending", "Claimer");
-
-                        // Send email to approver and CC to claimer
-
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        await _unitOfWork.RollbackTransactionAsync(transaction);
-                        _logger.LogError(ex, "Error occurred during claim submission.");
-                        throw;
-                    }
+                    // Send email to approver and CC to claimer
+                    return true;
                 });
             }
             catch (Exception ex)
