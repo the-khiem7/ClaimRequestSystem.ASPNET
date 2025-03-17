@@ -268,40 +268,42 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task<UpdateClaimResponse> UpdateClaim(Guid id, UpdateClaimRequest request)
+        public async Task<UpdateClaimResponse> UpdateClaim(Guid claimId, UpdateClaimRequest request)
         {
             try
             {
-                return await _unitOfWork.ProcessInTransactionAsync(async () =>
+                var claimRepository = _unitOfWork.GetRepository<Claim>();
+                var claim = await claimRepository.GetByIdAsync(claimId);
+
+                if (claim == null)
                 {
-                    var claimRepository = _unitOfWork.GetRepository<Claim>();
-                    var claim = await claimRepository.GetByIdAsync(id);
+                    throw new KeyNotFoundException("Claim not found");
+                }
 
-                    if (claim == null)
-                    {
-                        throw new KeyNotFoundException("Claim not found");
-                    }
+                if (request.StartDate >= request.EndDate)
+                {
+                    _logger.LogError("Start Date {StartDate} must be earlier than End Date {EndDate}.", request.StartDate, request.EndDate);
+                    throw new InvalidOperationException("Start Date must be earlier than End Date.");
+                }
 
-                    if (request.StartDate >= request.EndDate)
-                    {
-                        _logger.LogError("Start Date {StartDate} must be earlier than End Date {EndDate}.", request.StartDate, request.EndDate);
-                        throw new InvalidOperationException("Start Date must be earlier than End Date.");
-                    }
+                claim.ClaimType = request.ClaimType;
+                claim.Name = request.Name;
+                claim.Remark = request.Remark;
+                claim.Amount = request.Amount;
+                claim.StartDate = request.StartDate;
+                claim.EndDate = request.EndDate;
+                claim.TotalWorkingHours = request.TotalWorkingHours;
+                claim.UpdateAt = DateTime.UtcNow;
 
-                    claim.StartDate = request.StartDate;
-                    claim.EndDate = request.EndDate;
-                    claim.TotalWorkingHours = request.TotalWorkingHours;
-                    claim.UpdateAt = DateTime.UtcNow;
+                claimRepository.UpdateAsync(claim);
+                await _unitOfWork.CommitAsync();
 
-                    claimRepository.UpdateAsync(claim);
-
-                    _logger.LogInformation("Successfully updated claim with ID {ClaimId}.", id);
-                    return _mapper.Map<UpdateClaimResponse>(claim);
-                });
+                _logger.LogInformation("Successfully updated claim with ID {ClaimId}.", claimId);
+                return _mapper.Map<UpdateClaimResponse>(claim);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating claim with ID {ClaimId}: {Message}", id, ex.Message);
+                _logger.LogError(ex, "Error updating claim with ID {ClaimId}: {Message}", claimId, ex.Message);
                 throw;
             }
         }
