@@ -1,5 +1,7 @@
-﻿using ClaimRequest.API.Constants;
+﻿using System.Text.RegularExpressions;
+using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
+using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests;
 using ClaimRequest.DAL.Data.Requests.Auth;
@@ -39,32 +41,60 @@ namespace ClaimRequest.API.Controllers
                         null,
                         StatusCodes.Status400BadRequest,
                         "Invalid request",
-                        "Please provide valid email, new password, and OTP"
+                        "Please provide valid email, new password, and OTP."
                     )
                 );
             }
 
-            var result = await _authService.ForgotPassword(forgotPasswordRequest);
-
-            if (!result.Success)
+            try
             {
+                var result = await _authService.ForgotPassword(forgotPasswordRequest);
+
+                return Ok(
+                    ApiResponseBuilder.BuildResponse<object>(
+                        StatusCodes.Status200OK,
+                        "Password changed successfully.",
+                        new { AttemptsLeft = result.AttemptsLeft }
+                    )
+                );
+            }
+            catch (OtpValidationException ex)
+            {
+                _logger.LogWarning(ex, "OTP validation error: {Message}", ex.Message);
                 return BadRequest(
                     ApiResponseBuilder.BuildErrorResponse<object>(
-                        new { AttemptsLeft = result.AttemptsLeft },
+                        new { AttemptsLeft = ex.AttemptsLeft },
                         StatusCodes.Status400BadRequest,
-                        "Failed to change password",
-                        "Unable to change password with the provided information"
+                        ex.Message,
+                        ex.Message
                     )
                 );
             }
-
-            return Ok(
-                ApiResponseBuilder.BuildResponse<object>(
-                    StatusCodes.Status200OK,
-                    "Password changed successfully",
-                    new { AttemptsLeft = result.AttemptsLeft }
-                )
-            );
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Operation error: {Message}", ex.Message);
+                return BadRequest(
+                    ApiResponseBuilder.BuildErrorResponse<object>(
+                        null,
+                        StatusCodes.Status400BadRequest,
+                        ex.Message,
+                        ex.Message
+                    )
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error changing password: {Message}", ex.Message);
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    ApiResponseBuilder.BuildErrorResponse<object>(
+                        null,
+                        StatusCodes.Status500InternalServerError,
+                        "An error occurred.",
+                        "An unexpected error occurred while changing the password."
+                    )
+                );
+            }
         }
 
         [HttpPost(ApiEndPointConstant.Auth.ChangePasswordEndpoint)]
@@ -80,32 +110,60 @@ namespace ClaimRequest.API.Controllers
                         null,
                         StatusCodes.Status400BadRequest,
                         "Invalid request",
-                        "Please provide valid email, old password, new password, and OTP"
+                        "Please provide valid email, old password, new password, and OTP."
                     )
                 );
             }
 
-            var result = await _authService.ChangePassword(changePasswordRequest);
-
-            if (!result.Success)
+            try
             {
+                var result = await _authService.ChangePassword(changePasswordRequest);
+
+                return Ok(
+                    ApiResponseBuilder.BuildResponse<object>(
+                        StatusCodes.Status200OK,
+                        "Password changed successfully.",
+                        new { AttemptsLeft = result.AttemptsLeft }
+                    )
+                );
+            }
+            catch (OtpValidationException ex)
+            {
+                _logger.LogWarning(ex, "OTP validation error: {Message}", ex.Message);
                 return BadRequest(
                     ApiResponseBuilder.BuildErrorResponse<object>(
-                        new { AttemptsLeft = result.AttemptsLeft },
+                        new { AttemptsLeft = ex.AttemptsLeft },
                         StatusCodes.Status400BadRequest,
-                        "Failed to change password",
-                        result.Message 
+                        ex.Message,
+                        ex.Message
                     )
                 );
             }
-
-            return Ok(
-                ApiResponseBuilder.BuildResponse<object>(
-                    StatusCodes.Status200OK,
-                    result.Message, 
-                    new { AttemptsLeft = result.AttemptsLeft }
-                )
-            );
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Operation error: {Message}", ex.Message);
+                return BadRequest(
+                    ApiResponseBuilder.BuildErrorResponse<object>(
+                        null,
+                        StatusCodes.Status400BadRequest,
+                        ex.Message,
+                        ex.Message
+                    )
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error changing password: {Message}", ex.Message);
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    ApiResponseBuilder.BuildErrorResponse<object>(
+                        null,
+                        StatusCodes.Status500InternalServerError,
+                        "An error occurred.",
+                        "An unexpected error occurred while changing the password."
+                    )
+                );
+            }
         }
     }
 }
