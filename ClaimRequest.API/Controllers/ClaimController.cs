@@ -72,7 +72,7 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(UpdateClaimResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> UpdateClaim(Guid id, [FromBody] UpdateClaimRequest updateClaimRequest)
+        public async Task<IActionResult> UpdateClaim([FromRoute] Guid id, [FromBody] UpdateClaimRequest updateClaimRequest)
         {
             try
             {
@@ -108,6 +108,7 @@ namespace ClaimRequest.API.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
             }
         }
+
 
 
         [Authorize(Policy = "CanRejectClaim")]
