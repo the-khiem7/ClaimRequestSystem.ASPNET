@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using ClaimRequest.DAL.Data.Entities;
-using Microsoft.AspNetCore.Http;
 
 namespace ClaimRequest.DAL.Data.Requests.Staff
 {
@@ -29,8 +28,6 @@ namespace ClaimRequest.DAL.Data.Requests.Staff
         [Required(ErrorMessage = "Salary field is required")]
         [Range(0, 999999999.99, ErrorMessage = "Salary must be between 0 and 999,999,999.99")]
         public decimal Salary { get; set; }
-
-        public IFormFile? ImageFile { get; set; }
 
         public bool IsActive { get; set; } = true;
     }

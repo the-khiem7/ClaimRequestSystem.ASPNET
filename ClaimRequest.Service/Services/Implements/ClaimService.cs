@@ -476,7 +476,12 @@ namespace ClaimRequest.BLL.Services.Implements
 
         public async Task<bool> ApproveClaim(ClaimsPrincipal user, Guid id)
         {
+            if (user == null)
+            {
+                throw new UnauthorizedAccessException("User is not authorized.");
+            }
             var approverIdClaim = user.FindFirst("StaffId")?.Value;
+
             if (string.IsNullOrEmpty(approverIdClaim))
             {
                 throw new UnauthorizedAccessException("Approver ID not found in token.");

@@ -178,7 +178,7 @@ namespace ClaimRequest.API.Controllers
                 return Problem("Approve claim failed");
             }
             var successRespose = ApiResponseBuilder.BuildResponse(
-                message: "Claim canceled successfully!",
+                message: "Claim approved successfully!",
                 data: result,
                 statusCode: StatusCodes.Status200OK);
             return Ok(successRespose);
