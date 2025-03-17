@@ -143,7 +143,11 @@ namespace ClaimRequest.API.Controllers
                 _logger.LogError("Cancel claim failed");
                 return Problem("Cancel claim failed");
             }
-            return Ok(response);
+            var successRespose = ApiResponseBuilder.BuildResponse(
+                message: "Claim canceled successfully!",
+                data: response,
+                statusCode: StatusCodes.Status200OK);
+            return Ok(successRespose);
         }
 
         [Authorize(Policy = "CanDownloadClaim")]
