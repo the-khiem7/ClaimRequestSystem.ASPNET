@@ -1,68 +1,66 @@
 ﻿using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
-using ClaimRequest.DAL.Data.Requests.Media;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClaimRequest.API.Controllers
 {
     [ApiController]
-    [Authorize]
     public class CloudinaryController : BaseController<CloudinaryController>
     {
         private readonly ICloudinaryService _cloudinaryService;
+        private readonly ILogger<CloudinaryController> _logger;
+
+        private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png" };
+        private const long MaxFileSize = 5 * 1024 * 1024;
 
         public CloudinaryController(ILogger<CloudinaryController> logger, ICloudinaryService cloudinaryService)
             : base(logger)
         {
             _cloudinaryService = cloudinaryService;
+            _logger = logger;
         }
 
         [HttpPost(ApiEndPointConstant.Cloudinary.UploadImage)]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UploadImage([FromForm] UploadImageRequest request)
+        public async Task<IActionResult> UploadImage(IFormFile file)
         {
-            if (request.File == null || request.File.Length == 0)
-            {
+            if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded.");
-            }
+
+            var fileExtension = Path.GetExtension(file.FileName).ToLower();
+            if (!AllowedExtensions.Contains(fileExtension))
+                return BadRequest("Invalid file format. Allowed formats: .jpg, .jpeg, .png");
+
+            if (file.Length > MaxFileSize)
+                return BadRequest("File size exceeds the 5MB limit.");
 
             try
             {
-                var imageUrl = await _cloudinaryService.UploadImageAsync(request.File, User);
+                using var stream = file.OpenReadStream();
+                var imageUrl = await _cloudinaryService.UploadImageAsync(stream, file.FileName);
                 return Ok(new { imageUrl });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error uploading image: {ex}");
+                _logger.LogError($"Error uploading image: {ex.Message}");
                 return StatusCode(500, "An error occurred while uploading the image.");
             }
+
         }
+
 
         [HttpDelete(ApiEndPointConstant.Cloudinary.DeleteImage)]
         public async Task<IActionResult> DeleteImage([FromRoute] string publicId)
         {
-            if (string.IsNullOrWhiteSpace(publicId))
-            {
-                return BadRequest("Invalid public ID.");
-            }
-
             try
             {
                 var isDeleted = await _cloudinaryService.DeleteImageAsync(publicId);
                 if (!isDeleted)
-                {
                     return BadRequest("Failed to delete image.");
-                }
-                return Ok(new { message = "Image deleted successfully." });
+                return Ok("Image deleted successfully.");
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error deleting image: {ex}");
+                _logger.LogError($"Error deleting image: {ex.Message}");
                 return StatusCode(500, "An error occurred while deleting the image.");
             }
         }

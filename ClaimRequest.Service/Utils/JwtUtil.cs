@@ -20,32 +20,23 @@ namespace ClaimRequest.BLL.Utils
             _expired = double.Parse(configuration["Jwt:TokenValidityInMinutes"]);
         }
 
-        public string GenerateJwtToken(Staff staff, Tuple<string, Guid> guidClaimer, bool isResetPasswordOnly)
+        public string GenerateJwtToken(Staff staff, Tuple<string, Guid> guidClaimer)
         {
             JwtSecurityTokenHandler tokenHandler = new JwtSecurityTokenHandler();
             SymmetricSecurityKey secrectKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtkey));
             var credentials = new SigningCredentials(secrectKey, SecurityAlgorithms.HmacSha256Signature);
             string issuer = _issuer;
-
             List<Claim> securityClaims = new List<Claim>()
-            {
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(JwtRegisteredClaimNames.Sub, staff.Email.ToString()),
-                new Claim(ClaimTypes.Role, staff.SystemRole.ToString()),
-            };
+                {
+                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                    new Claim(JwtRegisteredClaimNames.Sub, staff.Email.ToString()),
+                    new Claim(ClaimTypes.Role, staff.SystemRole.ToString()),
+                };
 
-            if (guidClaimer != null)
-                securityClaims.Add(new Claim(guidClaimer.Item1, guidClaimer.Item2.ToString()));
-
-            // Nếu mật khẩu hết hạn, thêm claim đặc biệt
-            if (isResetPasswordOnly)
-            {
-                securityClaims.Add(new Claim("ResetPasswordOnly", "true"));
-            }
-
+            if (guidClaimer != null) securityClaims.Add(new Claim(guidClaimer.Item1, guidClaimer.Item2.ToString()));
             var expires = DateTime.Now.AddMinutes(_expired);
-            var token = new JwtSecurityToken(issuer, _audience, securityClaims, DateTime.Now, expires, credentials);
 
+            var token = new JwtSecurityToken(issuer, _audience, securityClaims, DateTime.Now, expires, credentials);
             return tokenHandler.WriteToken(token);
         }
     }

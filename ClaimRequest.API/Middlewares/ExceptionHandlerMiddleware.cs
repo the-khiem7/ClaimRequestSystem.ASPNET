@@ -89,51 +89,56 @@ namespace ClaimRequest.API.Middlewares
 
         private async Task HandleExceptionAsync(HttpContext context, string errorId, Exception exception)
         {
-            var (statusCode, message, reason, additionalData) = exception switch
+            var (statusCode, message, reason) = exception switch
             {
                 #region 400 Bad Request
+
                 ValidationException validationEx =>
-                    (HttpStatusCode.BadRequest, "Validation failed", validationEx.Message, null),
+                    (HttpStatusCode.BadRequest, "Validation failed", validationEx.Message),
                 BusinessException businessEx =>
-                    (HttpStatusCode.BadRequest, "Business rule violation", businessEx.Message, null),
+                    (HttpStatusCode.BadRequest, "Business rule violation", businessEx.Message),
                 InvalidOperationException =>
-                    (HttpStatusCode.BadRequest, "Invalid operation", exception.Message, null),
+                    (HttpStatusCode.BadRequest, "Invalid operation", exception.Message),
                 ArgumentException =>
-                    (HttpStatusCode.BadRequest, "Invalid argument", exception.Message, null),
+                    (HttpStatusCode.BadRequest, "Invalid argument", exception.Message),
+
                 #endregion
 
                 #region 401 Unauthorized
+
                 UnauthorizedAccessException =>
-                    (HttpStatusCode.Unauthorized, "Unauthorized access", "You don't have permission to perform this action", null),
+                    (HttpStatusCode.Unauthorized, "Unauthorized access", "You don't have permission to perform this action"),
                 SecurityTokenException =>
-                    (HttpStatusCode.Unauthorized, "Invalid token", "Authentication token is invalid or expired", null),
+                    (HttpStatusCode.Unauthorized, "Invalid token", "Authentication token is invalid or expired"),
+
                 #endregion
 
                 #region 403 Forbidden
+
                 SecurityException =>
-                    (HttpStatusCode.Forbidden, "Access forbidden", "You don't have sufficient permissions", null),
-                PasswordExpiredException passwordExpiredEx =>
-                    (HttpStatusCode.Forbidden, "Login Suspended", "Your password has expired. Please reset your password",
-                     new { ResetToken = passwordExpiredEx.Message }),
+                    (HttpStatusCode.Forbidden, "Access forbidden", "You don't have sufficient permissions"),
                 #endregion
 
                 #region 404 Not Found
+
                 NotFoundException =>
-                    (HttpStatusCode.NotFound, "Resource not found", exception.Message, null),
+                    (HttpStatusCode.NotFound, "Resource not found", exception.Message),
                 KeyNotFoundException =>
-                    (HttpStatusCode.NotFound, "Resource not found", exception.Message, null),
+                    (HttpStatusCode.NotFound, "Resource not found", exception.Message),
+
                 #endregion
 
                 #region 500 Internal Server Error
                 DbUpdateException dbUpdateEx =>
-                    (HttpStatusCode.InternalServerError, "Database update error", dbUpdateEx.Message, null),
+                    (HttpStatusCode.InternalServerError, "Database update error", dbUpdateEx.Message),
                 _ => (HttpStatusCode.InternalServerError,
                     "An unexpected error occurred",
-                    _env.IsDevelopment() ? exception.Message : "Internal server error",
-                    null)
+                    _env.IsDevelopment() ? exception.Message : "Internal server error")
+
                 #endregion
             };
 
+            #region Json Response Message Format
             var response = new ApiResponse<object>
             {
                 StatusCode = (int)statusCode,
@@ -142,7 +147,6 @@ namespace ClaimRequest.API.Middlewares
                 IsSuccess = false,
                 Data = new
                 {
-                    ResetToken = exception is PasswordExpiredException ? exception.Message : null,
                     Method = context.Request.Method,
                     Path = context.Request.Path,
                     ExceptionType = exception.GetType().Name,
@@ -150,12 +154,14 @@ namespace ClaimRequest.API.Middlewares
                     StackTrace = _env.IsDevelopment() ? exception.StackTrace : null,
                     InnerException = exception.InnerException?.Message,
                     ErrorId = errorId,
-                    Timestamp = DateTime.UtcNow                  
+                    Timestamp = DateTime.UtcNow,
                 }
             };
+            #endregion
 
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)statusCode;
+
             await context.Response.WriteAsJsonAsync(response);
         }
     }
