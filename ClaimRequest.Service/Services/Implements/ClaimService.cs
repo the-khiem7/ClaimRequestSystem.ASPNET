@@ -417,12 +417,6 @@ namespace ClaimRequest.BLL.Services.Implements
                     }
                     var approverName = approver.Name ?? "Unknown Approver";
 
-                    await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(new ClaimApprover
-                    {
-                        ClaimId = pendingClaim.Id,
-                        ApproverId = rejectClaimRequest.ApproverId
-                    });
-
                     _mapper.Map(rejectClaimRequest, pendingClaim);
                     _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
 
