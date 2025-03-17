@@ -85,18 +85,10 @@ void RegisterApplicationServices()
     builder.Services.AddScoped<IAuthService, AuthService>();
     builder.Services.AddScoped<IOtpService, OtpService>();
     builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+    builder.Services.AddScoped<IVnPayService, VnPayService>();
+    builder.Services.AddScoped<IGenericRepository<Claim>, GenericRepository<Claim>>();
+    builder.Services.AddScoped<IGenericRepository<Payment>, GenericRepository<Payment>>();
 }
-// Dependency Injection for Repositories and Services
-builder.Services.AddScoped<IClaimService, ClaimService>();
-builder.Services.AddScoped<IStaffService, StaffService>();
-builder.Services.AddScoped<IProjectService, ProjectService>();
-builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IOtpService, OtpService>();
-builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
-builder.Services.AddScoped<IVnPayService, VnPayService>();
-builder.Services.AddScoped<IGenericRepository<Claim>, GenericRepository<Claim>>();
-builder.Services.AddScoped<IGenericRepository<Payment>, GenericRepository<Payment>>();
 
 // Method to configure the database
 void ConfigureDatabase()
