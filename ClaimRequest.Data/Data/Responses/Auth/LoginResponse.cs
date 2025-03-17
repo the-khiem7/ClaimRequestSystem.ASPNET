@@ -10,6 +10,7 @@ namespace ClaimRequest.DAL.Data.Responses.Auth
         public string Email { get; set; }
         public SystemRole Role { get; set; }
         public Department Department { get; set; }
+        public bool IsPasswordExpired { get; set; }
 
         public LoginResponse(Entities.Staff staff)
         {

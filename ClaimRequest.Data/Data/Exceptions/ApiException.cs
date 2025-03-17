@@ -50,6 +50,14 @@ namespace ClaimRequest.DAL.Data.Exceptions
     {
         public ConflictException(string message) : base(message) { }
     }
+
+    public class PasswordExpiredException : ApiException
+    {
+        public PasswordExpiredException(string message)
+            : base(message, HttpStatusCode.Forbidden)
+        {
+        }
+    }
     public class OtpValidationException : Exception
     {
         public int AttemptsLeft { get; }

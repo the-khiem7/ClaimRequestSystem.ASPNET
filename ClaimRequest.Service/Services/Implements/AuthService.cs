@@ -44,9 +44,25 @@ namespace ClaimRequest.BLL.Services.Implements
                 ? true
                 : throw new UnauthorizedAccessException("Invalid password");
 
+            DateTime? lastChangePassword = staff.LastChangePassword;
+            bool isPasswordExpired = lastChangePassword != null && lastChangePassword <= DateTime.UtcNow.AddHours(-3);
+
             LoginResponse loginResponse = new LoginResponse(staff);
+            loginResponse.IsPasswordExpired = isPasswordExpired; 
+
             Tuple<string, Guid> guidSecurityClaim = new Tuple<string, Guid>("StaffId", staff.Id);
-            var token = _jwtUtil.GenerateJwtToken(staff, guidSecurityClaim);
+
+            if (isPasswordExpired)
+            {
+                // Tạo resetToken cho resetPasswordOnly
+                var resetToken = _jwtUtil.GenerateJwtToken(staff, guidSecurityClaim, true);
+
+                // Ném exception với resetToken trong ExceptionMessage
+                throw new PasswordExpiredException(resetToken);
+            }
+
+            // Token bình thường nếu mật khẩu không hết hạn
+            var token = _jwtUtil.GenerateJwtToken(staff, guidSecurityClaim, false);
             loginResponse.AccessToken = token;
             return loginResponse;
         }
@@ -126,6 +142,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
 
             staff.Password = await PasswordUtil.HashPassword(changePasswordRequest.NewPassword);
+                staff.LastChangePassword = DateTime.UtcNow; 
 
             staffRepository.UpdateAsync(staff);
 
