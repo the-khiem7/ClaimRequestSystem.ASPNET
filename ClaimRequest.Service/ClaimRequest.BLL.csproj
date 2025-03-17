@@ -42,6 +42,9 @@
 	  <None Update="Services\Templates\ManagerApprovedEmailTemplate.html">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
+	  <None Update="Services\Templates\OtpEmailTemplate.html">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
 	</ItemGroup>
 
 </Project>
