@@ -2,8 +2,7 @@
 //using AutoMapper;
 //using ClaimRequest.BLL.Services.Implements;
 //using ClaimRequest.DAL.Data.Entities;
-//using ClaimRequest.DAL.Data.Requests.Claim;
-//using ClaimRequest.DAL.Data.Responses.Claim;
+//using ClaimRequest.DAL.Data.Exceptions;
 //using ClaimRequest.DAL.Repositories.Implements;
 //using ClaimRequest.DAL.Repositories.Interfaces;
 //using Microsoft.AspNetCore.Http;
@@ -63,34 +62,21 @@
 //                _mockHttpContextAccessor.Object
 //            );
 //        }
+
 //        [Fact]
 //        public async Task ApproveClaim_Should_Approve_Valid_Claim()
 //        {
 //            var claimId = Guid.NewGuid();
-//            var claimerId = Guid.NewGuid();
 //            var approverId = Guid.NewGuid();
 
 //            var claim = new Claim
 //            {
 //                Id = claimId,
 //                Status = ClaimStatus.Pending,
-//                Name = "Test Claim",
-//                Remark = "Initial Remark"
-//            };
-
-//            var approveRequest = new ApproveClaimRequest
-//            {
-//                Remark = "Approved claim"
-//            };
-
-//            var approveResponse = new ApproveClaimResponse
-//            {
-//                Id = claimId,
-//                ClaimerId = claimerId,
-//                Status = ClaimStatus.Approved,
-//                Remark = "Approved claim",
-//                UpdateAt = DateTime.UtcNow,
-//                ApproverId = approverId
+//                ClaimApprovers = new List<ClaimApprover>
+//                {
+//                    new ClaimApprover { ApproverId = approverId }
+//                }
 //            };
 
 //            await _realDbContext.Claims.AddAsync(claim);
@@ -101,15 +87,9 @@
 //            .ReturnsAsync((Expression<Func<Claim, bool>> predicate, object _, object __) =>
 //                _realDbContext.Claims.FirstOrDefault(predicate.Compile()));
 
-//            _mockMapper.Setup(m => m.Map<ApproveClaimResponse>(It.IsAny<Claim>()))
-//                .Returns(approveResponse);
-
 //            var result = await _claimService.ApproveClaim(approverId, claimId);
 
-//            Assert.NotNull(result);
-//            Assert.Equal(ClaimStatus.Approved, result.Status);
-//            Assert.Equal(approveRequest.Remark, result.Remark);
-
+//            Assert.True(result);
 //            _mockUnitOfWork.Verify(uow => uow.BeginTransactionAsync(), Times.Once);
 //            _mockUnitOfWork.Verify(uow => uow.CommitTransactionAsync(It.IsAny<IDbContextTransaction>()), Times.Once);
 //            _mockUnitOfWork.Verify(uow => uow.CommitAsync(), Times.Once);
@@ -121,6 +101,60 @@
 //                It.Is<It.IsAnyType>((v, t) => true),
 //                It.IsAny<Exception>(),
 //                (Func<It.IsAnyType, Exception, string>)It.IsAny<object>()), Times.Once);
+//        }
+
+//        [Fact]
+//        public async Task ApproveClaim_ShouldThrowException_WhenClaimIsNotPending()
+//        {
+//            var claimId = Guid.NewGuid();
+//            var approverId = Guid.NewGuid();
+
+//            var claim = new Claim
+//            {
+//                Id = claimId,
+//                Status = ClaimStatus.Approved, // Not pending
+//                ClaimApprovers = new List<ClaimApprover>
+//                {
+//                    new ClaimApprover { ApproverId = approverId }
+//                }
+//            };
+
+//            await _realDbContext.Claims.AddAsync(claim);
+//            await _realDbContext.SaveChangesAsync();
+
+//            _mockClaimRepository.Setup(repo => repo.SingleOrDefaultAsync(
+//                It.IsAny<Expression<Func<Claim, bool>>>(), null, null))
+//            .ReturnsAsync((Expression<Func<Claim, bool>> predicate, object _, object __) =>
+//                _realDbContext.Claims.FirstOrDefault(predicate.Compile()));
+
+//            await Assert.ThrowsAsync<BadRequestException>(() => _claimService.ApproveClaim(approverId, claimId));
+//        }
+
+//        [Fact]
+//        public async Task ApproveClaim_ShouldThrowException_WhenApproverIsNotAllowed()
+//        {
+//            var claimId = Guid.NewGuid();
+//            var approverId = Guid.NewGuid();
+
+//            var claim = new Claim
+//            {
+//                Id = claimId,
+//                Status = ClaimStatus.Pending,
+//                ClaimApprovers = new List<ClaimApprover>
+//                {
+//                    new ClaimApprover { ApproverId = Guid.NewGuid() } 
+//                }
+//            };
+
+//            await _realDbContext.Claims.AddAsync(claim);
+//            await _realDbContext.SaveChangesAsync();
+
+//            _mockClaimRepository.Setup(repo => repo.SingleOrDefaultAsync(
+//                It.IsAny<Expression<Func<Claim, bool>>>(), null, null))
+//            .ReturnsAsync((Expression<Func<Claim, bool>> predicate, object _, object __) =>
+//                _realDbContext.Claims.FirstOrDefault(predicate.Compile()));
+
+//            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _claimService.ApproveClaim(approverId, claimId));
 //        }
 
 //        public void Dispose()
