@@ -74,17 +74,16 @@ namespace ClaimRequest.API.Controllers
 
             var response = _vnPayService.PaymentExecute(queryParams);
 
-            if (response == null || response.PaymentId == null)
+            if (response == null || !response.Success)
                 return BadRequest(ApiResponseBuilder.BuildResponse<object>(
                     StatusCodes.Status400BadRequest,
                     "Payment failed",
                     null));
 
-            if (!TryParseClaimId(response.PaymentId, out Guid claimId))
+            var txnRef = queryParams["vnp_TxnRef"].ToString();
+            if (string.IsNullOrEmpty(txnRef) || !TryParseClaimId(txnRef, out Guid claimId))
                 return BadRequest(ApiResponseBuilder.BuildResponse<object>(
-                    StatusCodes.Status400BadRequest,
-                    "Invalid payment ID",
-                    null));
+                    StatusCodes.Status400BadRequest, "Invalid transaction reference", null));
 
             var claim = await _claimRepository.GetByIdAsync(claimId);
             if (claim == null)
@@ -103,11 +102,18 @@ namespace ClaimRequest.API.Controllers
                     null));
             }
 
+            // Update the claim status to indicate payment was successful
+            claim.Status = ClaimStatus.Paid;
+            _claimRepository.UpdateAsync(claim);
+            await Task.CompletedTask;
+
             return Ok(ApiResponseBuilder.BuildResponse(
                 StatusCodes.Status200OK,
                 "Payment successful",
                 new { ClaimId = claimId }));
         }
+
+
 
         private bool TryParseClaimId(string paymentId, out Guid claimId)
         {

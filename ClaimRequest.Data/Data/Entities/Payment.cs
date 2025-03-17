@@ -20,20 +20,7 @@ namespace ClaimRequest.DAL.Data.Entities
         [Column("claim_id")]
         public Guid ClaimId { get; set; }
 
-        [Required]
-        [Column("amount", TypeName = "numeric")]
-        public decimal Amount { get; set; }
-
-        [Required]
-        [Column("status")]
-        public string Status { get; set; }
-
-        [Column("created_at", TypeName = "timestamp with time zone")]
-        [Required]
-        [DataType(DataType.DateTime)]
-        public DateTime CreatedAt { get; set; }
-
         [ForeignKey(nameof(ClaimId))]
-        public virtual Claim Claim { get; set; }
+        public virtual Claim Claim { get; set; } = null!;
     }
 }
