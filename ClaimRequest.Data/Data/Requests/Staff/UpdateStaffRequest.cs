@@ -30,5 +30,7 @@ namespace ClaimRequest.DAL.Data.Requests.Staff
         public decimal Salary { get; set; }
 
         public bool IsActive { get; set; } = true;
+
+        public string? Avatar { get; set; }
     }
 }

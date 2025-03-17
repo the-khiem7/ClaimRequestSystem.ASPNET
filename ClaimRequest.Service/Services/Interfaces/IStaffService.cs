@@ -1,4 +1,6 @@
-﻿using ClaimRequest.DAL.Data.Requests.Staff;
+﻿using ClaimRequest.DAL.Data.Requests.Paging;
+using ClaimRequest.DAL.Data.Requests.Staff;
+using ClaimRequest.DAL.Data.Responses.Paging;
 using ClaimRequest.DAL.Data.Responses.Staff;
 
 namespace ClaimRequest.BLL.Services.Interfaces
@@ -14,5 +16,6 @@ namespace ClaimRequest.BLL.Services.Interfaces
         Task<bool> DeleteStaff(Guid id);
         Task<AssignStaffResponse> AssignStaff(Guid id ,AssignStaffRequest assignStaffRequest);
         Task<RemoveStaffResponse> RemoveStaff(Guid id ,RemoveStaffRequest removeStaffRequest);
+        Task<PagingResponse<CreateStaffResponse>> GetPagedStaffs(PagingRequest pagingRequest);
     }
 }
