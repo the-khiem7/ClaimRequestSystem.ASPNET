@@ -134,19 +134,21 @@ namespace ClaimRequest.API.Controllers
 
         [Authorize(Policy = "CanCancelClaim")]
         [HttpPut(ApiEndPointConstant.Claim.CancelClaimEndpoint)]
-        [ProducesResponseType(typeof(CancelClaimResponse), StatusCodes.Status200OK)]
-        public async Task<IActionResult> CancelClaim([FromBody] CancelClaimRequest cancelClaimRequest)
+        [ProducesResponseType(typeof(ApiResponse<CancelClaimResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> CancelClaim([FromRoute] Guid claimId, [FromBody] CancelClaimRequest cancelClaimRequest)
         {
-            var response = await _claimService.CancelClaim(cancelClaimRequest);
+            var response = await _claimService.CancelClaim(claimId, cancelClaimRequest);
             if (response == null)
             {
                 _logger.LogError("Cancel claim failed");
                 return Problem("Cancel claim failed");
             }
             var successRespose = ApiResponseBuilder.BuildResponse(
-                message: "Claim canceled successfully!",
-                data: response,
-                statusCode: StatusCodes.Status200OK);
+                StatusCodes.Status200OK,
+                "Claim canceled successfully!",
+                response);
             return Ok(successRespose);
         }
 
