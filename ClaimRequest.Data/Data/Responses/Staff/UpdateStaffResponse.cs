@@ -11,5 +11,6 @@ namespace ClaimRequest.DAL.Data.Responses.Staff
         public Department Department { get; set; }
         public decimal Salary { get; set; }
         public bool IsActive { get; set; }
+        public string? Avatar { get; set; }
     }
 }
