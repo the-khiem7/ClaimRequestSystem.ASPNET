@@ -57,6 +57,9 @@ namespace ClaimRequest.DAL.Data.Entities
         [Column("avatar")]
         public string Avatar { get; set; }
 
+        [Column("last_change_password")]
+        public DateTime? LastChangePassword { get; set; }
+
         public virtual ICollection<ProjectStaff> ProjectStaffs { get; set; } = [];
 
         //public string PasswordHash { get; set; }
