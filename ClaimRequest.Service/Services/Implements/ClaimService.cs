@@ -60,11 +60,6 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                if (_unitOfWork?.Context?.Database == null)
-                {
-                    throw new InvalidOperationException("Database context is not initialized.");
-                }
-
                 // Get claim by ID first before starting the transaction
                 var claim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(cancelClaimRequest.ClaimId)
                             ?? throw new KeyNotFoundException("Claim not found.");
@@ -261,21 +256,21 @@ namespace ClaimRequest.BLL.Services.Implements
                     var claimRepository = _unitOfWork.GetRepository<Claim>();
                     var claim = await claimRepository.GetByIdAsync(id);
 
-                if (claim == null)
-                {
-                    throw new KeyNotFoundException("Claim not found");
-                }
+                    if (claim == null)
+                    {
+                        throw new KeyNotFoundException("Claim not found");
+                    }
 
-                if (request.StartDate >= request.EndDate)
-                {
-                    _logger.LogError("Start Date {StartDate} must be earlier than End Date {EndDate}.", request.StartDate, request.EndDate);
-                    throw new InvalidOperationException("Start Date must be earlier than End Date.");
-                }
+                    if (request.StartDate >= request.EndDate)
+                    {
+                        _logger.LogError("Start Date {StartDate} must be earlier than End Date {EndDate}.", request.StartDate, request.EndDate);
+                        throw new InvalidOperationException("Start Date must be earlier than End Date.");
+                    }
 
-                claim.StartDate = request.StartDate;
-                claim.EndDate = request.EndDate;
-                claim.TotalWorkingHours = request.TotalWorkingHours;
-                claim.UpdateAt = DateTime.UtcNow;
+                    claim.StartDate = request.StartDate;
+                    claim.EndDate = request.EndDate;
+                    claim.TotalWorkingHours = request.TotalWorkingHours;
+                    claim.UpdateAt = DateTime.UtcNow;
 
                     claimRepository.UpdateAsync(claim);
 
@@ -322,7 +317,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     predicate: predicate,
                     selector: c => _mapper.Map<ViewClaimResponse>(c),
                     page: pageNumber,
-                    size: pageSize 
+                    size: pageSize
                 );
 
                 return response;
@@ -447,12 +442,10 @@ namespace ClaimRequest.BLL.Services.Implements
             }
 
             var approverId = Guid.Parse(approverIdClaim);
-            var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
-            return await executionStrategy.ExecuteAsync(async () =>
+            try
             {
-                await using var transaction = await _unitOfWork.BeginTransactionAsync();
-                try
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
                     var claimRepo = _unitOfWork.GetRepository<Claim>();
                     var claimApproverRepo = _unitOfWork.GetRepository<ClaimApprover>();
@@ -480,17 +473,14 @@ namespace ClaimRequest.BLL.Services.Implements
 
                     claimRepo.UpdateAsync(pendingClaim);
 
-                    await _unitOfWork.CommitAsync();
-                    await transaction.CommitAsync();
-
                     return true;
-                }
-                catch (Exception)
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
-            });
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error approving claim with ID {Id}: {Message}", id, ex.Message);
+                throw;
+            }
         }
 
         public async Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest)
