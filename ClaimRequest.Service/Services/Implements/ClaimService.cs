@@ -12,6 +12,7 @@ using ClaimRequest.DAL.Data.Responses.Claim;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
@@ -321,15 +322,23 @@ namespace ClaimRequest.BLL.Services.Implements
                     _ => throw new BadRequestException("Invalid view mode.")
                 };
 
+                Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>> include = query => selectedView switch
+                {
+                    ViewMode.AdminMode or ViewMode.ApproverMode => query.AsNoTracking()
+                                                                        .Include(c => c.Project)
+                                                                        .Include(c => c.Claimer)
+                                                                        .Include(c => c.ClaimApprovers),
+                    _ => query.AsNoTracking()
+                              .Include(c => c.Project)
+                              .Include(c => c.Claimer)
+                };
+
                 var response = await _unitOfWork.GetRepository<Claim>().GetPagingListAsync(
-                    include: query => query.AsNoTracking()
-                                           .Include(c => c.Project)
-                                           .Include(c => c.Claimer)
-                                           .Include(c => c.ClaimApprovers),
+                    include: include,
                     predicate: predicate,
                     selector: c => _mapper.Map<ViewClaimResponse>(c),
                     page: pageNumber,
-                    size: pageSize 
+                    size: pageSize
                 );
 
                 return response;
