@@ -1,5 +1,6 @@
 ﻿using ClaimRequest.API.Constants;
 using ClaimRequest.API.Extensions;
+using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Exceptions;
@@ -43,9 +44,10 @@ namespace ClaimRequest.API.Controllers
         [Authorize(Policy = "CanViewClaims")]
         [HttpGet(ApiEndPointConstant.Claim.ClaimsEndpoint)]
         [ProducesResponseType(typeof(IEnumerable<ViewClaimResponse>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status, [FromQuery] ClaimService.ViewMode? viewMode, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var response = await _claimService.GetClaims(pageNumber, pageSize, status);
+            viewMode ??= Enum.Parse<ClaimService.ViewMode>("ClaimerMode");
+            var response = await _claimService.GetClaims(pageNumber, pageSize, status, viewMode.ToString());
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: "Get claims successfully!",
                 data: response,
@@ -142,7 +144,11 @@ namespace ClaimRequest.API.Controllers
                 _logger.LogError("Cancel claim failed");
                 return Problem("Cancel claim failed");
             }
-            return Ok(response);
+            var successRespose = ApiResponseBuilder.BuildResponse(
+                message: "Claim canceled successfully!",
+                data: response,
+                statusCode: StatusCodes.Status200OK);
+            return Ok(successRespose);
         }
 
         [Authorize(Policy = "CanDownloadClaim")]
@@ -211,6 +217,43 @@ namespace ClaimRequest.API.Controllers
                     null,
                     StatusCodes.Status500InternalServerError,
                     "An error occurred while returning the claim",
+                    "Internal server error"
+                );
+                return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+            }
+        }
+
+        [Authorize(Policy = "CanSubmitClaim")]
+        [HttpPut(ApiEndPointConstant.Claim.SubmitClaimEndpoint)]
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> SubmitClaim(Guid id)
+        {
+            try
+            {
+                var result = await _claimService.SubmitClaim(id);
+                if (!result)
+                {
+                    _logger.LogError("Submit claim failed");
+                    return NotFound(new { message = "Submit claim failed" });
+                }
+
+                var successResponse = ApiResponseBuilder.BuildResponse(
+                    StatusCodes.Status200OK,
+                    "Claim submitted successfully",
+                    result
+                );
+                return Ok(successResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error submitting claim with ID {ClaimId}", id);
+
+                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status500InternalServerError,
+                    "An error occurred while submitting the claim",
                     "Internal server error"
                 );
                 return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
