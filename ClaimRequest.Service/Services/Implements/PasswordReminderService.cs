@@ -30,7 +30,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     {
                         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork<ClaimRequestDbContext>>();
                         var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-                        var otpService = scope.ServiceProvider.GetRequiredService<IOtpService>();
+                        var otpService = scope.ServiceProvider.GetRequiredService<IOtpService>(); 
 
                         DateTime timePasswordExpired = DateTime.UtcNow.AddHours(-3);
 
@@ -48,7 +48,7 @@ namespace ClaimRequest.BLL.Services.Implements
                         {
                             _logger.LogInformation($"Sending email to: {staff.Email}, LastChangePassword: {staff.LastChangePassword}");
                             var otp = OtpUtil.GenerateOtp(staff.Email);
-                            await otpService.CreateOtpEntity(staff.Email, otp);
+                            await otpService.CreateOtpEntity(staff.Email, otp); 
 
                             await semaphore.WaitAsync();
                             tasks.Add(Task.Run(async () =>
