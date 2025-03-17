@@ -60,11 +60,6 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                if (_unitOfWork?.Context?.Database == null)
-                {
-                    throw new InvalidOperationException("Database context is not initialized.");
-                }
-
                 // Get claim by ID first before starting the transaction
                 var claim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(cancelClaimRequest.ClaimId)
                             ?? throw new KeyNotFoundException("Claim not found.");
@@ -530,11 +525,9 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-                return await executionStrategy.ExecuteAsync(async () =>
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
                     var claim = (await _unitOfWork.GetRepository<Claim>().GetByIdAsync(id)).ValidateExists(id);
-
                     if (claim.Status != ClaimStatus.Draft)
                     {
                         throw new BusinessException("Claim cannot be submitted as it is not in Draft status.");
@@ -546,33 +539,17 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw new BusinessException("No eligible approver found for this claim.");
                     }
 
-                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
-                    try
-                    {
-                        claim.Status = ClaimStatus.Pending;
-                        claim.UpdateAt = DateTime.UtcNow;
+                    claim.Status = ClaimStatus.Pending;
+                    claim.UpdateAt = DateTime.UtcNow;
+                    _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
+                    await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(approver);
+                    _logger.LogInformation(
+                        "Submitted claim {ClaimId} by {ClaimerId} on {Time}. Approver: {ApproverId}", id,
+                        claim.ClaimerId, claim.UpdateAt, approver.ApproverId);
+                    await LogChangeAsync(id, "Claim Status", "Draft", "Pending", "Claimer");
 
-                        _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
-                        await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(approver);
-
-                        await _unitOfWork.CommitAsync();
-                        await _unitOfWork.CommitTransactionAsync(transaction);
-
-                        _logger.LogInformation("Submitted claim {ClaimId} by {ClaimerId} on {Time}. Approver: {ApproverId}",
-                            id, claim.ClaimerId, claim.UpdateAt, approver.ApproverId);
-
-                        await LogChangeAsync(id, "Claim Status", "Draft", "Pending", "Claimer");
-
-                        // Send email to approver and CC to claimer
-
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        await _unitOfWork.RollbackTransactionAsync(transaction);
-                        _logger.LogError(ex, "Error occurred during claim submission.");
-                        throw;
-                    }
+                    // Send email to approver and CC to claimer
+                    return true;
                 });
             }
             catch (Exception ex)
