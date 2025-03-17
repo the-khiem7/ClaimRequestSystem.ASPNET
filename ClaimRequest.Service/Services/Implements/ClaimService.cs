@@ -591,8 +591,7 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-                return await executionStrategy.ExecuteAsync(async () =>
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
                     var claim = (await _unitOfWork.GetRepository<Claim>().GetByIdAsync(id)).ValidateExists(id);
 
@@ -607,7 +606,6 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw new BusinessException("No eligible approver found for this claim.");
                     }
 
-                    await using var transaction = await _unitOfWork.BeginTransactionAsync();
                     try
                     {
                         claim.Status = ClaimStatus.Pending;
@@ -616,8 +614,6 @@ namespace ClaimRequest.BLL.Services.Implements
                         _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
                         await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(approver);
 
-                        await _unitOfWork.CommitAsync();
-                        await _unitOfWork.CommitTransactionAsync(transaction);
 
                         _logger.LogInformation("Submitted claim {ClaimId} by {ClaimerId} on {Time}. Approver: {ApproverId}",
                             id, claim.ClaimerId, claim.UpdateAt, approver.ApproverId);
@@ -630,7 +626,6 @@ namespace ClaimRequest.BLL.Services.Implements
                     }
                     catch (Exception ex)
                     {
-                        await _unitOfWork.RollbackTransactionAsync(transaction);
                         _logger.LogError(ex, "Error occurred during claim submission.");
                         throw;
                     }
@@ -706,10 +701,9 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             var claim = (await _unitOfWork.GetRepository<Claim>()
                 .SingleOrDefaultAsync(predicate: c => c.Id == claimId)).ValidateExists(claimId);
-            //?? throw new NotFoundException($"Claim with ID {claimId} not found.");
+
             var project = (await _unitOfWork.GetRepository<Project>()
-          .SingleOrDefaultAsync(predicate: p => p.Id == claim.ProjectId)).ValidateExists(claim.ProjectId);
-            //?? throw new NotFoundException($"Project for claim with ID {claimId} not found.");
+                .SingleOrDefaultAsync(predicate: p => p.Id == claim.ProjectId)).ValidateExists(claim.ProjectId);
 
             var projectStaffs = await _unitOfWork.GetRepository<ProjectStaff>()
                 .GetListAsync(
@@ -722,19 +716,24 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw new NotFoundException($"No active staff members found for project with ID {project.Id}");
             }
 
-            var potentialApprover = projectStaffs
+            var potentialApprovers = projectStaffs
                 .Select(ps => ps.Staff)
-                .Where(staff => staff.SystemRole == SystemRole.Approver)
+                .Where(staff => staff.SystemRole == SystemRole.Approver && staff.Id != claim.ClaimerId)
                 .ToList();
 
-            var approver = potentialApprover
-                .Where(s => s.Department == Department.ProjectManagement && s.Id != claim.ClaimerId)
+            var existingApprovers = (await _unitOfWork.GetRepository<ClaimApprover>()
+                .GetListAsync(predicate: ca => ca.ClaimId == claimId))
+                .Select(ca => ca.ApproverId)
+                .ToHashSet();
+
+            var approver = potentialApprovers
+                .Where(s => s.Department == Department.ProjectManagement && !existingApprovers.Contains(s.Id))
                 .FirstOrDefault();
 
             if (approver == null)
             {
-                approver = potentialApprover
-                    .Where(s => s.Department == Department.BusinessOperations && s.Id != claim.ClaimerId)
+                approver = potentialApprovers
+                    .Where(s => s.Department == Department.BusinessOperations && !existingApprovers.Contains(s.Id))
                     .FirstOrDefault();
             }
 
