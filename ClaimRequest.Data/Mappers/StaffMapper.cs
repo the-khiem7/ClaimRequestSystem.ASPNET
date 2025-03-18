@@ -25,7 +25,8 @@ namespace ClaimRequest.DAL.Mappers
             CreateMap<Staff, CreateStaffResponse>()
                 .ForMember(dest => dest.SystemRole, opt => opt.MapFrom(src => src.SystemRole))
                 .ForMember(dest => dest.ResponseName, opt => opt.MapFrom(src => src.Name))
-                .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.Department));
+                .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.Department))
+                .ForMember(dest => dest.Avatar, opt => opt.MapFrom(src => src.Avatar));
 
             // UpdateStaffRequest -> Staff
             // update request model co the khac voi create request model
@@ -34,7 +35,8 @@ namespace ClaimRequest.DAL.Mappers
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.Password, opt => opt.Ignore())
                 .ForMember(dest => dest.IsActive, opt => opt.Ignore())
-                .ForMember(dest => dest.ProjectStaffs, opt => opt.Ignore());
+                .ForMember(dest => dest.ProjectStaffs, opt => opt.Ignore())
+                .ForMember(dest => dest.Avatar, opt => opt.MapFrom(src => src.Avatar));
 
             // Staff -> UpdateStaffResponse
             // update response model co the khac voi create response model

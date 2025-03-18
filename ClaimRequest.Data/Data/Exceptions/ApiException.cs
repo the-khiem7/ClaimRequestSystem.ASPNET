@@ -58,4 +58,13 @@ namespace ClaimRequest.DAL.Data.Exceptions
         {
         }
     }
+    public class OtpValidationException : Exception
+    {
+        public int AttemptsLeft { get; }
+
+        public OtpValidationException(string message, int attemptsLeft) : base(message)
+        {
+            AttemptsLeft = attemptsLeft;
+        }
+    }
 }

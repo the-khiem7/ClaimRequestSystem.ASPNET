@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using ClaimRequest.API.Extensions;
 using ClaimRequest.API.Middlewares;
 using ClaimRequest.BLL.Services.Implements;
+using ClaimRequest.BLL.Services.Implements.VNPayService.Services;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
@@ -86,7 +87,13 @@ void RegisterApplicationServices()
     builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
     builder.Services.AddScoped<IEmailService, EmailService>();
     builder.Services.AddHostedService<PasswordReminderService>();
+<<<<<<< HEAD
     builder.Services.AddHostedService<PendingReminderService>();
+=======
+    builder.Services.AddScoped<IVnPayService, VnPayService>();
+    builder.Services.AddScoped<IGenericRepository<Claim>, GenericRepository<Claim>>();
+    builder.Services.AddScoped<IGenericRepository<Payment>, GenericRepository<Payment>>();
+>>>>>>> remotes/origin/dev
 }
 
 // Method to configure the database
