@@ -51,13 +51,17 @@ namespace ClaimRequest.DAL.Data.Exceptions
         public ConflictException(string message) : base(message) { }
     }
 
-    public class PasswordExpiredException : ApiException
+    public class PasswordExpiredException : Exception
     {
-        public PasswordExpiredException(string message)
-            : base(message, HttpStatusCode.Forbidden)
+        public string ResetToken { get; }
+
+        public PasswordExpiredException(string resetToken)
+            : base("Password expired. A reset token is required.") 
         {
+            ResetToken = resetToken;
         }
     }
+
     public class OtpValidationException : Exception
     {
         public int AttemptsLeft { get; }

@@ -6,6 +6,8 @@ using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -27,7 +29,7 @@ namespace ClaimRequest.BLL.Services.Implements
             if (!string.Equals(enableReminder, "yes", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogInformation("Password Reminder Service is disabled.");
-                return; 
+                return;
             }
 
             _logger.LogInformation("Password Reminder Service is enabled.");
@@ -60,16 +62,23 @@ namespace ClaimRequest.BLL.Services.Implements
                                 await semaphore.WaitAsync();
                                 try
                                 {
-                                    _logger.LogInformation($"Sending email to: {staff.Email}");
+                                    using (var scope = _serviceScopeFactory.CreateScope()) 
+                                    {
+                                        var scopedUnitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork<ClaimRequestDbContext>>();
+                                        var scopedOtpService = scope.ServiceProvider.GetRequiredService<IOtpService>();
+                                        var scopedEmailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
 
-                                    var otp = OtpUtil.GenerateOtp(staff.Email);
-                                    await otpService.CreateOtpEntity(staff.Email, otp);
+                                        _logger.LogInformation($"Sending email and OTP to: {staff.Email}");
 
-                                    await emailService.SendEmailAsync(
-                                        staff.Email,
-                                        "Reminder: Change Your Password",
-                                        $"Hi {staff.Name}, please update your password. OTP: {otp}"
-                                    );
+                                        var otp = OtpUtil.GenerateOtp(staff.Email);
+                                        await scopedOtpService.CreateOtpEntity(staff.Email, otp); 
+
+                                        await scopedEmailService.SendEmailAsync(
+                                            staff.Email,
+                                            "Reminder: Change Your Password",
+                                            $"Hi {staff.Name}, please update your password. Your OTP is: {otp}"
+                                        );
+                                    }
                                 }
                                 catch (Exception ex)
                                 {
@@ -82,7 +91,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             }).ToList();
 
                             await Task.WhenAll(tasks);
-                            _logger.LogInformation("All password reminder emails sent successfully.");
+                            _logger.LogInformation("All password reminder emails and OTPs sent successfully.");
                         }
                     }
                 }

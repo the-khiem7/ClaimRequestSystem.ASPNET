@@ -22,7 +22,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
             if (!string.Equals(enableReminder, "yes", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogInformation("PendingReminderService is disabled due to ENABLE_PENDING_REMINDER not set to 'yes'.");
+                _logger.LogInformation("PendingReminderService is disabled");
                 return;
             }
 
@@ -92,7 +92,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     _logger.LogError(ex, "Error while checking pending claims.");
                 }
 
-                await Task.Delay(TimeSpan.FromHours(1), stoppingToken); // Kiểm tra mỗi giờ
+                await Task.Delay(TimeSpan.FromHours(24), stoppingToken); // Kiểm tra mỗi giờ
             }
 
             _logger.LogInformation("PendingReminderService is stopping.");

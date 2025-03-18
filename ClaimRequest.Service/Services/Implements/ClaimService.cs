@@ -735,6 +735,11 @@ namespace ClaimRequest.BLL.Services.Implements
                     throw new NotFoundException("No pending claims found.");
                 }
 
+                foreach (var claim in claims)
+                {
+                    _logger.LogInformation($"Pending Claim - ID: {claim.c.Id}, FinanceId: {claim.c.FinanceId}");
+                }
+
                 return _mapper.Map<List<ViewClaimResponse>>(claims.Select(c => c.c).ToList());
             }
             catch (NotFoundException)
