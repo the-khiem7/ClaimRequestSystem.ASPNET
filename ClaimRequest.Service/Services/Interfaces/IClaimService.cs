@@ -23,6 +23,6 @@ namespace ClaimRequest.BLL.Services.Interfaces
         Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest);
         Task<bool> SubmitClaim(Guid id);
         Task<bool> PaidClaim(Guid id, Guid financeId);
-
+        Task<List<ViewClaimResponse>> GetPendingClaimsAsync();
     }
 }

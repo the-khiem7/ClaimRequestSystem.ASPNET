@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.Json.Serialization;
 using ClaimRequest.API.Extensions;
 using ClaimRequest.API.Middlewares;
@@ -86,6 +86,7 @@ void RegisterApplicationServices()
     builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
     builder.Services.AddScoped<IEmailService, EmailService>();
     builder.Services.AddHostedService<PasswordReminderService>();
+    builder.Services.AddHostedService<PendingReminderService>();
 }
 
 // Method to configure the database

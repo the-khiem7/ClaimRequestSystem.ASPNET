@@ -43,6 +43,8 @@
 	  <None Update="Services\Templates\ManagerApprovedEmailTemplate.html">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
+		<None Update="Services\Templates\PendingClaimReminder.html">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
 	</ItemGroup>
-
 </Project>

@@ -43,7 +43,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 : throw new UnauthorizedAccessException("Invalid password");
 
             DateTime? lastChangePassword = staff.LastChangePassword;
-            bool isPasswordExpired = lastChangePassword != null && lastChangePassword <= DateTime.UtcNow.AddHours(-3);
+            bool isPasswordExpired = lastChangePassword == null || lastChangePassword <= DateTime.UtcNow.AddMonths(-3);
 
             LoginResponse loginResponse = new LoginResponse(staff);
             loginResponse.IsPasswordExpired = isPasswordExpired; 
