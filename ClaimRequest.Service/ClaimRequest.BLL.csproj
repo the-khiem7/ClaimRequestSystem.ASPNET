@@ -43,14 +43,11 @@
 	  <None Update="Services\Templates\ManagerApprovedEmailTemplate.html">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
-<<<<<<< HEAD
 		<None Update="Services\Templates\PendingClaimReminder.html">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</None>
-=======
 	  <None Update="Services\Templates\OtpEmailTemplate.html">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
->>>>>>> remotes/origin/dev
 	</ItemGroup>
 </Project>
