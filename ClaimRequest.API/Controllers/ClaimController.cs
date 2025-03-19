@@ -44,10 +44,10 @@ namespace ClaimRequest.API.Controllers
         [Authorize(Policy = "CanViewClaims")]
         [HttpGet(ApiEndPointConstant.Claim.ClaimsEndpoint)]
         [ProducesResponseType(typeof(IEnumerable<ViewClaimResponse>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status, [FromQuery] ClaimService.ViewMode? viewMode, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status, [FromQuery] ClaimService.ViewMode? viewMode, [FromQuery] string? search, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
             viewMode ??= Enum.Parse<ClaimService.ViewMode>("ClaimerMode");
-            var response = await _claimService.GetClaims(pageNumber, pageSize, status, viewMode.ToString());
+            var response = await _claimService.GetClaims(pageNumber, pageSize, status, viewMode.ToString(), search);
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: "Get claims successfully!",
                 data: response,
