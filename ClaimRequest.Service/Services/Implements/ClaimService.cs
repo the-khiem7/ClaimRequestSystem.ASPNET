@@ -296,7 +296,8 @@ namespace ClaimRequest.BLL.Services.Implements
                 claim.TotalWorkingHours = request.TotalWorkingHours;
                 claim.UpdateAt = DateTime.UtcNow;
 
-                    claimRepository.UpdateAsync(claim);
+                claimRepository.UpdateAsync(claim);
+                await _unitOfWork.CommitAsync();
 
                 _logger.LogInformation("Successfully updated claim with ID {ClaimId}.", claimId);
                 return _mapper.Map<UpdateClaimResponse>(claim);
@@ -444,6 +445,12 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
                     }
                     var approverName = approver.Name ?? "Unknown Approver";
+
+                    await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(new ClaimApprover
+                    {
+                        ClaimId = pendingClaim.Id,
+                        ApproverId = rejectClaimRequest.ApproverId
+                    });
 
                     _mapper.Map(rejectClaimRequest, pendingClaim);
                     _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
@@ -726,6 +733,40 @@ namespace ClaimRequest.BLL.Services.Implements
             if (requiredRoles.TryGetValue(selectedView, out var requiredRole) && role != requiredRole)
             {
                 throw new UnauthorizedAccessException($"Only {requiredRole} users can access {selectedView}.");
+            }
+        }
+
+        public async Task<List<ViewClaimResponse>> GetPendingClaimsAsync()
+        {
+            try
+            {
+                var claimRepository = _unitOfWork.GetRepository<Claim>();
+                var claims = await claimRepository.GetListAsync(
+                    c => new { c, c.Claimer, c.Project },
+                    c => c.Status == ClaimStatus.Pending && c.FinanceId != null,
+                    include: q => q.Include(c => c.Claimer).Include(c => c.Project)
+                );
+
+                if (claims == null || claims.Count == 0)
+                {
+                    throw new NotFoundException("No pending claims found.");
+                }
+
+                foreach (var claim in claims)
+                {
+                    _logger.LogInformation($"Pending Claim - ID: {claim.c.Id}, FinanceId: {claim.c.FinanceId}");
+                }
+
+                return _mapper.Map<List<ViewClaimResponse>>(claims.Select(c => c.c).ToList());
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while retrieving the pending claims.");
+                throw;
             }
         }
     }

@@ -142,7 +142,7 @@ namespace ClaimRequest.API.Middlewares
                 IsSuccess = false,
                 Data = new
                 {
-                    ResetToken = exception is PasswordExpiredException ? exception.Message : null,
+                    ResetToken = exception is PasswordExpiredException expiredException ? expiredException.ResetToken : null,
                     Method = context.Request.Method,
                     Path = context.Request.Path,
                     ExceptionType = exception.GetType().Name,

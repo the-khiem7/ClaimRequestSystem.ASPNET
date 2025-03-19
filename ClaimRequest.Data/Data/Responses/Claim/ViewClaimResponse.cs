@@ -12,5 +12,6 @@ namespace ClaimRequest.DAL.Data.Responses.Claim
         public decimal TotalWorkingHours { get; set; }
         public decimal Amount { get; set; }
         public ClaimStatus status { get; set; }
+        public Guid? FinanceId { get; set; }
     }
 }
