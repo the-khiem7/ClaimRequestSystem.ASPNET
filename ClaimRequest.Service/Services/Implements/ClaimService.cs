@@ -310,12 +310,13 @@ namespace ClaimRequest.BLL.Services.Implements
         }
 
 
-        public async Task<PagingResponse<ViewClaimResponse>> GetClaims(
+        public async Task<ViewClaimResponseWithStatus> GetClaims(
             int pageNumber = 1,
             int pageSize = 20,
             ClaimStatus? status = null,
             string? viewMode = null,
-            string? search = null)
+            string? search = null
+            )
         {
             try
             {
@@ -345,6 +346,8 @@ namespace ClaimRequest.BLL.Services.Implements
                               .Include(c => c.Claimer)
                 };
 
+
+
                 var response = await _unitOfWork.GetRepository<Claim>().GetPagingListAsync(
                     include: include,
                     predicate: predicate,
@@ -353,7 +356,20 @@ namespace ClaimRequest.BLL.Services.Implements
                     size: pageSize
                 );
 
-                return response;
+                var statusCounts = new StatusCounts
+                {
+                    Total = (int)response.Meta.TotalItems,
+                    Pending = response.Items.Count(c => c.status == ClaimStatus.Pending),
+                    Approved = response.Items.Count(c => c.status == ClaimStatus.Approved),
+                    Rejected = response.Items.Count(c => c.status == ClaimStatus.Rejected),
+                    Draft = response.Items.Count(c => c.status == ClaimStatus.Draft)
+                };
+
+                return new ViewClaimResponseWithStatus
+                {
+                    Claims = response,
+                    StatusCounts = statusCounts
+                };
             }
             catch (Exception ex)
             {
