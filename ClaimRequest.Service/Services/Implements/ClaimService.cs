@@ -296,7 +296,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 claim.TotalWorkingHours = request.TotalWorkingHours;
                 claim.UpdateAt = DateTime.UtcNow;
 
-                claimRepository.UpdateAsync(claim);
+                    claimRepository.UpdateAsync(claim);
 
                 _logger.LogInformation("Successfully updated claim with ID {ClaimId}.", claimId);
                 return _mapper.Map<UpdateClaimResponse>(claim);
