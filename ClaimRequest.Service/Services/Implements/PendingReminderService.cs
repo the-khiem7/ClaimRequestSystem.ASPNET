@@ -18,14 +18,6 @@ namespace ClaimRequest.BLL.Services.Implements
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            var enableReminder = Environment.GetEnvironmentVariable("ENABLE_PENDING_REMINDER");
-
-            if (!string.Equals(enableReminder, "yes", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogInformation("PendingReminderService is disabled");
-                return;
-            }
-
             _logger.LogInformation("PendingReminderService is starting.");
 
             while (!stoppingToken.IsCancellationRequested)
@@ -92,7 +84,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     _logger.LogError(ex, "Error while checking pending claims.");
                 }
 
-                await Task.Delay(TimeSpan.FromHours(24), stoppingToken); // Kiểm tra mỗi giờ
+                await Task.Delay(TimeSpan.FromHours(24), stoppingToken); 
             }
 
             _logger.LogInformation("PendingReminderService is stopping.");
