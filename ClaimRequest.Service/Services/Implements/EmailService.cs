@@ -131,9 +131,17 @@ namespace ClaimRequest.BLL.Services.Implements
                 var updatedDate = claim.UpdateAt.ToString("yyyy-MM-dd HH:mm:ss");
 
                 CreateStaffResponse claimer = await _staffService.GetStaffById(claim.ClaimerId);
-                string recipientEmail = claimer.Email;
-                string subject = $"Claim Request for {projectName} - {claimer.ResponseName} ({claimer.Id})";
 
+                // Get finance staff using FinanceId from claim
+                if (!claim.FinanceId.HasValue)
+                    throw new Exception("Finance staff not assigned to this claim.");
+
+                var financeStaff = await _staffService.GetStaffById(claim.FinanceId.Value);
+                if (financeStaff == null || string.IsNullOrEmpty(financeStaff.Email))
+                    throw new Exception("Finance staff not found or email is invalid.");
+
+                string recipientEmail = financeStaff.Email;
+                string subject = $"Claim Request for {projectName} - {claimer.ResponseName} ({claimer.Id})";
 
                 string templatePath = Path.Combine(AppContext.BaseDirectory, "Services", "Templates", "ManagerApprovedEmailTemplate.html");
                 string body = await File.ReadAllTextAsync(templatePath);
