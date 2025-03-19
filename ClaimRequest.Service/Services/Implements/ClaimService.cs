@@ -296,7 +296,8 @@ namespace ClaimRequest.BLL.Services.Implements
                 claim.TotalWorkingHours = request.TotalWorkingHours;
                 claim.UpdateAt = DateTime.UtcNow;
 
-                    claimRepository.UpdateAsync(claim);
+                claimRepository.UpdateAsync(claim);
+                await _unitOfWork.CommitAsync();
 
                 _logger.LogInformation("Successfully updated claim with ID {ClaimId}.", claimId);
                 return _mapper.Map<UpdateClaimResponse>(claim);
@@ -443,6 +444,12 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
                     }
                     var approverName = approver.Name ?? "Unknown Approver";
+
+                    await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(new ClaimApprover
+                    {
+                        ClaimId = pendingClaim.Id,
+                        ApproverId = rejectClaimRequest.ApproverId
+                    });
 
                     _mapper.Map(rejectClaimRequest, pendingClaim);
                     _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
