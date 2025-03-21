@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
+using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -8,10 +9,10 @@ namespace ClaimRequest.DAL.Repositories.Implements
 {
     public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
-        protected readonly DbContext _dbContext;
+        protected readonly ClaimRequestDbContext _dbContext;
         protected readonly DbSet<T> _dbSet;
 
-        public GenericRepository(DbContext context)
+        public GenericRepository(ClaimRequestDbContext context)
         {
             _dbContext = context;
             _dbSet = context.Set<T>();
@@ -121,7 +122,8 @@ namespace ClaimRequest.DAL.Repositories.Implements
         #region Update
         public void UpdateAsync(T entity)
         {
-            _dbSet.Update(entity);
+            _dbSet.Attach(entity);
+            _dbContext.Entry(entity).State = EntityState.Modified;
         }
 
         public void UpdateRange(IEnumerable<T> entities)
