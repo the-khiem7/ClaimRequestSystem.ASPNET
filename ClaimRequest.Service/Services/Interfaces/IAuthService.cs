@@ -7,5 +7,6 @@ namespace ClaimRequest.BLL.Services.Interfaces
     {
         Task<LoginResponse> Login(LoginRequest loginRequest);
         Task<ForgotPasswordResponse> ForgotPassword(ForgotPasswordRequest forgotPasswordRequest);
+        Task<ChangePasswordResponse> ChangePassword(ChangePasswordRequest changePasswordRequest);
     }
 }

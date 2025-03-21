@@ -18,6 +18,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ClaimRequest.DAL.Data.Responses.Email;
 using ClaimRequest.DAL.Data.Requests.Email;
+using ClaimRequest.BLL.Utils;
 
 
 namespace ClaimRequest.BLL.Services.Implements
@@ -31,10 +32,10 @@ namespace ClaimRequest.BLL.Services.Implements
         public readonly IClaimService _claimService;
         public readonly IProjectService _projectService;
         public readonly IStaffService _staffService;
-
+        public readonly IOtpService _otpService;
         public readonly ILogger _logger;
 
-        public EmailService(IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService)
+        public EmailService(IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService, IOtpService otpService)
         {
             _smtpServer = configuration["EmailSettings:Host"];
             _port = int.Parse(configuration["EmailSettings:SmtpPort"]);
@@ -44,7 +45,7 @@ namespace ClaimRequest.BLL.Services.Implements
             _projectService = projectService;
             _staffService = staffService;
             _logger = logger;
-
+            _otpService = otpService;
         }
 
         //public async Task SendEmailReminderAsync()
@@ -259,36 +260,36 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        //public async Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request)
-        //{
-        //    var response = new SendOtpEmailResponse();
-        //    try
-        //    {
-        //        // Generate OTP using OtpUtil
-        //        var otp = OtpUtil.GenerateOtp(request.Email);
-        //        await _otpService.CreateOtpEntity(request.Email, otp);
+        public async Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request)
+        {
+            var response = new SendOtpEmailResponse();
+            try
+            {
+                
+                var otp = OtpUtil.GenerateOtp(request.Email);
+                await _otpService.CreateOtpEntity(request.Email, otp);
 
-        //        // Create email request
-        //        var emailRequest = new SendMailRequest
-        //        {
-        //            To = request.Email,
-        //            Subject = "Your OTP Code",
-        //            Body = $"Your OTP code is: {otp}"
-        //        };
+                string templatePath = Path.Combine(AppContext.BaseDirectory, "Services", "Templates", "OtpEmailTemplate.html");
+                string body = await File.ReadAllTextAsync(templatePath);
 
-        //        // Send email
-        //        var emailSent = await SendEmailAsync(emailRequest);
-        //        response.Success = emailSent;
-        //        response.Message = emailSent ? "OTP email sent successfully." : "Failed to send OTP email.";
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Failed to send OTP email.");
-        //        response.Success = false;
-        //        response.Message = "An error occurred while sending the OTP email.";
-        //    }
+                body = body.Replace("{OtpCode}", otp)
+                           .Replace("{ExpiryTime}", "5"); 
 
-        //    return response;
-        //}
+                string recipientEmail = request.Email;
+                string subject = "Your OTP Code";
+
+                await SendEmailAsync(recipientEmail, subject, body);
+                response.Success = true;
+                response.Message = "OTP email sent successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send OTP email.");
+                response.Success = false;
+                response.Message = "An error occurred while sending the OTP email.";
+            }
+
+            return response;
+        }
     }
 }
