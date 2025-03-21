@@ -4,6 +4,7 @@ using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
+using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Auth;
 using ClaimRequest.DAL.Data.Responses.Auth;
 using ClaimRequest.DAL.Repositories.Interfaces;
@@ -39,7 +40,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
             bool passwordVerify = await PasswordUtil.VerifyPassword(loginRequest.Password, staff.Password)
                 ? true
-                : throw new UnauthorizedAccessException("Invalid password");
+                : throw new WrongPasswordException("Invalid password");
 
             LoginResponse loginResponse = new LoginResponse(staff);
             Tuple<string, Guid> guidSecurityClaim = new Tuple<string, Guid>("StaffId", staff.Id);

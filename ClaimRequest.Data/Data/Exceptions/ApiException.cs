@@ -50,4 +50,9 @@ namespace ClaimRequest.DAL.Data.Exceptions
     {
         public ConflictException(string message) : base(message) { }
     }
+
+    public class WrongPasswordException : Exception
+    {
+        public WrongPasswordException(string message) : base(message) { }
+    }
 }
