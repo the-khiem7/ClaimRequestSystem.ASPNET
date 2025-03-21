@@ -107,6 +107,9 @@ namespace ClaimRequest.API.Middlewares
                     (HttpStatusCode.Unauthorized, "Unauthorized access", "You don't have permission to perform this action", null),
                 SecurityTokenException =>
                     (HttpStatusCode.Unauthorized, "Invalid token", "Authentication token is invalid or expired", null),
+                WrongPasswordException =>
+                    (HttpStatusCode.Unauthorized, "Wrong password", "Invalid password. Please try again.", null),
+
                 #endregion
 
                 #region 403 Forbidden
