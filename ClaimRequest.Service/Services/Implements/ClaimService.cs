@@ -296,8 +296,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 claim.TotalWorkingHours = request.TotalWorkingHours;
                 claim.UpdateAt = DateTime.UtcNow;
 
-                claimRepository.UpdateAsync(claim);
-                await _unitOfWork.CommitAsync();
+                    claimRepository.UpdateAsync(claim);
 
                 _logger.LogInformation("Successfully updated claim with ID {ClaimId}.", claimId);
                 return _mapper.Map<UpdateClaimResponse>(claim);
@@ -446,11 +445,6 @@ namespace ClaimRequest.BLL.Services.Implements
                     }
                     var approverName = approver.Name ?? "Unknown Approver";
 
-                    await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(new ClaimApprover
-                    {
-                        ClaimId = pendingClaim.Id,
-                        ApproverId = rejectClaimRequest.ApproverId
-                    });
 
                     _mapper.Map(rejectClaimRequest, pendingClaim);
                     _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
