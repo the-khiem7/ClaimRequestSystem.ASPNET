@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System.Drawing;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Security.Claims;
 using Claim = ClaimRequest.DAL.Data.Entities.Claim;
@@ -308,13 +309,15 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-
+        #region Get Claims
         public async Task<PagingResponse<ViewClaimResponse>> GetClaims(
             int pageNumber = 1,
             int pageSize = 20,
             ClaimStatus? status = null,
             string? viewMode = null,
-            string? search = null)
+            string? search = null,
+            string? sortBy = "id",
+            bool descending = false)
         {
             try
             {
@@ -324,30 +327,18 @@ namespace ClaimRequest.BLL.Services.Implements
                 var selectedView = Enum.Parse<ViewMode>(viewMode ?? "ClaimerMode");
                 ValidateUserAccess(selectedView, loggedUserRole);
 
-                Expression<Func<Claim, bool>> predicate = selectedView switch
-                {
-                    ViewMode.AdminMode => c => (!status.HasValue || c.Status == status.Value) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
-                    ViewMode.ClaimerMode => c => c.ClaimerId == loggedUserId && (!status.HasValue || c.Status == status.Value) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
-                    ViewMode.ApproverMode => c => c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Pending ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Pending) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
-                    ViewMode.FinanceMode => c => c.FinanceId == loggedUserId && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
-                    _ => throw new BadRequestException("Invalid view mode.")
-                };
+                var predicate = Predicate(selectedView, loggedUserId, status, search);
+                var include = Include(selectedView);
 
-                Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>> include = query => selectedView switch
-                {
-                    ViewMode.AdminMode or ViewMode.ApproverMode => query.AsNoTracking()
-                                                                        .Include(c => c.Project)
-                                                                        .Include(c => c.Claimer)
-                                                                        .Include(c => c.ClaimApprovers),
-                    _ => query.AsNoTracking()
-                              .Include(c => c.Project)
-                              .Include(c => c.Claimer)
-                };
+                var repository = _unitOfWork.GetRepository<Claim>();
+                var query = repository.GetQueryable(include: include, predicate: predicate);
+                query = ApplySorting(query, sortBy, descending);
 
                 var response = await _unitOfWork.GetRepository<Claim>().GetPagingListAsync(
                     include: include,
                     predicate: predicate,
                     selector: c => _mapper.Map<ViewClaimResponse>(c),
+                    orderBy: q => ApplySorting(query, sortBy, descending),
                     page: pageNumber,
                     size: pageSize
                 );
@@ -361,6 +352,73 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
+        private Expression<Func<Claim, bool>> Predicate(ViewMode viewMode, Guid loggedUserId, ClaimStatus? status, string? search)
+        {
+            return viewMode switch
+            {
+                ViewMode.AdminMode => c => (!status.HasValue || c.Status == status.Value) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
+                ViewMode.ClaimerMode => c => c.ClaimerId == loggedUserId && (!status.HasValue || c.Status == status.Value) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
+                ViewMode.ApproverMode => c => c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Pending ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Pending) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
+                ViewMode.FinanceMode => c => c.FinanceId == loggedUserId && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
+                _ => throw new BadRequestException("Invalid view mode.")
+            };
+        }
+
+        private Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>> Include(ViewMode viewMode)
+        {
+            return query => viewMode switch
+            {
+                ViewMode.AdminMode or ViewMode.ApproverMode => query.AsNoTracking()
+                                                                    .Include(c => c.Project)
+                                                                    .Include(c => c.Claimer)
+                                                                    .Include(c => c.ClaimApprovers),
+                _ => query.AsNoTracking()
+                          .Include(c => c.Project)
+                          .Include(c => c.Claimer)
+            };
+        }
+
+        private IOrderedQueryable<Claim> ApplySorting(IQueryable<Claim> query, string? sortBy, bool descending)
+        {
+            if (string.IsNullOrWhiteSpace(sortBy))
+            {
+                return descending ? query.OrderByDescending(c => c.Id) : query.OrderBy(c => c.Id); // Default sorting
+            }
+
+            return sortBy.ToLower() switch
+            {
+                "id" => descending ? query.OrderByDescending(c => c.Id) : query.OrderBy(c => c.Id),
+                "staffname" => descending ? query.OrderByDescending(c => c.Claimer != null ? c.Claimer.Name : "")
+                                          : query.OrderBy(c => c.Claimer != null ? c.Claimer.Name : ""),
+                "projectname" => descending ? query.OrderByDescending(c => c.Project != null ? c.Project.Name : "")
+                                            : query.OrderBy(c => c.Project != null ? c.Project.Name : ""),
+                "projectstartdate" => descending ? query.OrderByDescending(c => c.Project != null ? c.Project.StartDate : DateOnly.MinValue)
+                                                 : query.OrderBy(c => c.Project != null ? c.Project.StartDate : DateOnly.MinValue),
+                "projectenddate" => descending ? query.OrderByDescending(c => c.Project != null ? c.Project.EndDate : DateOnly.MinValue)
+                                               : query.OrderBy(c => c.Project != null ? c.Project.EndDate : DateOnly.MinValue),
+                "totalworkinghours" => descending ? query.OrderByDescending(c => c.TotalWorkingHours) : query.OrderBy(c => c.TotalWorkingHours),
+                "amount" => descending ? query.OrderByDescending(c => c.Amount) : query.OrderBy(c => c.Amount),
+                "status" => descending ? query.OrderByDescending(c => c.Status) : query.OrderBy(c => c.Status),
+                _ => descending ? query.OrderByDescending(c => c.Id) : query.OrderBy(c => c.Id) // Default sorting
+            };
+        }
+
+        private void ValidateUserAccess(ViewMode selectedView, SystemRole role)
+        {
+            var requiredRoles = new Dictionary<ViewMode, SystemRole>
+            {
+                { ViewMode.AdminMode, SystemRole.Admin },
+                { ViewMode.ApproverMode, SystemRole.Approver },
+                { ViewMode.FinanceMode, SystemRole.Finance }
+            };
+
+            if (requiredRoles.TryGetValue(selectedView, out var requiredRole) && role != requiredRole)
+            {
+                throw new UnauthorizedAccessException($"Only {requiredRole} users can access {selectedView}.");
+            }
+        }
+
+        #endregion Get Claims
 
         public async Task<ViewClaimResponse> GetClaimById(Guid id)
         {
@@ -715,20 +773,6 @@ namespace ClaimRequest.BLL.Services.Implements
             };
         }
 
-        private void ValidateUserAccess(ViewMode selectedView, SystemRole role)
-        {
-            var requiredRoles = new Dictionary<ViewMode, SystemRole>
-            {
-                { ViewMode.AdminMode, SystemRole.Admin },
-                { ViewMode.ApproverMode, SystemRole.Approver },
-                { ViewMode.FinanceMode, SystemRole.Finance }
-            };
-
-            if (requiredRoles.TryGetValue(selectedView, out var requiredRole) && role != requiredRole)
-            {
-                throw new UnauthorizedAccessException($"Only {requiredRole} users can access {selectedView}.");
-            }
-        }
 
         public async Task<List<ViewClaimResponse>> GetPendingClaimsAsync()
         {
