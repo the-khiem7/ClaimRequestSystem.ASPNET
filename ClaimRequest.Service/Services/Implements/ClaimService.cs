@@ -445,6 +445,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     }
                     var approverName = approver.Name ?? "Unknown Approver";
 
+
                     _mapper.Map(rejectClaimRequest, pendingClaim);
                     _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
 
