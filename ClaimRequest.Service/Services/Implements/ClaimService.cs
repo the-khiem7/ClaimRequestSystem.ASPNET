@@ -314,9 +314,9 @@ namespace ClaimRequest.BLL.Services.Implements
             int pageNumber = 1,
             int pageSize = 20,
             ClaimStatus? status = null,
-            string? viewMode = null,
+            string viewMode = "ClaimerMode",
             string? search = null,
-            string? sortBy = "id",
+            string sortBy = "id",
             bool descending = false)
         {
             try
@@ -324,21 +324,14 @@ namespace ClaimRequest.BLL.Services.Implements
                 var loggedUserId = Guid.Parse(_httpContextAccessor.HttpContext?.User?.FindFirst("StaffId")?.Value);
                 var loggedUserRole = Enum.Parse<SystemRole>(_httpContextAccessor.HttpContext?.User?
                 .FindFirst("http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value);
-                var selectedView = Enum.Parse<ViewMode>(viewMode ?? "ClaimerMode");
+                var selectedView = Enum.Parse<ViewMode>(viewMode);
                 ValidateUserAccess(selectedView, loggedUserRole);
 
-                var predicate = Predicate(selectedView, loggedUserId, status, search);
-                var include = Include(selectedView);
-
-                var repository = _unitOfWork.GetRepository<Claim>();
-                var query = repository.GetQueryable(include: include, predicate: predicate);
-                query = ApplySorting(query, sortBy, descending);
-
                 var response = await _unitOfWork.GetRepository<Claim>().GetPagingListAsync(
-                    include: include,
-                    predicate: predicate,
+                    include: Include(selectedView),
+                    predicate: Predicate(selectedView, loggedUserId, status, search),
                     selector: c => _mapper.Map<ViewClaimResponse>(c),
-                    orderBy: q => ApplySorting(query, sortBy, descending),
+                    orderBy: q => Sorting(q, sortBy, descending),
                     page: pageNumber,
                     size: pageSize
                 );
@@ -352,14 +345,16 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
+        #region GetClaims Helper
         private Expression<Func<Claim, bool>> Predicate(ViewMode viewMode, Guid loggedUserId, ClaimStatus? status, string? search)
         {
+            search = string.IsNullOrWhiteSpace(search) ? null : search.Trim().ToLower();
             return viewMode switch
             {
-                ViewMode.AdminMode => c => (!status.HasValue || c.Status == status.Value) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
-                ViewMode.ClaimerMode => c => c.ClaimerId == loggedUserId && (!status.HasValue || c.Status == status.Value) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
-                ViewMode.ApproverMode => c => c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Pending ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Pending) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
-                ViewMode.FinanceMode => c => c.FinanceId == loggedUserId && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
+                ViewMode.AdminMode => c => (!status.HasValue || c.Status == status.Value) && (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)),
+                ViewMode.ClaimerMode => c => c.ClaimerId == loggedUserId && (!status.HasValue || c.Status == status.Value) && (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)),
+                ViewMode.ApproverMode => c => c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) && (status.HasValue ? (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Pending) ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Pending) && (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)),
+                ViewMode.FinanceMode => c => c.FinanceId == loggedUserId && (status.HasValue ? (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid) ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid) && (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)),
                 _ => throw new BadRequestException("Invalid view mode.")
             };
         }
@@ -378,29 +373,26 @@ namespace ClaimRequest.BLL.Services.Implements
             };
         }
 
-        private IOrderedQueryable<Claim> ApplySorting(IQueryable<Claim> query, string? sortBy, bool descending)
+        private IOrderedQueryable<Claim> Sorting(IQueryable<Claim> query, string? sortBy, bool descending)
         {
-            if (string.IsNullOrWhiteSpace(sortBy))
+            static Expression<Func<Claim, object>> GetSortExpression(string field) => field switch
             {
-                return descending ? query.OrderByDescending(c => c.Id) : query.OrderBy(c => c.Id); // Default sorting
-            }
-
-            return sortBy.ToLower() switch
-            {
-                "id" => descending ? query.OrderByDescending(c => c.Id) : query.OrderBy(c => c.Id),
-                "staffname" => descending ? query.OrderByDescending(c => c.Claimer != null ? c.Claimer.Name : "")
-                                          : query.OrderBy(c => c.Claimer != null ? c.Claimer.Name : ""),
-                "projectname" => descending ? query.OrderByDescending(c => c.Project != null ? c.Project.Name : "")
-                                            : query.OrderBy(c => c.Project != null ? c.Project.Name : ""),
-                "projectstartdate" => descending ? query.OrderByDescending(c => c.Project != null ? c.Project.StartDate : DateOnly.MinValue)
-                                                 : query.OrderBy(c => c.Project != null ? c.Project.StartDate : DateOnly.MinValue),
-                "projectenddate" => descending ? query.OrderByDescending(c => c.Project != null ? c.Project.EndDate : DateOnly.MinValue)
-                                               : query.OrderBy(c => c.Project != null ? c.Project.EndDate : DateOnly.MinValue),
-                "totalworkinghours" => descending ? query.OrderByDescending(c => c.TotalWorkingHours) : query.OrderBy(c => c.TotalWorkingHours),
-                "amount" => descending ? query.OrderByDescending(c => c.Amount) : query.OrderBy(c => c.Amount),
-                "status" => descending ? query.OrderByDescending(c => c.Status) : query.OrderBy(c => c.Status),
-                _ => descending ? query.OrderByDescending(c => c.Id) : query.OrderBy(c => c.Id) // Default sorting
+                "staffname" => c => c.Claimer != null ? c.Claimer.Name : "",
+                "projectname" => c => c.Project != null ? c.Project.Name : "",
+                "projectstartdate" => c => c.Project != null ? c.Project.StartDate : DateOnly.MinValue,
+                "projectenddate" => c => c.Project != null ? c.Project.EndDate : DateOnly.MinValue,
+                "totalworkinghours" => c => c.TotalWorkingHours,
+                "amount" => c => c.Amount,
+                "status" => c => c.Status,
+                "createat" => c => c.CreateAt,
+                "updateat" => c => c.UpdateAt,
+                "startdate" => c => c.StartDate,
+                "enddate" => c => c.EndDate,
+                _ => c => c.Id
             };
+
+            sortBy = string.IsNullOrWhiteSpace(sortBy) ? "id" : sortBy.Trim().ToLower();
+            return descending ? query.OrderByDescending(GetSortExpression(sortBy)) : query.OrderBy(GetSortExpression(sortBy));
         }
 
         private void ValidateUserAccess(ViewMode selectedView, SystemRole role)
@@ -417,7 +409,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw new UnauthorizedAccessException($"Only {requiredRole} users can access {selectedView}.");
             }
         }
-
+        #endregion GetClaims Helper 
         #endregion Get Claims
 
         public async Task<ViewClaimResponse> GetClaimById(Guid id)
