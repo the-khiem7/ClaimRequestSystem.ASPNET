@@ -70,7 +70,7 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> UpdateStaff(Guid id, [FromBody] UpdateStaffRequest request)
+        public async Task<IActionResult> UpdateStaff(Guid id, [FromForm] UpdateStaffRequest request)
         {
             var updatedStaff = await _staffService.UpdateStaff(id, request);
             return Ok(ApiResponseBuilder.BuildResponse(
@@ -100,7 +100,7 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> CreateStaff([FromBody] CreateStaffRequest request)
+        public async Task<IActionResult> CreateStaff([FromForm] CreateStaffRequest request)
         {
             var response = await _staffService.CreateStaff(request);
 
