@@ -18,7 +18,6 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             var otpRepository = _unitOfWork.GetRepository<Otp>();
 
-            // Delete existing OTP for the email
             var existingOtp = await otpRepository.SingleOrDefaultAsync(predicate: o => o.Email == email);
             if (existingOtp != null)
             {
@@ -49,7 +48,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 return new ValidateOtpResponse
                 {
                     Success = false,
-                    Message = "No OTP exists for the provided email.",
                     AttemptsLeft = 0
                 };
             }
@@ -61,7 +59,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 return new ValidateOtpResponse
                 {
                     Success = false,
-                    Message = "OTP has expired.",
                     AttemptsLeft = 0
                 };
             }
@@ -84,19 +81,16 @@ namespace ClaimRequest.BLL.Services.Implements
                 return new ValidateOtpResponse
                 {
                     Success = false,
-                    Message = "Invalid OTP.",
                     AttemptsLeft = otpEntity.AttemptLeft
                 };
             }
 
-            // OTP is valid, remove it
             otpRepository.DeleteAsync(otpEntity);
             await _unitOfWork.CommitAsync();
 
             return new ValidateOtpResponse
             {
                 Success = true,
-                Message = "OTP is valid.",
                 AttemptsLeft = otpEntity.AttemptLeft
             };
         }
