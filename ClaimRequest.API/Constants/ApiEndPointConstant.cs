@@ -14,6 +14,8 @@ namespace ClaimRequest.API.Constants
             public const string RefreshTokenEndpoint = AuthEndpoint + "/refresh-token";
             public const string LogoutEndpoint = AuthEndpoint + "/logout";
             public const string ForgotPasswordEndpoint = AuthEndpoint + "/forgot-password";
+            public const string ChangePasswordEndpoint = AuthEndpoint +"/change-password";
+
 
         }
 
@@ -22,7 +24,7 @@ namespace ClaimRequest.API.Constants
             public const string ClaimsEndpoint = ApiEndpoint + "/claims";
             public const string ClaimEndpointById = ClaimsEndpoint + "/{id}";
             public const string UpdateClaimEndpoint = ClaimEndpointById + "/update";
-            public const string CancelClaimEndpoint = ClaimsEndpoint + "/cancel";
+            public const string CancelClaimEndpoint = ClaimsEndpoint + "/{claimId}" + "/cancel";
             public const string RejectClaimEndpoint = ClaimEndpointById + "/reject";
             public const string ApproveClaimEndpoint = ClaimEndpointById + "/approve";
             public const string DownloadClaimEndpoint = ClaimsEndpoint + "/download";
@@ -64,6 +66,13 @@ namespace ClaimRequest.API.Constants
             public const string CloudinaryEndpoint = ApiEndpoint + "/cloudinary";
             public const string UploadImage = CloudinaryEndpoint + "/upload";
             public const string UploadFile = CloudinaryEndpoint + "/upload-file";
+        }
+
+        public static class Payment
+        {
+            public const string PaymentControllerBase = ApiEndpoint + "/payment";
+            public const string CreatePaymentUrl = PaymentControllerBase + "/create-payment-url";
+            public const string PaymentCallback = PaymentControllerBase + "/payment-callback";
         }
     }
 }

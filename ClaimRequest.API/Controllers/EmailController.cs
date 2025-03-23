@@ -87,38 +87,26 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
-        //[HttpPost(ApiEndPointConstant.Email.SendOtp)]
-        //[ProducesResponseType(typeof(SendOtpEmailResponse), StatusCodes.Status200OK)]
-        //[ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-        //[ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-        //public async Task<IActionResult> SendOtp([FromBody] SendOtpEmailRequest request)
-        //{
-        //    if (!ModelState.IsValid)
-        //    {
-        //        return BadRequest(ApiResponseBuilder.BuildErrorResponse<object>(
-        //            null,
-        //            StatusCodes.Status400BadRequest,
-        //            "Invalid request",
-        //            "The request data is invalid"
-        //        ));
-        //    }
+        [HttpPost(ApiEndPointConstant.Email.SendOtp)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> SendOtp([FromBody] SendOtpEmailRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { error = "Invalid request", details = "The request data is invalid." });
+            }
 
-        //    var result = await _emailService.SendOtpEmailAsync(request);
-        //    if (!result.Success)
-        //    {
-        //        return StatusCode(500, ApiResponseBuilder.BuildErrorResponse<object>(
-        //            null,
-        //            StatusCodes.Status500InternalServerError,
-        //            "Failed to send OTP",
-        //            result.Message
-        //        ));
-        //    }
-
-        //    return Ok(ApiResponseBuilder.BuildResponse(
-        //        StatusCodes.Status200OK,
-        //        "OTP sent successfully",
-        //        result
-        //    ));
-        //}
+            try
+            {
+                await _emailService.SendOtpEmailAsync(request);
+                return Ok(new { message = "OTP sent successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Failed to send OTP email.", details = ex.Message });
+            }
+        }
     }
 }

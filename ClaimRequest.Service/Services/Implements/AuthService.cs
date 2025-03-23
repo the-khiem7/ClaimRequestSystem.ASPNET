@@ -1,9 +1,12 @@
-﻿using System.Linq.Expressions;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Linq.Expressions;
+using System.Security.Claims;
 using AutoMapper;
 using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
+using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Auth;
 using ClaimRequest.DAL.Data.Responses.Auth;
 using ClaimRequest.DAL.Repositories.Interfaces;
@@ -39,57 +42,117 @@ namespace ClaimRequest.BLL.Services.Implements
 
             bool passwordVerify = await PasswordUtil.VerifyPassword(loginRequest.Password, staff.Password)
                 ? true
-                : throw new UnauthorizedAccessException("Invalid password");
+                : throw new WrongPasswordException("Invalid password");
+
+            DateTime? lastChangePassword = staff.LastChangePassword;
+            bool isPasswordExpired = lastChangePassword == null || lastChangePassword <= DateTime.UtcNow.AddMonths(-3);
 
             LoginResponse loginResponse = new LoginResponse(staff);
+            loginResponse.IsPasswordExpired = isPasswordExpired; 
+
             Tuple<string, Guid> guidSecurityClaim = new Tuple<string, Guid>("StaffId", staff.Id);
-            var token = _jwtUtil.GenerateJwtToken(staff, guidSecurityClaim);
+
+            if (isPasswordExpired)
+            {
+                // Tạo resetToken cho resetPasswordOnly
+                var resetToken = _jwtUtil.GenerateJwtToken(staff, guidSecurityClaim, true);
+
+                // Ném exception với resetToken trong ExceptionMessage
+                throw new PasswordExpiredException(resetToken);
+            }
+
+            // Token bình thường nếu mật khẩu không hết hạn
+            var token = _jwtUtil.GenerateJwtToken(staff, guidSecurityClaim, false);
             loginResponse.AccessToken = token;
             return loginResponse;
         }
 
         public async Task<ForgotPasswordResponse> ForgotPassword(ForgotPasswordRequest forgotPasswordRequest)
         {
-            try
+            var staffRepository = _unitOfWork.GetRepository<Staff>();
+
+            var staff = (await staffRepository.SingleOrDefaultAsync(
+                predicate: s => s.Email == forgotPasswordRequest.Email && s.IsActive
+            )).ValidateExists(customMessage: "Staff not found or inactive.");
+
+            var otpValidationResult = await _otpService.ValidateOtp(forgotPasswordRequest.Email, forgotPasswordRequest.Otp);
+            if (!otpValidationResult.Success)
             {
-                var staffRepository = _unitOfWork.GetRepository<Staff>();
+                throw new OtpValidationException("Invalid OTP.", otpValidationResult.AttemptsLeft);
+            }
 
-                var staff = await staffRepository.SingleOrDefaultAsync(
-                    predicate: s => s.Email == forgotPasswordRequest.Email && s.IsActive
-                );
+            staff.Password = await PasswordUtil.HashPassword(forgotPasswordRequest.NewPassword);
 
-                if (staff == null)
+            staffRepository.UpdateAsync(staff);
+            await _unitOfWork.CommitAsync();
+
+            return new ForgotPasswordResponse
+            {
+                Success = true,
+                AttemptsLeft = otpValidationResult.AttemptsLeft
+            };
+        }
+
+        public async Task<ChangePasswordResponse> ChangePassword(ChangePasswordRequest changePasswordRequest)
+        {
+            var staffRepository = _unitOfWork.GetRepository<Staff>();
+            var staff = (await staffRepository.SingleOrDefaultAsync(
+                predicate: s => s.Email == changePasswordRequest.Email && s.IsActive
+            )).ValidateExists(customMessage: "Staff not found or inactive.");
+
+            var otpRepository = _unitOfWork.GetRepository<Otp>();
+            var otpEntity = await otpRepository.SingleOrDefaultAsync(
+                predicate: o => o.Email == changePasswordRequest.Email
+            );
+
+            int attemptsLeft = otpEntity?.AttemptLeft ?? 0;
+
+            bool oldPasswordVerify = await PasswordUtil.VerifyPassword(changePasswordRequest.OldPassword, staff.Password);
+            if (!oldPasswordVerify)
+            {
+                if (otpEntity != null && otpEntity.AttemptLeft > 0)
                 {
-                    throw new Exception("Staff not found or inactive.");
-                }
+                    otpEntity.AttemptLeft -= 1;
+                    attemptsLeft = otpEntity.AttemptLeft;
 
-                var otpValidationResult = await _otpService.ValidateOtp(forgotPasswordRequest.Email, forgotPasswordRequest.Otp);
-                if (!otpValidationResult.Success)
-                {
-                    return new ForgotPasswordResponse
+                    if (otpEntity.AttemptLeft <= 0)
                     {
-                        Success = false,
-                        AttemptsLeft = otpValidationResult.AttemptsLeft
-                    };
+                        otpRepository.DeleteAsync(otpEntity);
+                    }
+                    else
+                    {
+                        otpRepository.UpdateAsync(otpEntity);
+                    }
+
+                    await _unitOfWork.CommitAsync();
                 }
 
-                staff.Password = await PasswordUtil.HashPassword(forgotPasswordRequest.NewPassword);
-
-                staffRepository.UpdateAsync(staff);
-
-                await _unitOfWork.CommitAsync();
-
-                return new ForgotPasswordResponse
-                {
-                    Success = true,
-                    AttemptsLeft = otpValidationResult.AttemptsLeft
-                };
+                throw new OtpValidationException("Invalid old password.", attemptsLeft);
             }
-            catch (Exception ex)
+
+            if (changePasswordRequest.NewPassword == changePasswordRequest.OldPassword)
             {
-                _logger.LogError(ex, "Error changing password: {Message}", ex.Message);
-                throw;
+                throw new InvalidOperationException("New password must be different from the old password.");
             }
+
+            var otpValidationResult = await _otpService.ValidateOtp(changePasswordRequest.Email, changePasswordRequest.Otp);
+            if (!otpValidationResult.Success)
+            {
+                throw new OtpValidationException("Invalid OTP.", otpValidationResult.AttemptsLeft);
+            }
+
+            staff.Password = await PasswordUtil.HashPassword(changePasswordRequest.NewPassword);
+                staff.LastChangePassword = DateTime.UtcNow; 
+
+            staffRepository.UpdateAsync(staff);
+
+            await _unitOfWork.CommitAsync();
+
+            return new ChangePasswordResponse
+            {
+                Success = true,
+                AttemptsLeft = otpValidationResult.AttemptsLeft
+            };
         }
     }
 }
