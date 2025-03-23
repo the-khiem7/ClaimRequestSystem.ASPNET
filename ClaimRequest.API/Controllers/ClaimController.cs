@@ -18,12 +18,14 @@ namespace ClaimRequest.API.Controllers
     {
         #region Create Class Referrence
         private readonly IClaimService _claimService;
+        private readonly IEmailService _emailService;
         #endregion
 
         #region Contructor
-        public ClaimController(ILogger<ClaimController> logger, IClaimService claimService) : base(logger)
+        public ClaimController(ILogger<ClaimController> logger, IClaimService claimService, IEmailService emailService) : base(logger)
         {
             _claimService = claimService;
+            _emailService = emailService;
         }
         #endregion
 
@@ -44,10 +46,10 @@ namespace ClaimRequest.API.Controllers
         [Authorize(Policy = "CanViewClaims")]
         [HttpGet(ApiEndPointConstant.Claim.ClaimsEndpoint)]
         [ProducesResponseType(typeof(IEnumerable<ViewClaimResponse>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status, [FromQuery] ClaimService.ViewMode? viewMode, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status, [FromQuery] ClaimService.ViewMode? viewMode, [FromQuery] string? search, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
             viewMode ??= Enum.Parse<ClaimService.ViewMode>("ClaimerMode");
-            var response = await _claimService.GetClaims(pageNumber, pageSize, status, viewMode.ToString());
+            var response = await _claimService.GetClaims(pageNumber, pageSize, status, viewMode.ToString(), search);
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: "Get claims successfully!",
                 data: response,
@@ -184,6 +186,7 @@ namespace ClaimRequest.API.Controllers
                 _logger.LogError("Approve claim failed");
                 return Problem("Approve claim failed");
             }
+            await _emailService.SendClaimApprovedEmail(id);
             var successRespose = ApiResponseBuilder.BuildResponse(
                 message: "Claim approved successfully!",
                 data: result,

@@ -9,6 +9,7 @@ using ClaimRequest.DAL.Data.Responses.Claim;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
@@ -312,7 +313,8 @@ namespace ClaimRequest.BLL.Services.Implements
             int pageNumber = 1,
             int pageSize = 20,
             ClaimStatus? status = null,
-            string? viewMode = null)
+            string? viewMode = null,
+            string? search = null)
         {
             try
             {
@@ -324,18 +326,26 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 Expression<Func<Claim, bool>> predicate = selectedView switch
                 {
-                    ViewMode.AdminMode => c => !status.HasValue || c.Status == status.Value,
-                    ViewMode.ClaimerMode => c => c.ClaimerId == loggedUserId && (!status.HasValue || c.Status == status.Value),
-                    ViewMode.ApproverMode => c => c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) && c.Status == ClaimStatus.Pending,
-                    ViewMode.FinanceMode => c => c.FinanceId == loggedUserId && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid),
+                    ViewMode.AdminMode => c => (!status.HasValue || c.Status == status.Value) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
+                    ViewMode.ClaimerMode => c => c.ClaimerId == loggedUserId && (!status.HasValue || c.Status == status.Value) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
+                    ViewMode.ApproverMode => c => c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Pending ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Pending) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
+                    ViewMode.FinanceMode => c => c.FinanceId == loggedUserId && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid) && (string.IsNullOrWhiteSpace(search) || c.Claimer.Name.ToLower().Contains(search.Trim().ToLower()) || c.Project.Name.ToLower().Contains(search.Trim().ToLower())),
                     _ => throw new BadRequestException("Invalid view mode.")
                 };
 
+                Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>> include = query => selectedView switch
+                {
+                    ViewMode.AdminMode or ViewMode.ApproverMode => query.AsNoTracking()
+                                                                        .Include(c => c.Project)
+                                                                        .Include(c => c.Claimer)
+                                                                        .Include(c => c.ClaimApprovers),
+                    _ => query.AsNoTracking()
+                              .Include(c => c.Project)
+                              .Include(c => c.Claimer)
+                };
+
                 var response = await _unitOfWork.GetRepository<Claim>().GetPagingListAsync(
-                    include: query => query.AsNoTracking()
-                                           .Include(c => c.Project)
-                                           .Include(c => c.Claimer)
-                                           .Include(c => c.ClaimApprovers),
+                    include: include,
                     predicate: predicate,
                     selector: c => _mapper.Map<ViewClaimResponse>(c),
                     page: pageNumber,
@@ -434,6 +444,7 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
                     }
                     var approverName = approver.Name ?? "Unknown Approver";
+
 
                     _mapper.Map(rejectClaimRequest, pendingClaim);
                     _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
@@ -716,6 +727,40 @@ namespace ClaimRequest.BLL.Services.Implements
             if (requiredRoles.TryGetValue(selectedView, out var requiredRole) && role != requiredRole)
             {
                 throw new UnauthorizedAccessException($"Only {requiredRole} users can access {selectedView}.");
+            }
+        }
+
+        public async Task<List<ViewClaimResponse>> GetPendingClaimsAsync()
+        {
+            try
+            {
+                var claimRepository = _unitOfWork.GetRepository<Claim>();
+                var claims = await claimRepository.GetListAsync(
+                    c => new { c, c.Claimer, c.Project },
+                    c => c.Status == ClaimStatus.Pending && c.FinanceId != null,
+                    include: q => q.Include(c => c.Claimer).Include(c => c.Project)
+                );
+
+                if (claims == null || claims.Count == 0)
+                {
+                    throw new NotFoundException("No pending claims found.");
+                }
+
+                foreach (var claim in claims)
+                {
+                    _logger.LogInformation($"Pending Claim - ID: {claim.c.Id}, FinanceId: {claim.c.FinanceId}");
+                }
+
+                return _mapper.Map<List<ViewClaimResponse>>(claims.Select(c => c.c).ToList());
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while retrieving the pending claims.");
+                throw;
             }
         }
     }

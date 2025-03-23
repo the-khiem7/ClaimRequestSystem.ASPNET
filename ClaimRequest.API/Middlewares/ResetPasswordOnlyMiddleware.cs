@@ -14,7 +14,7 @@
             if (user.HasClaim(c => c.Type == "ResetPasswordOnly" && c.Value == "true"))
             {
                 var path = context.Request.Path.Value.ToLower();
-                if (!path.Contains("resetpassword"))
+                if (!path.Contains("change-password"))
                 {
                     context.Response.StatusCode = StatusCodes.Status403Forbidden;
                     await context.Response.WriteAsync("Access denied. This token is only valid for password reset.");

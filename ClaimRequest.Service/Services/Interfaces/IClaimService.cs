@@ -12,7 +12,7 @@ namespace ClaimRequest.BLL.Services.Interfaces
         Task<CreateClaimResponse> CreateClaim(CreateClaimRequest createClaimRequest);
         Task<UpdateClaimResponse> UpdateClaim(Guid Id, UpdateClaimRequest updateClaimRequest);
         Task<CancelClaimResponse> CancelClaim(Guid claimId, CancelClaimRequest cancelClaimRequest);
-        Task<PagingResponse<ViewClaimResponse>> GetClaims(int pageNumber = 1, int pageSize = 20, ClaimStatus? status = null, string? viewMode = null);
+        Task<PagingResponse<ViewClaimResponse>> GetClaims(int pageNumber = 1, int pageSize = 20, ClaimStatus? status = null, string? viewMode = null, string? filter = null);
 
         Task<ViewClaimResponse> GetClaimById(Guid id);
 
@@ -23,6 +23,6 @@ namespace ClaimRequest.BLL.Services.Interfaces
         Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest);
         Task<bool> SubmitClaim(Guid id);
         Task<bool> PaidClaim(Guid id, Guid financeId);
-
+        Task<List<ViewClaimResponse>> GetPendingClaimsAsync();
     }
 }

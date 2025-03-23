@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.Json.Serialization;
 using ClaimRequest.API.Extensions;
 using ClaimRequest.API.Middlewares;
@@ -87,6 +87,7 @@ void RegisterApplicationServices()
     builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
     builder.Services.AddScoped<IEmailService, EmailService>();
     builder.Services.AddHostedService<PasswordReminderService>();
+    builder.Services.AddHostedService<PendingReminderService>();
     builder.Services.AddScoped<IVnPayService, VnPayService>();
     builder.Services.AddScoped<IGenericRepository<Claim>, GenericRepository<Claim>>();
     builder.Services.AddScoped<IGenericRepository<Payment>, GenericRepository<Payment>>();
