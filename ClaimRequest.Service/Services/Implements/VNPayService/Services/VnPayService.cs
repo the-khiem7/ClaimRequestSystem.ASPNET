@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ClaimRequest.BLL.Services.Implements.VNPayService.Library;
+﻿using ClaimRequest.BLL.Services.Implements.VNPayService.Library;
 using ClaimRequest.BLL.Services.Implements.VNPayService.Models;
 using ClaimRequest.BLL.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
