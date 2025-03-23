@@ -1,13 +1,10 @@
 ﻿using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
-using ClaimRequest.DAL.Data.Requests.Email;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.Threading.Tasks;
-using System.Threading;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
