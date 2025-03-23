@@ -12,11 +12,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System.Linq.Expressions;
-using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Paging;
-using ClaimRequest.DAL.Data.Requests.Staff;
-using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.DAL.Data.Responses.Paging;
 
 namespace ClaimRequest.BLL.Services.Implements
