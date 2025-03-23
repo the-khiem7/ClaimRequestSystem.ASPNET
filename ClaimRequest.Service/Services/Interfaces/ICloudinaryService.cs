@@ -11,6 +11,6 @@ namespace ClaimRequest.BLL.Services.Interfaces
     public interface ICloudinaryService
     {
         Task<string> UploadImageAsync(IFormFile file, ClaimsPrincipal user);
-        Task<bool> DeleteImageAsync(string publicId);
+        Task<string> UploadFileAsync(IFormFile file, ClaimsPrincipal user);
     }
 }

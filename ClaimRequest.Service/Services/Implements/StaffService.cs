@@ -24,11 +24,14 @@ namespace ClaimRequest.BLL.Services.Implements
     // chuẩn bị cho việc implement các method CRUD cho Staff 
     public class StaffService : BaseService<StaffService>, IStaffService
     {
-
         private readonly IConfiguration _configuration;
-        public StaffService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, ILogger<StaffService> logger, IMapper mapper, IHttpContextAccessor httpContextAccessor, IConfiguration configuration) : base(unitOfWork, logger, mapper, httpContextAccessor)
+        private readonly ICloudinaryService _cloudinaryService;
+        private const string DefaultProfilePicture = "https://static.vecteezy.com/system/resources/previews/009/292/244/non_2x/default-avatar-icon-of-social-media-user-vector.jpg";
+        public StaffService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, ILogger<StaffService> logger, IMapper mapper, IHttpContextAccessor httpContextAccessor, IConfiguration configuration, ICloudinaryService cloudinaryService) : base(unitOfWork, logger, mapper, httpContextAccessor)
         {
             _configuration = configuration;
+            _cloudinaryService = cloudinaryService;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         // B3: Implement method CRUD cho Staff
@@ -94,6 +97,16 @@ namespace ClaimRequest.BLL.Services.Implements
                     var newStaff = _mapper.Map<Staff>(createStaffRequest);
                     newStaff.Id = Guid.NewGuid();
                     newStaff.Password = BCrypt.Net.BCrypt.HashPassword(createStaffRequest.Password);
+                    var user = _httpContextAccessor.HttpContext?.User;
+
+                    if (createStaffRequest.Avatar != null && user != null)
+                    {
+                        newStaff.Avatar = await _cloudinaryService.UploadImageAsync(createStaffRequest.Avatar, user);
+                    }
+                    else
+                    {
+                        newStaff.Avatar = DefaultProfilePicture;
+                    }
 
                     await _unitOfWork.GetRepository<Staff>().InsertAsync(newStaff);
                     await _unitOfWork.CommitAsync();
@@ -163,9 +176,17 @@ namespace ClaimRequest.BLL.Services.Implements
                             orderBy: null,
                             include: null
                         )).ValidateExists(id, "Can't update because this staff");
-
+                    string currentAvatar = existingStaff.Avatar;
                     _mapper.Map(updateStaffRequest, existingStaff);
-
+                    var user = _httpContextAccessor.HttpContext?.User;
+                    if (updateStaffRequest.Avatar != null && user != null)
+                    {
+                        existingStaff.Avatar = await _cloudinaryService.UploadImageAsync(updateStaffRequest.Avatar, user);
+                    }
+                    else
+                    {
+                        existingStaff.Avatar = currentAvatar;
+                    }
                     _unitOfWork.GetRepository<Staff>().UpdateAsync(existingStaff);
                     await _unitOfWork.CommitAsync();
 
