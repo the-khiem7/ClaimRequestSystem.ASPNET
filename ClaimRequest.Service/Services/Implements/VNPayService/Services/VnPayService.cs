@@ -43,7 +43,7 @@ namespace ClaimRequest.BLL.Services.Implements.VNPayService.Services
             pay.AddRequestData("vnp_ReturnUrl", returnUrl);
 
             //// Instant Payment Notification URL (auto backend callback)
-            //var ipnUrl = $"{scheme}://{host}/api/v1/payment/payment-callback";
+            //var ipnUrl = $"{scheme}://{host}/api/v1/payment/payment-ipn";   use ngrok or deploy to server to test this /Meh
             //pay.AddRequestData("vnp_IpnUrl", ipnUrl);
 
             var paymentUrl = pay.CreateRequestUrl(_configuration["Vnpay:BaseUrl"]!, _configuration["Vnpay:HashSecret"]!);

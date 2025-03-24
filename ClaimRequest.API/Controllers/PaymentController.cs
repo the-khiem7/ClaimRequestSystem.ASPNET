@@ -5,6 +5,7 @@ using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Org.BouncyCastle.Asn1.Ocsp;
 
 namespace ClaimRequest.API.Controllers
@@ -15,12 +16,14 @@ namespace ClaimRequest.API.Controllers
         private readonly IVnPayService _vnPayService;
         private readonly IGenericRepository<Claim> _claimRepository;
         private readonly IClaimService _claimService;
+        private readonly IConfiguration _configuration;
 
-        public PaymentController(ILogger<PaymentController> logger, IVnPayService vnPayService, IGenericRepository<Claim> claimRepository, IClaimService claimService) : base(logger)
+        public PaymentController(ILogger<PaymentController> logger, IVnPayService vnPayService, IGenericRepository<Claim> claimRepository, IClaimService claimService, IConfiguration configuration) : base(logger)
         {
             _vnPayService = vnPayService;
             _claimRepository = claimRepository;
             _claimService = claimService;
+            _configuration = configuration;
         }
 
         [HttpPost(ApiEndPointConstant.Payment.CreatePaymentUrl)]
@@ -143,28 +146,32 @@ namespace ClaimRequest.API.Controllers
             if (response.VnPayResponseCode != "00")
             {
                 Console.WriteLine($"Payment failed with VNPay response code: {response.VnPayResponseCode}");
-                return BadRequest(ApiResponseBuilder.BuildResponse<object>(
-                    StatusCodes.Status400BadRequest,
-                    "Failed to update claim as paid",
-                    null));
+
+                var failureRedirectUrl = $"{_configuration["Vnpay:ReturnUrlResult"]}?status=failed&errorMessage=Failed to process payment{response.VnPayResponseCode}";
+
+                // Redirect to the failure URL 
+                return Redirect(failureRedirectUrl);
             }
 
             Console.WriteLine($"Calling PaidClaim with ClaimId={claimId}, FinanceId={financeId}");
             var paidResult = await _claimService.PaidClaim(claimId, financeId);
+
             if (!paidResult)
             {
                 Console.WriteLine($"Failed to mark claim as paid. ClaimId: {claimId}, FinanceId: {financeId}");
-                return BadRequest(ApiResponseBuilder.BuildResponse<object>(
-                    StatusCodes.Status400BadRequest,
-                    "Failed to update claim as paid",
-                    null));
+
+                var failureRedirectUrl = $"{_configuration["Vnpay:ReturnUrlResult"]}?status=failed&errorMessage=Failed to update claim as paid";
+
+                // Redirect and return to stop further execution
+                return Redirect(failureRedirectUrl); ; // Ensure no further code runs
             }
 
             Console.WriteLine($"Payment processed successfully. ClaimId: {claimId}, FinanceId: {financeId}");
-            return Ok(ApiResponseBuilder.BuildResponse(
-                StatusCodes.Status200OK,
-                "Payment successful",
-                new { ClaimId = claimId, FinanceId = financeId }));
+
+            var successRedirectUrl = $"{_configuration["Vnpay:ReturnUrlResult"]}?claimId={claimId}&financeId={financeId}";
+
+            // Redirect to the success URL 
+            return Redirect(successRedirectUrl);
         }
 
         private bool TryParseClaimId(string paymentId, out Guid claimId)
