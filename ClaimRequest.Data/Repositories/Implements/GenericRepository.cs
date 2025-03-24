@@ -102,6 +102,25 @@ namespace ClaimRequest.DAL.Repositories.Implements
             return query.AsNoTracking().Select(selector).ToPagingResponse(page, size, 1);
         }
 
+        public IQueryable<T> GetQueryable(
+        Expression<Func<T, bool>> predicate = null,
+        Func<IQueryable<T>, IIncludableQueryable<T, object>> include = null)
+        {
+            IQueryable<T> query = _dbSet.AsQueryable();
+
+            if (include != null)
+            {
+                query = include(query);
+            }
+
+            if (predicate != null)
+            {
+                query = query.Where(predicate);
+            }
+
+            return query;
+        }
+
         #endregion
 
         #region Insert
