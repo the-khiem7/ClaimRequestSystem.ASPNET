@@ -39,7 +39,7 @@ namespace ClaimRequest.BLL.Services.Implements.VNPayService.Services
             var host = context.Request.Host.Value;
 
             // Redirect URL for user after payment (handled on frontend)
-            var returnUrl = $"{scheme}://{host}/api/v1/payment/payment-callback"; // <-- Change this to your frontend route
+            var returnUrl = $"{scheme}://{host}/api/v1/payment/payment-callback"; // <-- Change this to your frontend API call (not UI)
             pay.AddRequestData("vnp_ReturnUrl", returnUrl);
 
             //// Instant Payment Notification URL (auto backend callback)
