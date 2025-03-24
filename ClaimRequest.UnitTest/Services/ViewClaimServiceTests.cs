@@ -1,27 +1,439 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Threading.Tasks;
-using AutoMapper;
+﻿using AutoMapper;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.DAL.Data.Entities;
-using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Responses.Claim;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System.Linq.Expressions;
 using Xunit;
+using Xunit.Abstractions;
+using ClaimEntity = ClaimRequest.DAL.Data.Entities.Claim;
 
-namespace ClaimRequest.UnitTest.Services
+public class GetClaimsTests
 {
+    private readonly ITestOutputHelper _testOutputHelper;
+    private readonly Mock<IUnitOfWork<ClaimRequestDbContext>> _mockUnitOfWork;
+    private readonly Mock<ILogger<ClaimEntity>> _mockLogger;
+    private readonly Mock<IMapper> _mockMapper;
+    private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
+    private readonly Mock<IGenericRepository<ClaimEntity>> _mockClaimRepository;
+    private readonly ClaimService _claimService;
 
-            
+    public GetClaimsTests(ITestOutputHelper testOutputHelper)
+    {
+        _testOutputHelper = testOutputHelper;
+        _mockUnitOfWork = new Mock<IUnitOfWork<ClaimRequestDbContext>>();
+        _mockLogger = new Mock<ILogger<ClaimEntity>>();
+        _mockMapper = new Mock<IMapper>();
+        _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
+        _mockClaimRepository = new Mock<IGenericRepository<ClaimEntity>>();
+
+        _mockUnitOfWork.Setup(uow => uow.GetRepository<ClaimEntity>()).Returns(_mockClaimRepository.Object);
 
 
-            
-}
+        _claimService = new ClaimService(
+            _mockUnitOfWork.Object,
+            _mockLogger.Object,
+            _mockMapper.Object,
+            _mockHttpContextAccessor.Object
+        );
+    }
+
+    [Fact]
+    public async Task GetClaims_ShouldReturnPagedClaims()
+    {
+        var claims = new List<ClaimEntity>
+    {
+        new ClaimEntity { Id = Guid.NewGuid(), ClaimerId = Guid.NewGuid(), Status = ClaimStatus.Pending, UpdateAt = DateTime.UtcNow },
+        new ClaimEntity { Id = Guid.NewGuid(), ClaimerId = Guid.NewGuid(), Status = ClaimStatus.Approved, UpdateAt = DateTime.UtcNow }
+    };
+
+        var pagedResponse = new PagingResponse<ViewClaimResponse>
+        {
+            Items = claims.Select(c => new ViewClaimResponse { Id = c.Id, Status = c.Status }).ToList(),
+        };
+
+        var staffId = Guid.NewGuid().ToString();
+        var role = SystemRole.Admin.ToString();
+
+        _mockHttpContextAccessor.Setup(a => a.HttpContext.User.FindFirst(It.IsAny<string>()))
+            .Returns((string claimType) =>
+            {
+                if (claimType == "StaffId")
+                    return new System.Security.Claims.Claim("StaffId", staffId);
+                if (claimType == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")
+                    return new System.Security.Claims.Claim(claimType, role);
+
+                return null;
+            });
+
+        _mockMapper.Setup(m => m.Map<ViewClaimResponse>(It.IsAny<ClaimEntity>()))
+            .Returns((ClaimEntity c) => new ViewClaimResponse { Id = c.Id, Status = c.Status });
+
+        _mockClaimRepository.Setup(r => r.GetPagingListAsync(
+            It.IsAny<Expression<Func<ClaimEntity, ViewClaimResponse>>>(),
+            It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>(),
+            It.IsAny<int>(),
+            It.IsAny<int>()
+        )).ReturnsAsync(pagedResponse);
+
+        var result = await _claimService.GetClaims();
+
+        Assert.NotNull(result);
+        Assert.Equal(claims.Count, result.Items.Count());
+
+        _mockClaimRepository.Verify(r => r.GetPagingListAsync<ViewClaimResponse>(
+            It.IsAny<Expression<Func<ClaimEntity, ViewClaimResponse>>>(),
+            It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>(),
+            It.IsAny<int>(),
+            It.IsAny<int>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ShouldReturnClaimWithDraftStatus()
+    {
+        var claims = new List<ClaimEntity>
+        {
+            new ClaimEntity { Id = Guid.NewGuid(), ClaimerId = Guid.NewGuid(), Status = ClaimStatus.Draft, UpdateAt = DateTime.UtcNow },
+            new ClaimEntity { Id = Guid.NewGuid(), ClaimerId = Guid.NewGuid(), Status = ClaimStatus.Approved, UpdateAt = DateTime.UtcNow }
+        };
+        var pagedResponse = new PagingResponse<ViewClaimResponse>
+        {
+            Items = claims.Select(c => new ViewClaimResponse { Id = c.Id, Status = c.Status }).ToList(),
+        };
+        var staffId = Guid.NewGuid().ToString();
+        var role = SystemRole.Admin.ToString();
+        _mockHttpContextAccessor.Setup(a => a.HttpContext.User.FindFirst(It.IsAny<string>()))
+            .Returns((string claimType) =>
+            {
+                if (claimType == "StaffId")
+                    return new System.Security.Claims.Claim("StaffId", staffId);
+                if (claimType == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")
+                    return new System.Security.Claims.Claim(claimType, role);
+                return null;
+            });
+        _mockMapper.Setup(m => m.Map<ViewClaimResponse>(It.IsAny<ClaimEntity>()))
+            .Returns((ClaimEntity c) => new ViewClaimResponse { Id = c.Id, Status = c.Status });
+        _mockClaimRepository.Setup(r => r.GetPagingListAsync(
+            It.IsAny<Expression<Func<ClaimEntity, ViewClaimResponse>>>(),
+            It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>(),
+            It.IsAny<int>(),
+            It.IsAny<int>()
+        )).ReturnsAsync(pagedResponse);
+        var result = await _claimService.GetClaims();
+        Assert.NotNull(result);
+        Assert.Equal(claims.Count, result.Items.Count());
+        _mockClaimRepository.Verify(r => r.GetPagingListAsync<ViewClaimResponse>(
+            It.IsAny<Expression<Func<ClaimEntity, ViewClaimResponse>>>(),
+            It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>(),
+            It.IsAny<int>(),
+            It.IsAny<int>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ShouldReturnClaimWithSortByIdDescending()
+    {
+        var claims = new List<ClaimEntity>
+        {
+            new ClaimEntity { Id = Guid.NewGuid(), ClaimerId = Guid.NewGuid(), Status = ClaimStatus.Draft, UpdateAt = DateTime.UtcNow },
+            new ClaimEntity { Id = Guid.NewGuid(), ClaimerId = Guid.NewGuid(), Status = ClaimStatus.Approved, UpdateAt = DateTime.UtcNow }
+        };
+        var pagedResponse = new PagingResponse<ViewClaimResponse>
+        {
+            Items = claims.Select(c => new ViewClaimResponse { Id = c.Id, Status = c.Status }).ToList(),
+        };
+        var staffId = Guid.NewGuid().ToString();
+        var role = SystemRole.Admin.ToString();
+        _mockHttpContextAccessor.Setup(a => a.HttpContext.User.FindFirst(It.IsAny<string>()))
+            .Returns((string claimType) =>
+            {
+                if (claimType == "StaffId")
+                    return new System.Security.Claims.Claim("StaffId", staffId);
+                if (claimType == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")
+                    return new System.Security.Claims.Claim(claimType, role);
+                return null;
+            });
+        _mockMapper.Setup(m => m.Map<ViewClaimResponse>(It.IsAny<ClaimEntity>()))
+            .Returns((ClaimEntity c) => new ViewClaimResponse { Id = c.Id, Status = c.Status });
+        _mockClaimRepository.Setup(r => r.GetPagingListAsync(
+            It.IsAny<Expression<Func<ClaimEntity, ViewClaimResponse>>>(),
+            It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>(),
+            It.IsAny<int>(),
+            It.IsAny<int>()
+        )).ReturnsAsync(pagedResponse);
+        var result = await _claimService.GetClaims(1, 20, null, "ClaimerMode", null, "id", true);
+        Assert.NotNull(result);
+        Assert.Equal(claims.Count, result.Items.Count());
+        _mockClaimRepository.Verify(r => r.GetPagingListAsync<ViewClaimResponse>(
+            It.IsAny<Expression<Func<ClaimEntity, ViewClaimResponse>>>(),
+            It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>(),
+            It.IsAny<int>(),
+            It.IsAny<int>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ShouldReturnClaimWithSearchFilter()
+    {
+        var claims = new List<ClaimEntity>
+        {
+            new ClaimEntity { Id = Guid.NewGuid(), ClaimerId = Guid.NewGuid(), Status = ClaimStatus.Draft, UpdateAt = DateTime.UtcNow },
+            new ClaimEntity { Id = Guid.NewGuid(), ClaimerId = Guid.NewGuid(), Status = ClaimStatus.Approved, UpdateAt = DateTime.UtcNow }
+        };
+        var pagedResponse = new PagingResponse<ViewClaimResponse>
+        {
+            Items = claims.Select(c => new ViewClaimResponse { Id = c.Id, Status = c.Status }).ToList(),
+        };
+        var staffId = Guid.NewGuid().ToString();
+        var role = SystemRole.Admin.ToString();
+        _mockHttpContextAccessor.Setup(a => a.HttpContext.User.FindFirst(It.IsAny<string>()))
+            .Returns((string claimType) =>
+            {
+                if (claimType == "StaffId")
+                    return new System.Security.Claims.Claim("StaffId", staffId);
+                if (claimType == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")
+                    return new System.Security.Claims.Claim(claimType, role);
+                return null;
+            });
+        _mockMapper.Setup(m => m.Map<ViewClaimResponse>(It.IsAny<ClaimEntity>()))
+            .Returns((ClaimEntity c) => new ViewClaimResponse { Id = c.Id, Status = c.Status });
+        _mockClaimRepository.Setup(r => r.GetPagingListAsync(
+            It.IsAny<Expression<Func<ClaimEntity, ViewClaimResponse>>>(),
+            It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>(),
+            It.IsAny<int>(),
+            It.IsAny<int>()
+        )).ReturnsAsync(pagedResponse);
+        var result = await _claimService.GetClaims(1, 20, null, "ClaimerMode", "search", "id", true);
+        Assert.NotNull(result);
+        Assert.Equal(claims.Count, result.Items.Count());
+        _mockClaimRepository.Verify(r => r.GetPagingListAsync<ViewClaimResponse>(
+            It.IsAny<Expression<Func<ClaimEntity, ViewClaimResponse>>>(),
+            It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>(),
+            It.IsAny<int>(),
+            It.IsAny<int>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ShouldReturnWithDifferentPageNumber()
+    {
+        var claims = new List<ClaimEntity>
+    {
+        new ClaimEntity { Id = Guid.NewGuid(), ClaimerId = Guid.NewGuid(), Status = ClaimStatus.Draft, UpdateAt = DateTime.UtcNow },
+        new ClaimEntity { Id = Guid.NewGuid(), ClaimerId = Guid.NewGuid(), Status = ClaimStatus.Approved, UpdateAt = DateTime.UtcNow }
+    };
+
+
+        int pageNumber = 2;
+        int pageSize = 1;
+        var expectedClaim = claims.OrderBy(c => c.UpdateAt).Skip((pageNumber - 1) * pageSize).First();
+
+        // Setup mock user claims
+        var staffId = Guid.NewGuid().ToString();
+        var role = SystemRole.Admin.ToString();
+        _mockHttpContextAccessor.Setup(a => a.HttpContext.User.FindFirst(It.IsAny<string>()))
+            .Returns((string claimType) =>
+            {
+                if (claimType == "StaffId")
+                    return new System.Security.Claims.Claim("StaffId", staffId);
+                if (claimType == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")
+                    return new System.Security.Claims.Claim(claimType, role);
+                return null;
+            });
+
+
+        _mockMapper.Setup(m => m.Map<ViewClaimResponse>(It.IsAny<ClaimEntity>()))
+            .Returns((ClaimEntity c) => new ViewClaimResponse { Id = c.Id, Status = c.Status });
+
+        var pagedResponse = new PagingResponse<ViewClaimResponse>
+        {
+            Items = new List<ViewClaimResponse>
+        {
+            new ViewClaimResponse { Id = expectedClaim.Id, Status = expectedClaim.Status }
+        }
+        };
+
+        _mockClaimRepository.Setup(r => r.GetPagingListAsync(
+            It.IsAny<Expression<Func<ClaimEntity, ViewClaimResponse>>>(),
+            It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>(),
+            It.Is<int>(p => p == pageNumber),
+            It.Is<int>(s => s == pageSize)
+        )).ReturnsAsync(pagedResponse);
+
+        // Act: Call service method
+        var result = await _claimService.GetClaims(pageNumber, pageSize, null, "ClaimerMode", "search", "id", true);
+
+        // Assert: Ensure response is correct
+        Assert.NotNull(result);
+        Assert.Single(result.Items);
+        Assert.Equal(expectedClaim.Id, result.Items.First().Id); // Ensure correct claim is returned
+
+        // Verify mock repository was called correctly
+        _mockClaimRepository.Verify(r => r.GetPagingListAsync<ViewClaimResponse>(
+            It.IsAny<Expression<Func<ClaimEntity, ViewClaimResponse>>>(),
+            It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>(),
+            It.Is<int>(p => p == pageNumber),
+            It.Is<int>(s => s == pageSize)
+        ), Times.Once);
+    }
+
+    [Fact]
+    public async Task ShouldReturnWithDateRangeUpdateAt()
+    {
+        var claims = new List<ClaimEntity>
+    {
+        new ClaimEntity { Id = Guid.NewGuid(), ClaimerId = Guid.NewGuid(), Status = ClaimStatus.Draft, UpdateAt = DateTime.UtcNow },
+        new ClaimEntity { Id = Guid.NewGuid(), ClaimerId = Guid.NewGuid(), Status = ClaimStatus.Approved, UpdateAt = DateTime.UtcNow }
+    };
+        var fromDate = DateTime.UtcNow.AddDays(-1);
+        var toDate = DateTime.UtcNow.AddDays(1);
+        var pagedResponse = new PagingResponse<ViewClaimResponse>
+        {
+            Items = claims.Select(c => new ViewClaimResponse { Id = c.Id, Status = c.Status }).ToList(),
+        };
+
+        var staffId = Guid.NewGuid().ToString();
+        var role = SystemRole.Admin.ToString();
+        _mockHttpContextAccessor.Setup(a => a.HttpContext.User.FindFirst(It.IsAny<string>()))
+            .Returns((string claimType) =>
+            {
+                if (claimType == "StaffId")
+                    return new System.Security.Claims.Claim("StaffId", staffId);
+                if (claimType == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")
+                    return new System.Security.Claims.Claim(claimType, role);
+                return null;
+            });
+        _mockMapper.Setup(m => m.Map<ViewClaimResponse>(It.IsAny<ClaimEntity>()))
+            .Returns((ClaimEntity c) => new ViewClaimResponse { Id = c.Id, Status = c.Status });
+        _mockClaimRepository.Setup(r => r.GetPagingListAsync(
+            It.IsAny<Expression<Func<ClaimEntity, ViewClaimResponse>>>(),
+            It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>(),
+            It.IsAny<int>(),
+            It.IsAny<int>()
+        )).ReturnsAsync(pagedResponse);
+
+        var result = await _claimService.GetClaims(1, 20, null, "ClaimerMode", "search", "id", true, fromDate, toDate);
+
+        Assert.NotNull(result);
+        Assert.Equal(claims.Count, result.Items.Count());
+
+        _mockClaimRepository.Verify(r => r.GetPagingListAsync<ViewClaimResponse>(
+            It.IsAny<Expression<Func<ClaimEntity, ViewClaimResponse>>>(),
+            It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+            It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>(),
+            It.IsAny<int>(),
+            It.IsAny<int>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UnauthorizeViewModeError()
+    {
+
+        var staffId = Guid.NewGuid().ToString();
+        var role = SystemRole.Admin.ToString();
+        _mockHttpContextAccessor.Setup(a => a.HttpContext.User.FindFirst(It.IsAny<string>()))
+            .Returns((string claimType) =>
+            {
+                if (claimType == "StaffId")
+                    return new System.Security.Claims.Claim("StaffId", staffId);
+                if (claimType == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")
+                    return new System.Security.Claims.Claim(claimType, role);
+                return null;
+            });
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await _claimService.GetClaims(1, 20, null, "ApproverMode", "search", "id", true));
+    }
+ }
+    
+
+        //  [Fact]
+        //  public async Task GetClaims_ShouldReturnPagedClaims()
+        //  {
+        //      // Arrange
+        //      var claims = new List<ClaimEntity>
+        //  {
+        //      new ClaimEntity { Id = Guid.NewGuid(), ClaimerId = Guid.NewGuid(), Status = ClaimStatus.Pending, UpdateAt = DateTime.UtcNow },
+        //      new ClaimEntity { Id = Guid.NewGuid(), ClaimerId = Guid.NewGuid(), Status = ClaimStatus.Approved, UpdateAt = DateTime.UtcNow }
+        //  };
+
+        //      var pagedResponse = new PagingResponse<ViewClaimResponse>
+        //      {
+        //          Items = claims.Select(c => new ViewClaimResponse { Id = c.Id, Status = c.Status }).ToList(),
+        //          TotalCount = claims.Count
+        //      };
+
+        //      _mockHttpContextAccessor.Setup(h => h.HttpContext.User.FindFirst("StaffId").Value)
+        //          .Returns(Guid.NewGuid().ToString());
+        //      _mockHttpContextAccessor.Setup(h => h.HttpContext.User.FindFirst(It.IsAny<string>()).Value)
+        //          .Returns(SystemRole.Claimer.ToString());
+
+        //      _mockMapper.Setup(m => m.Map<ViewClaimResponse>(It.IsAny<ClaimEntity>()))
+        //          .Returns((ClaimEntity c) => new ViewClaimResponse { Id = c.Id, Status = c.Status });
+
+        //      _mockClaimRepository.Setup(r => r.GetPagingListAsync(
+        //    It.IsAny<Expression<Func<ClaimEntity, ViewClaimResponse>>>(), // selector (First)
+        //    It.IsAny<Expression<Func<ClaimEntity, bool>>>(),              // predicate
+        //    It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(), // orderBy
+        //    It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>(), // include
+        //    It.IsAny<int>(),  // page
+        //    It.IsAny<int>()   // size
+        //)).ReturnsAsync(pagedResponse);
+
+        //      // Act
+        //      var result = await _claimService.GetClaims();
+
+        //      // Assert
+        //      Assert.NotNull(result);
+        //      Assert.Equal(claims.Count, result.TotalCount);
+        //      _mockClaimRepository.Verify(r => r.GetPagingListAsync(
+        //          It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>(),
+        //          It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+        //          It.IsAny<Expression<Func<ClaimEntity, ViewClaimResponse>>>(),
+        //          It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+        //          It.IsAny<int>(),
+        //          It.IsAny<int>()), Times.Once);
+        //  }
+
+        //  [Fact]
+        //  public async Task GetClaims_ShouldThrowException_WhenErrorOccurs()
+        //  {
+        //      // Arrange
+        //      _mockClaimRepository.Setup(r => r.GetPagingListAsync(
+        //          It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>(),
+        //          It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+        //          It.IsAny<Expression<Func<ClaimEntity, ViewClaimResponse>>>(),
+        //          It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+        //          It.IsAny<int>(),
+        //          It.IsAny<int>()
+        //      )).ThrowsAsync(new Exception("Database Error"));
+
+        //      // Act & Assert
+        //      await Assert.ThrowsAsync<Exception>(async () => await _claimService.GetClaims());
+
+        //      _mockLogger.Verify(l => l.LogError(It.IsAny<Exception>(), It.IsAny<string>()), Times.Once);
+        //  }
+    
