@@ -437,7 +437,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                     var approver = await _unitOfWork.GetRepository<Staff>()
                         .SingleOrDefaultAsync(predicate: s => s.Id == rejectClaimRequest.ApproverId)
-                        ?? throw new KeyNotFoundException($"Approver with ID {id} not found.");
+                        ?? throw new KeyNotFoundException($"Approver with ID {rejectClaimRequest.ApproverId} not found.");
 
                     if (approver.SystemRole != SystemRole.Approver)
                     {

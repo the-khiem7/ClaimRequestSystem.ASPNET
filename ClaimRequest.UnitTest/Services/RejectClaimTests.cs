@@ -1,163 +1,567 @@
-﻿using System.Linq.Expressions;
-using AutoMapper;
+﻿using AutoMapper;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
-using ClaimRequest.DAL.Repositories.Implements;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Threading.Tasks;
 using Xunit;
+using ClaimEntity = ClaimRequest.DAL.Data.Entities.Claim;
 
 namespace ClaimRequest.UnitTest.Services
 {
     public class RejectClaimTests : IDisposable
     {
         private readonly Mock<IUnitOfWork<ClaimRequestDbContext>> _mockUnitOfWork;
-        private readonly Mock<ILogger<Claim>> _mockLogger;
+        private readonly Mock<ILogger<ClaimEntity>> _mockLogger;
         private readonly Mock<IMapper> _mockMapper;
-        private readonly Mock<IDbContextTransaction> _mockTransaction;
         private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
-        private readonly Mock<IGenericRepository<Claim>> _mockClaimRepository;
+        private readonly Mock<IGenericRepository<ClaimEntity>> _mockClaimRepository;
+        private readonly Mock<IGenericRepository<ProjectStaff>> _mockProjectStaffRepository;
+        private readonly Mock<IGenericRepository<Staff>> _mockStaffRepository;
         private readonly ClaimService _claimService;
-        private readonly ClaimRequestDbContext _realDbContext;
-
 
         public RejectClaimTests()
         {
-            // Initialize mocks
             _mockUnitOfWork = new Mock<IUnitOfWork<ClaimRequestDbContext>>();
-            _mockLogger = new Mock<ILogger<Claim>>();
+            _mockLogger = new Mock<ILogger<ClaimEntity>>();
             _mockMapper = new Mock<IMapper>();
-            _mockTransaction = new Mock<IDbContextTransaction>();
             _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
-            _mockClaimRepository = new Mock<IGenericRepository<Claim>>();
+            _mockClaimRepository = new Mock<IGenericRepository<ClaimEntity>>();
+            _mockProjectStaffRepository = new Mock<IGenericRepository<ProjectStaff>>();
+            _mockStaffRepository = new Mock<IGenericRepository<Staff>>();
 
-            // Setup real DbContext with in-memory database
-            var options = new DbContextOptionsBuilder<ClaimRequestDbContext>()
-                .UseInMemoryDatabase("TestDb")  // Use an in-memory database for unit testing
-                .Options;
+            _mockUnitOfWork.Setup(uow => uow.GetRepository<ClaimEntity>()).Returns(_mockClaimRepository.Object);
+            _mockUnitOfWork.Setup(uow => uow.GetRepository<ProjectStaff>()).Returns(_mockProjectStaffRepository.Object);
+            _mockUnitOfWork.Setup(uow => uow.GetRepository<Staff>()).Returns(_mockStaffRepository.Object);
 
-            _realDbContext = new ClaimRequestDbContext(options);
-            _realDbContext.Database.EnsureDeleted();  // Ensure database is clean before each test
-            _realDbContext.Database.EnsureCreated();  // Create a new database for each test
+            _mockUnitOfWork.Setup(uow => uow.ProcessInTransactionAsync(It.IsAny<Func<Task<RejectClaimResponse>>>()))
+                .Returns<Func<Task<RejectClaimResponse>>>(operation => operation());
 
-            _mockUnitOfWork.Setup(uow => uow.GetRepository<Claim>())
-                .Returns(new GenericRepository<Claim>(_realDbContext));
-            _mockUnitOfWork.Setup(uow => uow.Context).Returns(_realDbContext);
-
-
-            // Setup unit of work
-            _mockUnitOfWork.Setup(uow => uow.BeginTransactionAsync())
-                .ReturnsAsync(_mockTransaction.Object);
-            _mockUnitOfWork.Setup(uow => uow.CommitTransactionAsync(It.IsAny<IDbContextTransaction>()))
-                .Returns(Task.CompletedTask);
-            _mockUnitOfWork.Setup(uow => uow.RollbackTransactionAsync(It.IsAny<IDbContextTransaction>()))
-                .Returns(Task.CompletedTask);
-            _mockUnitOfWork.Setup(uow => uow.CommitAsync()).ReturnsAsync(1);
-            _mockUnitOfWork.Setup(uow => uow.GetRepository<Claim>()).Returns(_mockClaimRepository.Object);
-
-            // Initialize service
             _claimService = new ClaimService(
                 _mockUnitOfWork.Object,
                 _mockLogger.Object,
                 _mockMapper.Object,
                 _mockHttpContextAccessor.Object
             );
-
         }
 
-        // Begin test here
-        // Đang fail :[
+        public void Dispose() => GC.SuppressFinalize(this);
+
         [Fact]
-        public async Task RejectClaim_Should_Reject_Valid_Claim()
+        public async Task RejectClaim_ShouldReturn_RejectClaimResponse_WhenSuccessful()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var approverId = Guid.NewGuid();
+            var projectId = Guid.NewGuid();
+
+            var rejectClaimRequest = new RejectClaimRequest
+            {
+                ApproverId = approverId,
+                Remark = "Rejected due to insufficient documentation"
+            };
+
+            var claim = new ClaimEntity
+            {
+                Id = claimId,
+                Status = ClaimStatus.Pending,
+                ProjectId = projectId
+            };
+
+            var projectStaff = new ProjectStaff
+            {
+                StaffId = approverId,
+                ProjectId = projectId
+            };
+
+            var approver = new Staff
+            {
+                Id = approverId,
+                SystemRole = SystemRole.Approver,
+                Name = "John Approver"
+            };
+
+            var expectedResponse = new RejectClaimResponse
+            {
+                Id = claimId,
+                Status = ClaimStatus.Rejected,
+                Remark = rejectClaimRequest.Remark
+            };
+
+            // Setup repository mocks with correct method signature
+            _mockClaimRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>()))
+                .ReturnsAsync(claim);
+
+            _mockProjectStaffRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<ProjectStaff, bool>>>(),
+                It.IsAny<Func<IQueryable<ProjectStaff>, IOrderedQueryable<ProjectStaff>>>(),
+                It.IsAny<Func<IQueryable<ProjectStaff>, IIncludableQueryable<ProjectStaff, object>>>()))
+                .ReturnsAsync(projectStaff);
+
+            _mockStaffRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<Staff, bool>>>(),
+                It.IsAny<Func<IQueryable<Staff>, IOrderedQueryable<Staff>>>(),
+                It.IsAny<Func<IQueryable<Staff>, IIncludableQueryable<Staff, object>>>()))
+                .ReturnsAsync(approver);
+
+            _mockClaimRepository.Setup(repo => repo.UpdateAsync(It.IsAny<ClaimEntity>())).Verifiable();
+
+            _mockMapper.Setup(m => m.Map(rejectClaimRequest, claim)).Verifiable();
+            _mockMapper.Setup(m => m.Map<RejectClaimResponse>(It.IsAny<ClaimEntity>())).Returns(expectedResponse);
+
+            // Setup mock for ClaimChangeLog repository
+            var mockClaimChangeLogRepository = new Mock<IGenericRepository<ClaimChangeLog>>();
+            mockClaimChangeLogRepository.Setup(repo => repo.InsertAsync(It.IsAny<ClaimChangeLog>()))
+                .Returns(Task.CompletedTask);
+            _mockUnitOfWork.Setup(uow => uow.GetRepository<ClaimChangeLog>())
+                .Returns(mockClaimChangeLogRepository.Object);
+            // Act
+            var result = await _claimService.RejectClaim(claimId, rejectClaimRequest);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(expectedResponse.Id, result.Id);
+            Assert.Equal(expectedResponse.Status, result.Status);
+            Assert.Equal(expectedResponse.Remark, result.Remark);
+
+            _mockClaimRepository.Verify(repo => repo.UpdateAsync(It.IsAny<ClaimEntity>()), Times.Once);
+            _mockMapper.Verify(m => m.Map(rejectClaimRequest, claim), Times.Once);
+        }
+
+        [Fact]
+        public async Task RejectClaim_ShouldThrowException_WhenClaimNotFound()
         {
             // Arrange
             var claimId = Guid.NewGuid();
             var approverId = Guid.NewGuid();
 
-            var claim = new Claim
+            var rejectClaimRequest = new RejectClaimRequest
+            {
+                ApproverId = approverId,
+                Remark = "Attempt to reject non-existing claim"
+            };
+
+            _mockClaimRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>()))
+                .ReturnsAsync((ClaimEntity)null);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+                _claimService.RejectClaim(claimId, rejectClaimRequest));
+
+            Assert.Equal($"Claim with ID {claimId} not found.", exception.Message);
+        }
+
+        [Fact]
+        public async Task RejectClaim_ShouldThrowException_WhenClaimNotInPendingStatus()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var approverId = Guid.NewGuid();
+
+            var rejectClaimRequest = new RejectClaimRequest
+            {
+                ApproverId = approverId,
+                Remark = "Attempt to reject a claim not in pending status"
+            };
+
+            var claim = new ClaimEntity
+            {
+                Id = claimId,
+                Status = ClaimStatus.Draft // Not pending
+            };
+
+            _mockClaimRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>()))
+                .ReturnsAsync(claim);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                _claimService.RejectClaim(claimId, rejectClaimRequest));
+
+            Assert.Equal($"Claim with ID {claimId} is not in pending status.", exception.Message);
+        }
+
+        [Fact]
+        public async Task RejectClaim_ShouldThrowException_WhenApproverNotInProject()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var approverId = Guid.NewGuid();
+            var projectId = Guid.NewGuid();
+
+            var rejectClaimRequest = new RejectClaimRequest
+            {
+                ApproverId = approverId,
+                Remark = "Attempt to reject by approver not in project"
+            };
+
+            var claim = new ClaimEntity
             {
                 Id = claimId,
                 Status = ClaimStatus.Pending,
-                Name = "Test Claim",
-                Remark = "Initial Remark"
+                ProjectId = projectId
             };
 
-            var rejectRequest = new RejectClaimRequest
+            _mockClaimRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>()))
+                .ReturnsAsync(claim);
+
+            _mockProjectStaffRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<ProjectStaff, bool>>>(),
+                It.IsAny<Func<IQueryable<ProjectStaff>, IOrderedQueryable<ProjectStaff>>>(),
+                It.IsAny<Func<IQueryable<ProjectStaff>, IIncludableQueryable<ProjectStaff, object>>>()))
+                .ReturnsAsync((ProjectStaff)null);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                _claimService.RejectClaim(claimId, rejectClaimRequest));
+
+            Assert.Equal($"User with ID {approverId} is not in the right project to reject this claim.", exception.Message);
+        }
+
+        [Fact]
+        public async Task RejectClaim_ShouldThrowException_WhenApproverNotFound()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var approverId = Guid.NewGuid();
+            var projectId = Guid.NewGuid();
+
+            var rejectClaimRequest = new RejectClaimRequest
             {
                 ApproverId = approverId,
-                Remark = "Test rejection reason"
+                Remark = "Attempt to reject with non-existing approver"
             };
 
-            var rejectResponse = new RejectClaimResponse
+            var claim = new ClaimEntity
             {
                 Id = claimId,
-                ApproverId = approverId,
-                Status = ClaimStatus.Rejected,
-                Remark = "Test rejection reason",
-                UpdateAt = DateTime.UtcNow
+                Status = ClaimStatus.Pending,
+                ProjectId = projectId
             };
 
-            // Add the claim to the in-memory database
-            await _realDbContext.Claims.AddAsync(claim);
-            await _realDbContext.SaveChangesAsync();
+            var projectStaff = new ProjectStaff
+            {
+                StaffId = approverId,
+                ProjectId = projectId
+            };
 
-            // Mock repository behavior using SingleOrDefaultAsync
             _mockClaimRepository.Setup(repo => repo.SingleOrDefaultAsync(
-                It.IsAny<Expression<Func<Claim, bool>>>(), null, null))
-            .ReturnsAsync((Expression<Func<Claim, bool>> predicate, object _, object __) =>
-                _realDbContext.Claims.FirstOrDefault(predicate.Compile()));
+                It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>()))
+                .ReturnsAsync(claim);
 
-            _mockMapper.Setup(m => m.Map<RejectClaimResponse>(It.IsAny<Claim>()))
-                .Returns(rejectResponse);
+            _mockProjectStaffRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<ProjectStaff, bool>>>(),
+                It.IsAny<Func<IQueryable<ProjectStaff>, IOrderedQueryable<ProjectStaff>>>(),
+                It.IsAny<Func<IQueryable<ProjectStaff>, IIncludableQueryable<ProjectStaff, object>>>()))
+                .ReturnsAsync(projectStaff);
+
+            _mockStaffRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<Staff, bool>>>(),
+                It.IsAny<Func<IQueryable<Staff>, IOrderedQueryable<Staff>>>(),
+                It.IsAny<Func<IQueryable<Staff>, IIncludableQueryable<Staff, object>>>()))
+                .ReturnsAsync((Staff)null);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+                _claimService.RejectClaim(claimId, rejectClaimRequest));
+
+            Assert.Equal($"Approver with ID {rejectClaimRequest.ApproverId} not found.", exception.Message);
+        }
+
+        [Fact]
+        public async Task RejectClaim_ShouldThrowException_WhenUserNotApprover()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var approverId = Guid.NewGuid();
+            var projectId = Guid.NewGuid();
+
+            var rejectClaimRequest = new RejectClaimRequest
+            {
+                ApproverId = approverId,
+                Remark = "Attempt to reject by non-approver"
+            };
+
+            var claim = new ClaimEntity
+            {
+                Id = claimId,
+                Status = ClaimStatus.Pending,
+                ProjectId = projectId
+            };
+
+            var projectStaff = new ProjectStaff
+            {
+                StaffId = approverId,
+                ProjectId = projectId
+            };
+
+            var staff = new Staff
+            {
+                Id = approverId,
+                SystemRole = SystemRole.Staff, // Not an approver
+                Name = "John Staff"
+            };
+
+            _mockClaimRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>()))
+                .ReturnsAsync(claim);
+
+            _mockProjectStaffRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<ProjectStaff, bool>>>(),
+                It.IsAny<Func<IQueryable<ProjectStaff>, IOrderedQueryable<ProjectStaff>>>(),
+                It.IsAny<Func<IQueryable<ProjectStaff>, IIncludableQueryable<ProjectStaff, object>>>()))
+                .ReturnsAsync(projectStaff);
+
+            _mockStaffRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<Staff, bool>>>(),
+                It.IsAny<Func<IQueryable<Staff>, IOrderedQueryable<Staff>>>(),
+                It.IsAny<Func<IQueryable<Staff>, IIncludableQueryable<Staff, object>>>()))
+                .ReturnsAsync(staff);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                _claimService.RejectClaim(claimId, rejectClaimRequest));
+
+            Assert.Equal($"User with ID {approverId} does not have permission to reject this claim.", exception.Message);
+        }
+
+        [Fact]
+        public async Task RejectClaim_ShouldThrowException_WhenRemarkExceedsMaxLength()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var approverId = Guid.NewGuid();
+
+            // Create a remark that exceeds the 1000 character limit
+            var longRemark = new string('A', 1001);
+
+            var rejectClaimRequest = new RejectClaimRequest
+            {
+                ApproverId = approverId,
+                Remark = longRemark
+            };
+
+            // Validate the model manually
+            var context = new ValidationContext(rejectClaimRequest);
+            var validationResults = new System.Collections.Generic.List<ValidationResult>();
+            var isValid = Validator.TryValidateObject(rejectClaimRequest, context, validationResults, true);
+
+            // Assert
+            Assert.False(isValid);
+            Assert.Contains(validationResults, r => r.ErrorMessage.Contains("cannot exceed 1000 characters"));
+        }
+
+        [Fact]
+        public async Task RejectClaim_ShouldThrowException_WhenApproverIdNotProvided()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+
+            var rejectClaimRequest = new RejectClaimRequest
+            {
+                ApproverId = Guid.Empty,
+                Remark = "Missing approver ID"
+            };
+
+            var claim = new ClaimEntity
+            {
+                Id = claimId,
+                Status = ClaimStatus.Pending
+            };
+
+            _mockClaimRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>()))
+                .ReturnsAsync(claim);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                _claimService.RejectClaim(claimId, rejectClaimRequest));
+
+            Assert.Equal($"User with ID {Guid.Empty} is not in the right project to reject this claim.", exception.Message);
+        }
+
+        [Fact]
+        public async Task RejectClaim_ShouldThrowException_OnTransactionFailure()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var approverId = Guid.NewGuid();
+
+            var rejectClaimRequest = new RejectClaimRequest
+            {
+                ApproverId = approverId,
+                Remark = "Simulate transaction failure"
+            };
+
+            _mockUnitOfWork.Setup(uow => uow.ProcessInTransactionAsync(It.IsAny<Func<Task<RejectClaimResponse>>>()))
+                .ThrowsAsync(new Exception("Simulated Transaction Exception"));
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<Exception>(() =>
+                _claimService.RejectClaim(claimId, rejectClaimRequest));
+
+            Assert.Equal("Simulated Transaction Exception", exception.Message);
+        }
+
+        [Theory]
+        [InlineData(ClaimStatus.Draft)]
+        [InlineData(ClaimStatus.Approved)]
+        [InlineData(ClaimStatus.Rejected)]
+        [InlineData(ClaimStatus.Cancelled)]
+        public async Task RejectClaim_ShouldThrowException_WhenStatusNotPending(ClaimStatus status)
+        {
+            // Skip the test for Pending status
+            if (status == ClaimStatus.Pending)
+                return;
+
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var approverId = Guid.NewGuid();
+
+            var rejectClaimRequest = new RejectClaimRequest
+            {
+                ApproverId = approverId,
+                Remark = "Attempt to reject with invalid status"
+            };
+
+            var claim = new ClaimEntity
+            {
+                Id = claimId,
+                Status = status,
+            };
+
+            _mockClaimRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>()))
+                .ReturnsAsync(claim);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                _claimService.RejectClaim(claimId, rejectClaimRequest));
+
+            Assert.Equal($"Claim with ID {claimId} is not in pending status.", exception.Message);
+        }
+
+        [Fact]
+        public async Task RejectClaim_ShouldCallLogChangeAsync_WhenSuccessful()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var approverId = Guid.NewGuid();
+            var projectId = Guid.NewGuid();
+
+            var rejectClaimRequest = new RejectClaimRequest
+            {
+                ApproverId = approverId,
+                Remark = "Rejected due to insufficient documentation"
+            };
+
+            var claim = new ClaimEntity
+            {
+                Id = claimId,
+                Status = ClaimStatus.Pending,
+                ProjectId = projectId
+            };
+
+            var projectStaff = new ProjectStaff
+            {
+                StaffId = approverId,
+                ProjectId = projectId
+            };
+
+            var approver = new Staff
+            {
+                Id = approverId,
+                SystemRole = SystemRole.Approver,
+                Name = "John Approver"
+            };
+
+            var expectedResponse = new RejectClaimResponse
+            {
+                Id = claimId,
+                Status = ClaimStatus.Rejected,
+                Remark = rejectClaimRequest.Remark
+            };
+
+            _mockClaimRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<ClaimEntity, bool>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IOrderedQueryable<ClaimEntity>>>(),
+                It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>()))
+                .ReturnsAsync(claim);
+
+            _mockProjectStaffRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<ProjectStaff, bool>>>(),
+                It.IsAny<Func<IQueryable<ProjectStaff>, IOrderedQueryable<ProjectStaff>>>(),
+                It.IsAny<Func<IQueryable<ProjectStaff>, IIncludableQueryable<ProjectStaff, object>>>()))
+                .ReturnsAsync(projectStaff);
+
+            _mockStaffRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<Staff, bool>>>(),
+                It.IsAny<Func<IQueryable<Staff>, IOrderedQueryable<Staff>>>(),
+                It.IsAny<Func<IQueryable<Staff>, IIncludableQueryable<Staff, object>>>()))
+                .ReturnsAsync(approver);
+
+            _mockClaimRepository.Setup(repo => repo.UpdateAsync(It.IsAny<ClaimEntity>())).Verifiable();
+
+            _mockMapper.Setup(m => m.Map(rejectClaimRequest, claim)).Verifiable();
+            _mockMapper.Setup(m => m.Map<RejectClaimResponse>(It.IsAny<ClaimEntity>())).Returns(expectedResponse);
+
+            // Set up mock for LogChangeAsync verification
+            var logChangeAsyncCalled = false;
+            _mockUnitOfWork.Setup(uow => uow.GetRepository<ClaimChangeLog>().InsertAsync(It.IsAny<ClaimChangeLog>()))
+                .Callback<ClaimChangeLog>(log => 
+                {
+                    Assert.Equal(claimId, log.ClaimId);
+                    Assert.Equal("Claim Status", log.FieldChanged);
+                    Assert.Equal(ClaimStatus.Pending.ToString(), log.OldValue);
+                    Assert.Equal(ClaimStatus.Rejected.ToString(), log.NewValue);
+                    Assert.Equal(approver.Name, log.ChangedBy);
+                    logChangeAsyncCalled = true;
+                })
+                .Returns(Task.CompletedTask);
 
             // Act
-            var result = await _claimService.RejectClaim(claimId, rejectRequest);
+            var result = await _claimService.RejectClaim(claimId, rejectClaimRequest);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(ClaimStatus.Rejected, result.Status);
-            Assert.Equal(rejectRequest.Remark, result.Remark);
-
-            // Ensure transactions and commit were handled properly
-            _mockUnitOfWork.Verify(uow => uow.BeginTransactionAsync(), Times.Once);
-            _mockUnitOfWork.Verify(uow => uow.CommitTransactionAsync(It.IsAny<IDbContextTransaction>()), Times.Once);
-            _mockUnitOfWork.Verify(uow => uow.CommitAsync(), Times.Once);
-            _mockUnitOfWork.Verify(uow => uow.RollbackTransactionAsync(It.IsAny<IDbContextTransaction>()), Times.Never);
-
-            // Ensure logging was performed
-            _mockLogger.Verify(logger => logger.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => true),
-                It.IsAny<Exception>(),
-                (Func<It.IsAnyType, Exception, string>)It.IsAny<object>()), Times.Once);
-
+            Assert.True(logChangeAsyncCalled, "LogChangeAsync should have been called");
+            _mockClaimRepository.Verify(repo => repo.UpdateAsync(It.IsAny<ClaimEntity>()), Times.Once);
+            _mockMapper.Verify(m => m.Map(rejectClaimRequest, claim), Times.Once);
+            _mockMapper.Verify(m => m.Map<RejectClaimResponse>(It.IsAny<ClaimEntity>()), Times.Once);
+            
+            // Verify the response matches expected values
+            Assert.Equal(expectedResponse.Id, result.Id);
+            Assert.Equal(expectedResponse.Status, result.Status);
+            Assert.Equal(expectedResponse.Remark, result.Remark);
         }
-
-
-
-        // End test here
-
-
-        public void Dispose()
-        {
-            // Ensure the database is cleaned up and mocks are reset after each test
-            _realDbContext.Database.EnsureDeleted();
-            _mockTransaction.Reset();
-            _mockClaimRepository.Reset();
-            _mockMapper.Reset();
-            _mockHttpContextAccessor.Reset();
-            _mockUnitOfWork.Reset();
-            GC.SuppressFinalize(this);
-        }
-
-
-
     }
 }
