@@ -671,8 +671,6 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         await LogChangeAsync(id, "Claim Status", "Draft", "Pending", "Claimer");
 
-                        // Send email to approver and CC to claimer
-
                         return true;
                     }
                     catch (Exception ex)

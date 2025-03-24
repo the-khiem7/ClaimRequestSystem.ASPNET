@@ -15,7 +15,6 @@ namespace ClaimRequest.DAL.Repositories.Interfaces
 
         Task<IDbContextTransaction> BeginTransactionAsync();
 
-        Task<TOperation> ProcessInTransactionAsync<TOperation>(Func<Task<TOperation>> operation);
 
         Task CommitTransactionAsync(IDbContextTransaction transaction);
 
