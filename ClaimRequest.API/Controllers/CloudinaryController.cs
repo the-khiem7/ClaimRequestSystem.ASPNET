@@ -43,28 +43,30 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
-        [HttpDelete(ApiEndPointConstant.Cloudinary.DeleteImage)]
-        public async Task<IActionResult> DeleteImage([FromRoute] string publicId)
+        [HttpPost(ApiEndPointConstant.Cloudinary.UploadFile)]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadFile([FromForm] UploadFileRequest request)
         {
-            if (string.IsNullOrWhiteSpace(publicId))
+            if (request.File == null || request.File.Length == 0)
             {
-                return BadRequest("Invalid public ID.");
+                return BadRequest("No file uploaded.");
             }
 
             try
             {
-                var isDeleted = await _cloudinaryService.DeleteImageAsync(publicId);
-                if (!isDeleted)
-                {
-                    return BadRequest("Failed to delete image.");
-                }
-                return Ok(new { message = "Image deleted successfully." });
+                var fileUrl = await _cloudinaryService.UploadFileAsync(request.File, User);
+                return Ok(new { fileUrl });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error deleting image: {ex}");
-                return StatusCode(500, "An error occurred while deleting the image.");
+                _logger.LogError($"Error uploading file: {ex}");
+                return StatusCode(500, "An error occurred while uploading the file.");
             }
         }
+
     }
 }
