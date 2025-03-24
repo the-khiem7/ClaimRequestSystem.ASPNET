@@ -147,7 +147,7 @@ namespace ClaimRequest.API.Controllers
             {
                 Console.WriteLine($"Payment failed with VNPay response code: {response.VnPayResponseCode}");
 
-                var failureRedirectUrl = $"{_configuration["Vnpay:ReturnUrlResult"]}?status=failed&errorMessage=Failed to process payment{response.VnPayResponseCode}";
+                var failureRedirectUrl = $"{_configuration["Vnpay:ReturnUrlResult"]}?status=failed&errorMessage=Failed to process payment&errorCode={response.VnPayResponseCode}";
 
                 // Redirect to the failure URL 
                 return Redirect(failureRedirectUrl);
