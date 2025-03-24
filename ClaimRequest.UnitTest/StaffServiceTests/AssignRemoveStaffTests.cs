@@ -665,5 +665,6 @@ namespace ClaimRequest.Tests.Services
                 _staffService.RemoveStaff(staffId, request));
             Assert.Equal("Project Manager cannot be remove from project.", exception.Message);
         }
+
     }
 }
