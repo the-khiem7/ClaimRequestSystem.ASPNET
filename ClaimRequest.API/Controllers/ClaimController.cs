@@ -9,6 +9,8 @@ using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
+
 
 namespace ClaimRequest.API.Controllers
 {
@@ -47,14 +49,17 @@ namespace ClaimRequest.API.Controllers
         public async Task<IActionResult> GetClaims(
             [FromQuery] ClaimStatus? status,
             [FromQuery] string? search,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate,
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 20,
             [FromQuery] ClaimService.ViewMode viewMode = ClaimService.ViewMode.ClaimerMode,
             [FromQuery] string sortBy = "id",
-            [FromQuery] bool descending = false)
+            [FromQuery] bool descending = false
+            )
         {
 
-            var response = await _claimService.GetClaims(pageNumber, pageSize, status, viewMode.ToString(), search, sortBy, descending);
+            var response = await _claimService.GetClaims(pageNumber, pageSize, status, viewMode.ToString(), search, sortBy, descending, fromDate, toDate);
 
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: "Get claims successfully!",
