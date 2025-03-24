@@ -14,18 +14,20 @@ namespace ClaimRequest.API.Controllers
     {
         private readonly IVnPayService _vnPayService;
         private readonly IGenericRepository<Claim> _claimRepository;
+        private readonly IClaimService _claimService;
 
-        public PaymentController(ILogger<PaymentController> logger, IVnPayService vnPayService, IGenericRepository<Claim> claimRepository) : base(logger)
+        public PaymentController(ILogger<PaymentController> logger, IVnPayService vnPayService, IGenericRepository<Claim> claimRepository, IClaimService claimService) : base(logger)
         {
             _vnPayService = vnPayService;
             _claimRepository = claimRepository;
+            _claimService = claimService;
         }
 
         [HttpPost(ApiEndPointConstant.Payment.CreatePaymentUrl)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> CreatePaymentUrl([FromQuery] Guid claimId)
+        public async Task<IActionResult> CreatePaymentUrl([FromQuery] Guid claimId, Guid financeId)
         {
             if (!ModelState.IsValid)
             {
@@ -51,6 +53,7 @@ namespace ClaimRequest.API.Controllers
 
             var model = new PaymentInformationModel()
             {
+                FinanceId = financeId,
                 ClaimId = claim.Id,
                 Amount = claim.Amount,
                 ClaimType = claim.ClaimType.ToString()
@@ -70,50 +73,99 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> PaymentCallback()
         {
+            Console.WriteLine("Payment callback reached!");
             var queryParams = HttpContext.Request.Query;
 
-            var response = _vnPayService.PaymentExecute(queryParams);
+            if (queryParams.Count == 0)
+            {
+                Console.WriteLine("No query parameters received in payment callback.");
+                return BadRequest(ApiResponseBuilder.BuildResponse<object>(
+                    StatusCodes.Status400BadRequest,
+                    "No query parameters provided",
+                    null));
+            }
 
+            Console.WriteLine($"queryParams={queryParams}");
+
+            var response = _vnPayService.PaymentExecute(queryParams);
             if (response == null || !response.Success)
+            {
+                Console.WriteLine($"Payment execution failed. Response: {response}");
                 return BadRequest(ApiResponseBuilder.BuildResponse<object>(
                     StatusCodes.Status400BadRequest,
                     "Payment failed",
                     null));
+            }
 
             var txnRef = queryParams["vnp_TxnRef"].ToString();
-            if (string.IsNullOrEmpty(txnRef) || !TryParseClaimId(txnRef, out Guid claimId))
+            if (string.IsNullOrEmpty(txnRef) || txnRef.Length < 32 || !TryParseClaimId(txnRef.Substring(0, 32), out Guid claimId))
+            {
+                Console.WriteLine($"Invalid or missing transaction reference: {txnRef}");
                 return BadRequest(ApiResponseBuilder.BuildResponse<object>(
-                    StatusCodes.Status400BadRequest, "Invalid transaction reference", null));
+                    StatusCodes.Status400BadRequest,
+                    "Invalid transaction reference",
+                    null));
+            }
 
             var claim = await _claimRepository.GetByIdAsync(claimId);
             if (claim == null)
             {
+                Console.WriteLine($"Claim not found for ClaimId: {claimId}");
                 return NotFound(ApiResponseBuilder.BuildResponse<object>(
                     StatusCodes.Status404NotFound,
                     "Claim not found",
                     null));
             }
 
-            if (response.VnPayResponseCode != "00")
+            if (!queryParams.ContainsKey("vnp_OrderInfo") || string.IsNullOrEmpty(queryParams["vnp_OrderInfo"]))
             {
+                Console.WriteLine("Missing or empty vnp_OrderInfo in query parameters.");
                 return BadRequest(ApiResponseBuilder.BuildResponse<object>(
                     StatusCodes.Status400BadRequest,
-                    "Payment was not successful",
+                    "Missing order info",
                     null));
             }
 
-            // Update the claim status to indicate payment was successful
-            claim.Status = ClaimStatus.Paid;
-            _claimRepository.UpdateAsync(claim);
-            await Task.CompletedTask;
+            var orderInfo = queryParams["vnp_OrderInfo"].ToString();
+            var decodedOrderInfo = Uri.UnescapeDataString(orderInfo);
+            var infoParts = decodedOrderInfo.Split('|', StringSplitOptions.RemoveEmptyEntries);
 
+            var financePart = infoParts.FirstOrDefault(p => p.StartsWith("FinanceId="));
+            if (financePart == null || !Guid.TryParse(financePart.Split('=', 2)[1], out Guid financeId))
+            {
+                Console.WriteLine($"Invalid or missing FinanceId in order info: {decodedOrderInfo}");
+                return BadRequest(ApiResponseBuilder.BuildResponse<object>(
+                    StatusCodes.Status400BadRequest,
+                    "Invalid FinanceId",
+                    null));
+            }
+
+            if (response.VnPayResponseCode != "00")
+            {
+                Console.WriteLine($"Payment failed with VNPay response code: {response.VnPayResponseCode}");
+                return BadRequest(ApiResponseBuilder.BuildResponse<object>(
+                    StatusCodes.Status400BadRequest,
+                    "Failed to update claim as paid",
+                    null));
+            }
+
+            Console.WriteLine($"Calling PaidClaim with ClaimId={claimId}, FinanceId={financeId}");
+            var paidResult = await _claimService.PaidClaim(claimId, financeId);
+            if (!paidResult)
+            {
+                Console.WriteLine($"Failed to mark claim as paid. ClaimId: {claimId}, FinanceId: {financeId}");
+                return BadRequest(ApiResponseBuilder.BuildResponse<object>(
+                    StatusCodes.Status400BadRequest,
+                    "Failed to update claim as paid",
+                    null));
+            }
+
+            Console.WriteLine($"Payment processed successfully. ClaimId: {claimId}, FinanceId: {financeId}");
             return Ok(ApiResponseBuilder.BuildResponse(
                 StatusCodes.Status200OK,
                 "Payment successful",
-                new { ClaimId = claimId }));
+                new { ClaimId = claimId, FinanceId = financeId }));
         }
-
-
 
         private bool TryParseClaimId(string paymentId, out Guid claimId)
         {
