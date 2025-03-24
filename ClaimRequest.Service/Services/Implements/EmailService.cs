@@ -47,38 +47,6 @@ namespace ClaimRequest.BLL.Services.Implements
 
         }
 
-        //public async Task SendEmailReminderAsync()
-        //{
-        //    try
-        //    {
-        //        var pendingClaims = await _claimService.GetPendingClaimsAsync();
-        //        if (!pendingClaims.Any()) return; // Không có claim nào Pending thì không gửi
-
-        //        string recipientEmail = "thongnmse172317@fpt.edu.vn";
-        //        string subject = "Reminder: Pending Claim Requests";
-        //        var updatedDate = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
-
-        //        // Đọc template email
-        //        string templatePath = Path.Combine(AppContext.BaseDirectory, "Services", "Templates", "ClaimReminderTemplate.html");
-        //        string body = await File.ReadAllTextAsync(templatePath);
-
-        //        // Danh sách claim Pending
-        //        string claimsList = string.Join("<br/>", pendingClaims.Select(c => $"• Staff: {c.StaffName} - Project: {c.ProjectName}"));
-
-        //        // Thay thế placeholder trong template
-        //        body = body.Replace("{ClaimerName}", "Approver")
-        //                   .Replace("{ListName}", claimsList)
-        //                   .Replace("{UpdatedDate}", updatedDate);
-
-        //        await SendEmailAsync(recipientEmail, subject, body);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Error sending claim reminder email");
-        //        throw;
-        //    }
-        //}
-
 
 
         public async Task SendClaimReturnedEmail(Guid Id)
@@ -131,9 +99,17 @@ namespace ClaimRequest.BLL.Services.Implements
                 var updatedDate = claim.UpdateAt.ToString("yyyy-MM-dd HH:mm:ss");
 
                 CreateStaffResponse claimer = await _staffService.GetStaffById(claim.ClaimerId);
-                string recipientEmail = claimer.Email;
-                string subject = $"Claim Request for {projectName} - {claimer.ResponseName} ({claimer.Id})";
 
+                // Get finance staff using FinanceId from claim
+                if (!claim.FinanceId.HasValue)
+                    throw new Exception("Finance staff not assigned to this claim.");
+
+                var financeStaff = await _staffService.GetStaffById(claim.FinanceId.Value);
+                if (financeStaff == null || string.IsNullOrEmpty(financeStaff.Email))
+                    throw new Exception("Finance staff not found or email is invalid.");
+
+                string recipientEmail = financeStaff.Email;
+                string subject = $"Claim Request for {projectName} - {claimer.ResponseName} ({claimer.Id})";
 
                 string templatePath = Path.Combine(AppContext.BaseDirectory, "Services", "Templates", "ManagerApprovedEmailTemplate.html");
                 string body = await File.ReadAllTextAsync(templatePath);
@@ -151,6 +127,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         } //Staff approves
+
 
         public async Task SendClaimSubmittedEmail(Guid claimerId)
         {
@@ -197,7 +174,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task SendClaimApprovedEmail(Guid claimId) //Approver approves
+        public async Task SendClaimApprovedEmail(Guid claimId) 
         {
             try
             {
