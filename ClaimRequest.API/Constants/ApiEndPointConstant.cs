@@ -6,6 +6,10 @@ namespace ClaimRequest.API.Constants
         public const string ApiVersion = "/v1";
         public const string ApiEndpoint = RootEndpoint + ApiVersion;
 
+        public static class Navigator
+        {
+            public const string SideBarEndpoint = ApiEndpoint + "/sidebar";
+        }
         public static class Auth
         {
             public const string AuthEndpoint = ApiEndpoint + "/auth";
@@ -14,7 +18,7 @@ namespace ClaimRequest.API.Constants
             public const string RefreshTokenEndpoint = AuthEndpoint + "/refresh-token";
             public const string LogoutEndpoint = AuthEndpoint + "/logout";
             public const string ForgotPasswordEndpoint = AuthEndpoint + "/forgot-password";
-            public const string ChangePasswordEndpoint = AuthEndpoint +"/change-password";
+            public const string ChangePasswordEndpoint = AuthEndpoint + "/change-password";
 
 
         }
@@ -65,7 +69,7 @@ namespace ClaimRequest.API.Constants
         {
             public const string CloudinaryEndpoint = ApiEndpoint + "/cloudinary";
             public const string UploadImage = CloudinaryEndpoint + "/upload";
-            public const string DeleteImage = CloudinaryEndpoint + "/delete/{publicId}";
+            public const string UploadFile = CloudinaryEndpoint + "/upload-file";
         }
 
         public static class Payment
