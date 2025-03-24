@@ -48,7 +48,7 @@ namespace ClaimRequest.DAL.Repositories.Implements
                 catch
                 {
                     await transaction.RollbackAsync();
-                    throw new DbUpdateException();
+                    throw;
                 }
             });
         }

@@ -128,8 +128,6 @@ namespace ClaimRequest.API.Middlewares
                 #endregion
 
                 #region 500 Internal Server Error
-                DbUpdateException dbUpdateEx =>
-                    (HttpStatusCode.InternalServerError, "Database update error", dbUpdateEx.Message, null),
                 _ => (HttpStatusCode.InternalServerError,
                     "An unexpected error occurred",
                     _env.IsDevelopment() ? exception.Message : "Internal server error",
