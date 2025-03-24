@@ -228,11 +228,8 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-
-                return await executionStrategy.ExecuteAsync(async () =>
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
-                    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
                     try
                     {
                         // Validate staff if exists
@@ -245,7 +242,12 @@ namespace ClaimRequest.BLL.Services.Implements
                         var existingProject = await _unitOfWork.GetRepository<Project>()
                             .SingleOrDefaultAsync(
                             predicate: p => p.Id == assignStaffRequest.projectId
-                            ).ValidateExists(assignStaffRequest.projectId);
+                            );
+
+                        if (existingProject == null) 
+                        {
+                            throw new NotFoundException("Project not found.");
+                        }
 
                         // Check valid inputted role
                         if (!Enum.IsDefined(typeof(ProjectRole), assignStaffRequest.ProjectRole))
@@ -286,14 +288,10 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         await _unitOfWork.GetRepository<ProjectStaff>().InsertAsync(newProjectStaff);
 
-                        await _unitOfWork.CommitAsync();
-                        await transaction.CommitAsync();
-
                         return _mapper.Map<AssignStaffResponse>(newProjectStaff);
                     }
                     catch (Exception)
                     {
-                        await transaction.RollbackAsync();
                         throw;
                     }
                 });
@@ -309,11 +307,8 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-
-                return await executionStrategy.ExecuteAsync(async () =>
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
-                    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
                     try
                     {
                         // Validate staff if exists
@@ -326,7 +321,12 @@ namespace ClaimRequest.BLL.Services.Implements
                         var existingProject = await _unitOfWork.GetRepository<Project>()
                             .SingleOrDefaultAsync(
                             predicate: p => p.Id == removeStaffRequest.projectId
-                            ).ValidateExists(removeStaffRequest.projectId);
+                            );
+
+                        if (existingProject == null)
+                        {
+                            throw new NotFoundException("Project not found.");
+                        }
 
                         // Remover must be project manager
                         var removerInProject = await _unitOfWork.GetRepository<ProjectStaff>()
@@ -339,7 +339,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             throw new BadRequestException("You are not a member of this project or not project manager.");
                         }
 
-                        // Check if staff is assigned to the project
+                        // Check if staff to be removed is assigned to the project
                         var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
                             .SingleOrDefaultAsync(predicate: s => s.StaffId == id
                             && s.ProjectId == removeStaffRequest.projectId);
@@ -357,14 +357,10 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         _unitOfWork.GetRepository<ProjectStaff>().DeleteAsync(projectStaff);
 
-                        await _unitOfWork.CommitAsync();
-                        await transaction.CommitAsync();
-
                         return _mapper.Map<RemoveStaffResponse>(projectStaff);
                     }
                     catch (Exception)
                     {
-                        await transaction.RollbackAsync();
                         throw;
                     }
                 });
