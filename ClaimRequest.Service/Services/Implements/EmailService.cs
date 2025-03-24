@@ -128,7 +128,6 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         } //Staff approves
 
-
         public async Task SendClaimSubmittedEmail(Guid claimerId)
         {
             try
