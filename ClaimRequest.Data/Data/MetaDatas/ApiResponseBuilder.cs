@@ -4,7 +4,7 @@
     {
 
         // This method is used to build a response object for single data
-        public static ApiResponse<T> BuildResponse<T>(int statusCode, string message, T data, string reason = null)
+        public static ApiResponse<T> BuildResponse<T>(int statusCode, string message, T data, string? reason = null)
         {
             return new ApiResponse<T>
             {
