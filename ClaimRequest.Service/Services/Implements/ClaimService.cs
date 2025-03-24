@@ -512,6 +512,10 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw new InvalidOperationException($"Claim with ID {id} is not in pending status.");
                     }
 
+                    var approver = await _unitOfWork.GetRepository<Staff>()
+                        .SingleOrDefaultAsync(predicate: s => s.Id == rejectClaimRequest.ApproverId)
+                        ?? throw new KeyNotFoundException($"Approver with ID {rejectClaimRequest.ApproverId} not found.");
+
                     var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
                         .SingleOrDefaultAsync(predicate: ps => ps.StaffId == rejectClaimRequest.ApproverId
                             && ps.ProjectId == pendingClaim.ProjectId);
@@ -520,10 +524,6 @@ namespace ClaimRequest.BLL.Services.Implements
                     {
                         throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} is not in the right project to reject this claim.");
                     }
-
-                    var approver = await _unitOfWork.GetRepository<Staff>()
-                        .SingleOrDefaultAsync(predicate: s => s.Id == rejectClaimRequest.ApproverId)
-                        ?? throw new KeyNotFoundException($"Approver with ID {id} not found.");
 
                     if (approver.SystemRole != SystemRole.Approver)
                     {
