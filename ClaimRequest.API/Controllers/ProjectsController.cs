@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace ClaimRequest.API.Controllers
 {
     [ApiController]
-    [Authorize(Policy = "CanManageProjects")]
     public class ProjectsController : BaseController<ProjectsController>
     {
         private readonly IProjectService _projectService;
@@ -21,26 +20,27 @@ namespace ClaimRequest.API.Controllers
             _projectService = projectService;
         }
 
+        [Authorize(Policy = "CanViewProjects")]
         [HttpGet(ApiEndPointConstant.Projects.ProjectsEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<PagingResponse<CreateProjectResponse>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetProjectsPaginated(
-    [FromQuery] int page = 1,
-    [FromQuery] int pageSize = 10,
-    [FromQuery] string sortBy = "Name",
-    [FromQuery] bool isDescending = false,
-    [FromQuery] string? name = null,
-    [FromQuery] string? description = null,
-    [FromQuery] string? projectManagerName = null,
-    [FromQuery] ProjectStatus? status = null,
-    [FromQuery] Guid? projectManagerId = null,
-    [FromQuery] ProjectRole? role = null,
-    [FromQuery] decimal? minBudget = null,
-    [FromQuery] decimal? maxBudget = null,
-    [FromQuery] DateOnly? startDateFrom = null,
-    [FromQuery] DateOnly? endDateTo = null,
-    [FromQuery] bool? isActive = true
-)
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string sortBy = "Name",
+        [FromQuery] bool isDescending = false,
+        [FromQuery] string? name = null,
+        [FromQuery] string? description = null,
+        [FromQuery] string? projectManagerName = null,
+        [FromQuery] ProjectStatus? status = null,
+        [FromQuery] Guid? projectManagerId = null,
+        [FromQuery] ProjectRole? role = null,
+        [FromQuery] decimal? minBudget = null,
+        [FromQuery] decimal? maxBudget = null,
+        [FromQuery] DateOnly? startDateFrom = null,
+        [FromQuery] DateOnly? endDateTo = null,
+        [FromQuery] bool? isActive = true
+    )
         {
             var paginatedProjects = await _projectService.GetProjects(
                 page,
@@ -67,6 +67,7 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
+        [Authorize(Policy = "CanViewProjects")]
         [HttpGet(ApiEndPointConstant.Projects.ProjectEndpointById)]
         [ProducesResponseType(typeof(ApiResponse<CreateProjectResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -81,6 +82,7 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
+        [Authorize(Policy = "CanCreateProject")]
         [HttpPost(ApiEndPointConstant.Projects.ProjectsEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<CreateProjectResponse>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -112,6 +114,7 @@ namespace ClaimRequest.API.Controllers
             );
         }
 
+        [Authorize(Policy = "CanUpdateProject")]
         [HttpPut(ApiEndPointConstant.Projects.UpdateProjectEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<CreateProjectResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -126,6 +129,7 @@ namespace ClaimRequest.API.Controllers
             ));
         }
 
+        [Authorize(Policy = "CanDeleteProject")]
         [HttpPut(ApiEndPointConstant.Projects.DeleteProjectEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

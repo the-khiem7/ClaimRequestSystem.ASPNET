@@ -11,10 +11,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
+using MimeKit.Encodings;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System.Drawing;
 using System.Linq.Expressions;
+using System.Net.NetworkInformation;
 using System.Security.Claims;
 using Claim = ClaimRequest.DAL.Data.Entities.Claim;
 
@@ -512,6 +514,10 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw new InvalidOperationException($"Claim with ID {id} is not in pending status.");
                     }
 
+                    var approver = await _unitOfWork.GetRepository<Staff>()
+                        .SingleOrDefaultAsync(predicate: s => s.Id == rejectClaimRequest.ApproverId)
+                        ?? throw new KeyNotFoundException($"Approver with ID {rejectClaimRequest.ApproverId} not found.");
+
                     var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
                         .SingleOrDefaultAsync(predicate: ps => ps.StaffId == rejectClaimRequest.ApproverId
                             && ps.ProjectId == pendingClaim.ProjectId);
@@ -520,10 +526,6 @@ namespace ClaimRequest.BLL.Services.Implements
                     {
                         throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} is not in the right project to reject this claim.");
                     }
-
-                    var approver = await _unitOfWork.GetRepository<Staff>()
-                        .SingleOrDefaultAsync(predicate: s => s.Id == rejectClaimRequest.ApproverId)
-                        ?? throw new KeyNotFoundException($"Approver with ID {id} not found.");
 
                     if (approver.SystemRole != SystemRole.Approver)
                     {
@@ -691,8 +693,8 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var existingClaim = (await _unitOfWork.GetRepository<Claim>()
-                    .SingleOrDefaultAsync(predicate: c => c.Id == id).ValidateExists(id));
+                var existingClaim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(id).ValidateExists(id)
+                            ?? throw new KeyNotFoundException("Claim not found.");
 
 
                 // 🔹 Kiểm tra trạng thái của claim (chỉ được thanh toán khi Approved)
@@ -702,8 +704,8 @@ namespace ClaimRequest.BLL.Services.Implements
                 }
 
                 // 🔹 Kiểm tra Finance Staff có hợp lệ không
-                var finance = await _unitOfWork.GetRepository<Staff>()
-                    .SingleOrDefaultAsync(predicate: s => s.Id == financeId && s.SystemRole == SystemRole.Finance);
+                var finance = await _unitOfWork.GetRepository<Staff>().GetByIdAsync(financeId).ValidateExists(financeId)
+                     ?? throw new KeyNotFoundException("Finance not found.");
 
                 if (finance == null)
                 {
@@ -712,24 +714,27 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 // 🔹 Cập nhật trạng thái của claim thành "Paid"
                 var oldStatus = existingClaim.Status;
+                Console.WriteLine("Old Status: " + oldStatus);
                 existingClaim.Status = ClaimStatus.Paid;
+                existingClaim.FinanceId = financeId;
+                _logger.LogInformation("Updating claim status to 'Paid' for ClaimId: {0}", existingClaim.Id);
                 _unitOfWork.GetRepository<Claim>().UpdateAsync(existingClaim);
-                await _unitOfWork.CommitAsync(); // Lưu thay đổi vào DB
-
-                // 🔹 Ghi log thay đổi trạng thái
+                var oldValue = existingClaim.Status.ToString();
                 var claimLog = new ClaimChangeLog
                 {
                     HistoryId = Guid.NewGuid(),
                     ClaimId = existingClaim.Id,
                     FieldChanged = "Status",
-                    OldValue = oldStatus.ToString(),
+                    OldValue = oldStatus.ToString() ?? "Unknown",
                     NewValue = ClaimStatus.Paid.ToString(),
                     ChangedAt = DateTime.UtcNow,
                     ChangedBy = finance.Name ?? "System"
                 };
+                Console.WriteLine($"Hell this suck & bugging me: HistoryId: {claimLog.HistoryId}, ClaimId: {claimLog.ClaimId}, FieldChanged: {claimLog.FieldChanged}, OldValue: {claimLog.OldValue}, NewValue: {claimLog.NewValue}, ChangedAt: {claimLog.ChangedAt}, ChangedBy: {claimLog.ChangedBy}");
 
                 await _unitOfWork.GetRepository<ClaimChangeLog>().InsertAsync(claimLog);
-                await _unitOfWork.CommitAsync(); // Lưu log vào DB
+
+                await _unitOfWork.CommitAsync(); // Lưu thay đổi vào DB
 
                 return true;
             }
