@@ -377,7 +377,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 ViewMode.ApproverMode => c =>
                     c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) &&
                     (status.HasValue ?
-                        (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Pending) ? c.Status == status.Value : false
+                        (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Pending) && c.Status == status.Value
                         : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Pending) &&
                     (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)) &&
                     (!fromDate.HasValue || (c.UpdateAt == default(DateTime) ? c.CreateAt : c.UpdateAt) >= fromDate.Value) &&
@@ -386,7 +386,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 ViewMode.FinanceMode => c =>
                     c.FinanceId == loggedUserId &&
                     (status.HasValue ?
-                        (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid) ? c.Status == status.Value : false
+                        (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid) && c.Status == status.Value
                         : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid) &&
                     (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)) &&
                     (!fromDate.HasValue || c.UpdateAt >= fromDate.Value) &&
