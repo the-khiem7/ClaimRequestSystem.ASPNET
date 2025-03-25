@@ -18,16 +18,28 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ClaimRequest.DAL.Data.Responses.Email;
 using ClaimRequest.DAL.Data.Requests.Email;
+using MimeKit;
+using static System.Formats.Asn1.AsnWriter;
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Util.Store;
+using Auth0.ManagementApi.Models;
+using Google.Apis.Gmail.v1;
+using Google.Apis.Services;
+using Google.Apis.Gmail.v1.Data;
+using Google;
 
 
 namespace ClaimRequest.BLL.Services.Implements
 {
     public class EmailService : IEmailService
     {
-        public readonly string _smtpServer;
-        public readonly int _port;
-        public readonly string _senderEmail;
-        public readonly string _password;
+        //public readonly string _smtpServer;
+        //public readonly int _port;
+        //public readonly string _senderEmail;
+        //public readonly string _password;
+        private static readonly string[] Scopes = { GmailService.Scope.GmailSend };
+        private readonly string _applicationName;
+        private readonly string _senderEmail;
         public readonly IClaimService _claimService;
         public readonly IProjectService _projectService;
         public readonly IStaffService _staffService;
@@ -36,10 +48,10 @@ namespace ClaimRequest.BLL.Services.Implements
 
         public EmailService(IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService)
         {
-            _smtpServer = configuration["EmailSettings:Host"];
-            _port = int.Parse(configuration["EmailSettings:SmtpPort"]);
-            _senderEmail = configuration["EmailSettings:SenderEmail"];
-            _password = configuration["EmailSettings:SenderPassword"];
+            //_smtpServer = configuration["EmailSettings:Host"];
+            //_port = int.Parse(configuration["EmailSettings:SmtpPort"]);
+            //_senderEmail = configuration["EmailSettings:SenderEmail"];
+            //_password = configuration["EmailSettings:SenderPassword"];
             _claimService = claimService;
             _projectService = projectService;
             _staffService = staffService;
@@ -211,28 +223,75 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                using (var smtpClient = new SmtpClient(_smtpServer, _port))
+                // Validate email format
+                try
                 {
-                    smtpClient.Credentials = new NetworkCredential(_senderEmail, _password);
-                    smtpClient.EnableSsl = true;
+                    var mailAddress = new MailAddress(recipientEmail);
+                }
+                catch (FormatException)
+                {
+                    throw new ArgumentException("Invalid email format", nameof(recipientEmail));
+                }
 
-                    var mailMessage = new MailMessage
+                UserCredential credential;
+                using (var stream = new FileStream("client_secrect.json", FileMode.Open, FileAccess.Read))
+                {
+                    credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
+                        GoogleClientSecrets.FromStream(stream).Secrets,
+                        Scopes,
+                        "user",
+                        CancellationToken.None,
+                        new FileDataStore("token.json", true));
+                }
+
+                // Create Gmail API service.
+                var service = new GmailService(new BaseClientService.Initializer()
+                {
+                    HttpClientInitializer = credential,
+                    ApplicationName = "Claim Request System"
+                });
+
+                // Create the email message
+                var emailMessage = new MimeMessage();
+                emailMessage.From.Add(InternetAddress.Parse("noreply@emailservice.com"));
+                emailMessage.To.Add(InternetAddress.Parse(recipientEmail));
+                emailMessage.Subject = subject;
+
+                // Create the HTML body
+                var bodyBuilder = new BodyBuilder { HtmlBody = body };
+                emailMessage.Body = bodyBuilder.ToMessageBody();
+
+                // Convert to Gmail API format
+                using (var memoryStream = new MemoryStream())
+                {
+                    emailMessage.WriteTo(memoryStream);
+                    var rawMessage = Convert.ToBase64String(memoryStream.ToArray())
+                        .Replace('+', '-')
+                        .Replace('/', '_')
+                        .Replace("=", "");
+
+                    var message = new Message { Raw = rawMessage };
+
+                    try
                     {
-                        From = new MailAddress(_senderEmail, "noreply@emailservice.com"),
-                        Subject = subject,
-                        Body = body,
-                        IsBodyHtml = true,
-                    };
-                    mailMessage.To.Add(recipientEmail);
-
-                    await smtpClient.SendMailAsync(mailMessage);
+                        await service.Users.Messages.Send(message, "me").ExecuteAsync();
+                    }
+                    catch (GoogleApiException ex)
+                    {
+                        _logger.LogError(ex, $"Google API error: {ex.Message}");
+                        _logger.LogError($"Error details: {ex.Error?.Message}");
+                        _logger.LogError($"Error code: {ex.Error?.Code}");
+                        _logger.LogError($"Error errors: {string.Join(", ", ex.Error?.Errors.Select(e => e.Message))}");
+                        throw;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending email to {recipientEmail}", recipientEmail);
+                _logger.LogError(ex, $"Error in SendEmailAsync: {ex.Message}");
                 throw;
             }
+
         }
 
 

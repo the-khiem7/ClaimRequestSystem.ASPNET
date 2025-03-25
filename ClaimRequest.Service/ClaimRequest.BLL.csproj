@@ -11,12 +11,15 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Auth0.ManagementApi" Version="7.35.0" />
 		<PackageReference Include="AutoMapper" Version="13.0.1" />
 		<PackageReference Include="AutoMapper.Collection" Version="10.0.0" />
 		<PackageReference Include="AutoMapper.Extensions.EnumMapping" Version="3.2.0" />
 		<PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
 		<PackageReference Include="CloudinaryDotNet" Version="1.27.4" />
 		<PackageReference Include="EPPlus" Version="7.6.0" />
+		<PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
+		<PackageReference Include="Google.Apis.Gmail.v1" Version="1.68.0.3427" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="2.3.0" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
