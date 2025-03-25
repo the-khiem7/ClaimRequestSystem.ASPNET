@@ -12,11 +12,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System.Linq.Expressions;
-using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Paging;
-using ClaimRequest.DAL.Data.Requests.Staff;
-using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.DAL.Data.Responses.Paging;
 
 namespace ClaimRequest.BLL.Services.Implements
@@ -24,11 +20,14 @@ namespace ClaimRequest.BLL.Services.Implements
     // chuẩn bị cho việc implement các method CRUD cho Staff 
     public class StaffService : BaseService<StaffService>, IStaffService
     {
-
         private readonly IConfiguration _configuration;
-        public StaffService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, ILogger<StaffService> logger, IMapper mapper, IHttpContextAccessor httpContextAccessor, IConfiguration configuration) : base(unitOfWork, logger, mapper, httpContextAccessor)
+        private readonly ICloudinaryService _cloudinaryService;
+        private const string DefaultProfilePicture = "https://static.vecteezy.com/system/resources/previews/009/292/244/non_2x/default-avatar-icon-of-social-media-user-vector.jpg";
+        public StaffService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, ILogger<StaffService> logger, IMapper mapper, IHttpContextAccessor httpContextAccessor, IConfiguration configuration, ICloudinaryService cloudinaryService) : base(unitOfWork, logger, mapper, httpContextAccessor)
         {
             _configuration = configuration;
+            _cloudinaryService = cloudinaryService;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         // B3: Implement method CRUD cho Staff
@@ -94,6 +93,16 @@ namespace ClaimRequest.BLL.Services.Implements
                     var newStaff = _mapper.Map<Staff>(createStaffRequest);
                     newStaff.Id = Guid.NewGuid();
                     newStaff.Password = BCrypt.Net.BCrypt.HashPassword(createStaffRequest.Password);
+                    var user = _httpContextAccessor.HttpContext?.User;
+
+                    if (createStaffRequest.Avatar != null && user != null)
+                    {
+                        newStaff.Avatar = await _cloudinaryService.UploadImageAsync(createStaffRequest.Avatar, user);
+                    }
+                    else
+                    {
+                        newStaff.Avatar = DefaultProfilePicture;
+                    }
 
                     await _unitOfWork.GetRepository<Staff>().InsertAsync(newStaff);
                     await _unitOfWork.CommitAsync();
@@ -163,9 +172,17 @@ namespace ClaimRequest.BLL.Services.Implements
                             orderBy: null,
                             include: null
                         )).ValidateExists(id, "Can't update because this staff");
-
+                    string currentAvatar = existingStaff.Avatar;
                     _mapper.Map(updateStaffRequest, existingStaff);
-
+                    var user = _httpContextAccessor.HttpContext?.User;
+                    if (updateStaffRequest.Avatar != null && user != null)
+                    {
+                        existingStaff.Avatar = await _cloudinaryService.UploadImageAsync(updateStaffRequest.Avatar, user);
+                    }
+                    else
+                    {
+                        existingStaff.Avatar = currentAvatar;
+                    }
                     _unitOfWork.GetRepository<Staff>().UpdateAsync(existingStaff);
                     await _unitOfWork.CommitAsync();
 
@@ -211,11 +228,8 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-
-                return await executionStrategy.ExecuteAsync(async () =>
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
-                    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
                     try
                     {
                         // Validate staff if exists
@@ -228,7 +242,12 @@ namespace ClaimRequest.BLL.Services.Implements
                         var existingProject = await _unitOfWork.GetRepository<Project>()
                             .SingleOrDefaultAsync(
                             predicate: p => p.Id == assignStaffRequest.projectId
-                            ).ValidateExists(assignStaffRequest.projectId);
+                            );
+
+                        if (existingProject == null) 
+                        {
+                            throw new NotFoundException("Project not found.");
+                        }
 
                         // Check valid inputted role
                         if (!Enum.IsDefined(typeof(ProjectRole), assignStaffRequest.ProjectRole))
@@ -269,14 +288,10 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         await _unitOfWork.GetRepository<ProjectStaff>().InsertAsync(newProjectStaff);
 
-                        await _unitOfWork.CommitAsync();
-                        await transaction.CommitAsync();
-
                         return _mapper.Map<AssignStaffResponse>(newProjectStaff);
                     }
                     catch (Exception)
                     {
-                        await transaction.RollbackAsync();
                         throw;
                     }
                 });
@@ -292,11 +307,8 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-
-                return await executionStrategy.ExecuteAsync(async () =>
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
-                    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
                     try
                     {
                         // Validate staff if exists
@@ -309,7 +321,12 @@ namespace ClaimRequest.BLL.Services.Implements
                         var existingProject = await _unitOfWork.GetRepository<Project>()
                             .SingleOrDefaultAsync(
                             predicate: p => p.Id == removeStaffRequest.projectId
-                            ).ValidateExists(removeStaffRequest.projectId);
+                            );
+
+                        if (existingProject == null)
+                        {
+                            throw new NotFoundException("Project not found.");
+                        }
 
                         // Remover must be project manager
                         var removerInProject = await _unitOfWork.GetRepository<ProjectStaff>()
@@ -322,7 +339,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             throw new BadRequestException("You are not a member of this project or not project manager.");
                         }
 
-                        // Check if staff is assigned to the project
+                        // Check if staff to be removed is assigned to the project
                         var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
                             .SingleOrDefaultAsync(predicate: s => s.StaffId == id
                             && s.ProjectId == removeStaffRequest.projectId);
@@ -340,14 +357,10 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         _unitOfWork.GetRepository<ProjectStaff>().DeleteAsync(projectStaff);
 
-                        await _unitOfWork.CommitAsync();
-                        await transaction.CommitAsync();
-
                         return _mapper.Map<RemoveStaffResponse>(projectStaff);
                     }
                     catch (Exception)
                     {
-                        await transaction.RollbackAsync();
                         throw;
                     }
                 });

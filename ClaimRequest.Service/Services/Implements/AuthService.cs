@@ -82,7 +82,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
 
             staff.Password = await PasswordUtil.HashPassword(forgotPasswordRequest.NewPassword);
-
+            staff.LastChangePassword = DateTime.UtcNow;
             staffRepository.UpdateAsync(staff);
             await _unitOfWork.CommitAsync();
 

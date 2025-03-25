@@ -1,24 +1,16 @@
 ﻿using ClaimRequest.BLL.Services.Interfaces;
-using MailKit.Security;
 using ClaimRequest.DAL.Data.Entities;
-using MailKit.Security;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Mail;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Responses.Project;
 using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.DAL.Data.Exceptions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using ClaimRequest.DAL.Data.Responses.Email;
 using ClaimRequest.DAL.Data.Requests.Email;
 using ClaimRequest.BLL.Utils;
+using ClaimRequest.DAL.Repositories.Interfaces;
 
 
 namespace ClaimRequest.BLL.Services.Implements
@@ -34,8 +26,8 @@ namespace ClaimRequest.BLL.Services.Implements
         public readonly IStaffService _staffService;
         public readonly IOtpService _otpService;
         public readonly ILogger _logger;
-
-        public EmailService(IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService, IOtpService otpService)
+        public readonly IUnitOfWork _unitOfWork;
+        public EmailService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService, IOtpService otpService)
         {
             _smtpServer = configuration["EmailSettings:Host"];
             _port = int.Parse(configuration["EmailSettings:SmtpPort"]);
@@ -46,6 +38,7 @@ namespace ClaimRequest.BLL.Services.Implements
             _staffService = staffService;
             _logger = logger;
             _otpService = otpService;
+            _unitOfWork = unitOfWork;
         }
 
         //public async Task SendEmailReminderAsync()
@@ -265,7 +258,12 @@ namespace ClaimRequest.BLL.Services.Implements
             var response = new SendOtpEmailResponse();
             try
             {
-                
+                var existingStaff = await _unitOfWork.GetRepository<Staff>().SingleOrDefaultAsync(predicate:s => s.Email == request.Email);
+                if (existingStaff == null)
+                {
+                    throw new NotFoundException($"Staff with email {request.Email} not found.");
+                }
+
                 var otp = OtpUtil.GenerateOtp(request.Email);
                 await _otpService.CreateOtpEntity(request.Email, otp);
 
@@ -273,20 +271,20 @@ namespace ClaimRequest.BLL.Services.Implements
                 string body = await File.ReadAllTextAsync(templatePath);
 
                 body = body.Replace("{OtpCode}", otp)
-                           .Replace("{ExpiryTime}", "5"); 
+                           .Replace("{ExpiryTime}", "5");
 
                 string recipientEmail = request.Email;
                 string subject = "Your OTP Code";
 
                 await SendEmailAsync(recipientEmail, subject, body);
                 response.Success = true;
-                response.Message = "OTP email sent successfully.";
             }
+            
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send OTP email.");
                 response.Success = false;
-                response.Message = "An error occurred while sending the OTP email.";
+                throw;
             }
 
             return response;

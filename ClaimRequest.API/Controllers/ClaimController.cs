@@ -20,12 +20,14 @@ namespace ClaimRequest.API.Controllers
     {
         #region Create Class Referrence
         private readonly IClaimService _claimService;
+        private readonly IEmailService _emailService;
         #endregion
 
         #region Contructor
-        public ClaimController(ILogger<ClaimController> logger, IClaimService claimService) : base(logger)
+        public ClaimController(ILogger<ClaimController> logger, IClaimService claimService, IEmailService emailService) : base(logger)
         {
             _claimService = claimService;
+            _emailService = emailService;
         }
         #endregion
 
@@ -198,6 +200,7 @@ namespace ClaimRequest.API.Controllers
                 _logger.LogError("Approve claim failed");
                 return Problem("Approve claim failed");
             }
+            await _emailService.SendClaimApprovedEmail(id);
             var successRespose = ApiResponseBuilder.BuildResponse(
                 message: "Claim approved successfully!",
                 data: result,
