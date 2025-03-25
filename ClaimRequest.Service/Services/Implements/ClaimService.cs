@@ -311,6 +311,7 @@ namespace ClaimRequest.BLL.Services.Implements
         }
 
         #region Get Claims
+
         public async Task<PagingResponse<ViewClaimResponse>> GetClaims(
             int pageNumber = 1,
             int pageSize = 20,
@@ -326,7 +327,7 @@ namespace ClaimRequest.BLL.Services.Implements
             {
                 var loggedUserId = Guid.Parse(_httpContextAccessor.HttpContext?.User?.FindFirst("StaffId")?.Value);
                 var loggedUserRole = Enum.Parse<SystemRole>(_httpContextAccessor.HttpContext?.User?
-                .FindFirst("http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value);
+                    .FindFirst("http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value);
                 var selectedView = Enum.Parse<ViewMode>(viewMode);
                 ValidateUserAccess(selectedView, loggedUserRole);
 
@@ -349,6 +350,7 @@ namespace ClaimRequest.BLL.Services.Implements
         }
 
         #region GetClaims Helper
+
         private Expression<Func<Claim, bool>> Predicate(
             ViewMode viewMode,
             Guid loggedUserId,
@@ -363,32 +365,38 @@ namespace ClaimRequest.BLL.Services.Implements
             {
                 ViewMode.AdminMode => c =>
                     (!status.HasValue || c.Status == status.Value) &&
-                    (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)) &&
+                    (search == null || c.Claimer.Name.ToLower().Contains(search) ||
+                     c.Project.Name.ToLower().Contains(search)) &&
                     (!fromDate.HasValue || c.UpdateAt >= fromDate.Value) &&
                     (!toDate.HasValue || c.UpdateAt <= toDate.Value),
 
                 ViewMode.ClaimerMode => c =>
                     c.ClaimerId == loggedUserId &&
                     (!status.HasValue || c.Status == status.Value) &&
-                    (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)) &&
+                    (search == null || c.Claimer.Name.ToLower().Contains(search) ||
+                     c.Project.Name.ToLower().Contains(search)) &&
                     (!fromDate.HasValue || c.UpdateAt >= fromDate.Value) &&
                     (!toDate.HasValue || c.UpdateAt <= toDate.Value),
 
                 ViewMode.ApproverMode => c =>
                     c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) &&
-                    (status.HasValue ?
-                        (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Pending) && c.Status == status.Value
+                    (status.HasValue
+                        ? (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Pending) &&
+                          c.Status == status.Value
                         : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Pending) &&
-                    (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)) &&
-                    (!fromDate.HasValue || (c.UpdateAt == default(DateTime) ? c.CreateAt : c.UpdateAt) >= fromDate.Value) &&
-                    (!toDate.HasValue || (c.UpdateAt == default(DateTime) ? c.CreateAt : c.UpdateAt) <= toDate.Value),
+                    (search == null || c.Claimer.Name.ToLower().Contains(search) ||
+                     c.Project.Name.ToLower().Contains(search)) &&
+                    (!fromDate.HasValue || (c.UpdateAt == default ? c.CreateAt : c.UpdateAt) >= fromDate.Value) &&
+                    (!toDate.HasValue || (c.UpdateAt == default ? c.CreateAt : c.UpdateAt) <= toDate.Value),
 
                 ViewMode.FinanceMode => c =>
                     c.FinanceId == loggedUserId &&
-                    (status.HasValue ?
-                        (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid) && c.Status == status.Value
+                    (status.HasValue
+                        ? (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid) &&
+                          c.Status == status.Value
                         : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid) &&
-                    (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)) &&
+                    (search == null || c.Claimer.Name.ToLower().Contains(search) ||
+                     c.Project.Name.ToLower().Contains(search)) &&
                     (!fromDate.HasValue || c.UpdateAt >= fromDate.Value) &&
                     (!toDate.HasValue || c.UpdateAt <= toDate.Value),
 
@@ -402,12 +410,12 @@ namespace ClaimRequest.BLL.Services.Implements
             return query => viewMode switch
             {
                 ViewMode.AdminMode or ViewMode.ApproverMode => query.AsNoTracking()
-                                                                    .Include(c => c.Project)
-                                                                    .Include(c => c.Claimer)
-                                                                    .Include(c => c.ClaimApprovers),
+                    .Include(c => c.Project)
+                    .Include(c => c.Claimer)
+                    .Include(c => c.ClaimApprovers),
                 _ => query.AsNoTracking()
-                          .Include(c => c.Project)
-                          .Include(c => c.Claimer)
+                    .Include(c => c.Project)
+                    .Include(c => c.Claimer)
             };
         }
 
@@ -443,11 +451,11 @@ namespace ClaimRequest.BLL.Services.Implements
             };
 
             if (requiredRoles.TryGetValue(selectedView, out var requiredRole) && role != requiredRole)
-            {
                 throw new UnauthorizedAccessException($"Only {requiredRole} users can access {selectedView}.");
-            }
         }
-        #endregion GetClaims Helper 
+
+        #endregion GetClaims Helper
+
         #endregion Get Claims
 
         public async Task<ViewClaimResponse> GetClaimById(Guid id)
