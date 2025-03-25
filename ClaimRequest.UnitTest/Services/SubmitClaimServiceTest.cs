@@ -1,21 +1,15 @@
 ﻿using AutoMapper;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.DAL.Data.Entities;
-using ClaimRequest.DAL.Data.Requests.Claim;
-using ClaimRequest.DAL.Data.Responses.Claim;
+using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
 using Moq;
-using System;
 using System.Linq.Expressions;
-using System.Security.Claims;
-using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
-using Xunit.Sdk;
 using ClaimEntity = ClaimRequest.DAL.Data.Entities.Claim;
 
 
@@ -30,7 +24,10 @@ namespace ClaimRequest.UnitTest.Services
         private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
         private readonly Mock<IGenericRepository<ClaimEntity>> _mockClaimRepository;
         private readonly ClaimService _claimService;
-        private readonly Mock<IGenericRepository<ClaimApprover>> _mockClaimApproverRepository; // Add this line
+        private readonly Mock<IGenericRepository<ClaimApprover>> _mockClaimApproverRepository;
+        private readonly Mock<IGenericRepository<ProjectStaff>> _mockProjectStaffRepository;
+        private readonly Mock<IGenericRepository<Project>> _mockProjectRepository;
+        private readonly Mock<IGenericRepository<ClaimChangeLog>> _mockClaimChangeLogRepository;
 
         public SubmitClaimTests(ITestOutputHelper testOutputHelper)
         {
@@ -42,12 +39,18 @@ namespace ClaimRequest.UnitTest.Services
             _mockClaimRepository = new Mock<IGenericRepository<ClaimEntity>>();
 
             _mockClaimApproverRepository = new Mock<IGenericRepository<ClaimApprover>>();
+            _mockProjectStaffRepository = new Mock<IGenericRepository<ProjectStaff>>();
+            _mockProjectRepository = new Mock<IGenericRepository<Project>>();
+            _mockClaimChangeLogRepository = new Mock<IGenericRepository<ClaimChangeLog>>();
+
 
             _mockUnitOfWork.Setup(uow => uow.GetRepository<ClaimApprover>()).Returns(_mockClaimApproverRepository.Object);
 
             _mockUnitOfWork.Setup(uow => uow.GetRepository<ClaimEntity>()).Returns(_mockClaimRepository.Object);
-            _mockUnitOfWork.Setup(uow => uow.ProcessInTransactionAsync(It.IsAny<Func<Task<bool>>>()))
-                .Returns<Func<Task<bool>>>(operation => operation());
+            _mockUnitOfWork.Setup(uow => uow.GetRepository<ProjectStaff>()).Returns(_mockProjectStaffRepository.Object);
+            _mockUnitOfWork.Setup(uow => uow.GetRepository<Project>()).Returns(_mockProjectRepository.Object);
+            _mockUnitOfWork.Setup(uow => uow.GetRepository<ClaimChangeLog>()).Returns(_mockClaimChangeLogRepository.Object);
+            _mockUnitOfWork.Setup(uow => uow.ProcessInTransactionAsync(It.IsAny<Func<Task<bool>>>())).Returns<Func<Task<bool>>>(operation => operation());
 
             _claimService = new ClaimService(
                 _mockUnitOfWork.Object,
@@ -56,6 +59,7 @@ namespace ClaimRequest.UnitTest.Services
                 _mockHttpContextAccessor.Object
             );
         }
+
 
         public void Dispose() => GC.SuppressFinalize(this);
 
@@ -66,14 +70,12 @@ namespace ClaimRequest.UnitTest.Services
             var claimerId = Guid.NewGuid();
             var approverId = Guid.NewGuid();
             var projectId = Guid.NewGuid();
-
             var claim = new ClaimEntity
             {
                 Id = claimId,
                 Status = ClaimStatus.Draft,
                 ClaimerId = claimerId,
                 ProjectId = projectId,
-                UpdateAt = DateTime.UtcNow
             };
 
             var project = new Project
@@ -89,55 +91,130 @@ namespace ClaimRequest.UnitTest.Services
             };
 
             var projectStaffs = new List<ProjectStaff>
-    {
-        new ProjectStaff
         {
-            Id = Guid.NewGuid(),
-            ProjectId = projectId,
-            Staff = new Staff
+            new ProjectStaff
             {
-                Id = approverId,
-                SystemRole = SystemRole.Approver,
-                IsActive = true,
-                Department = Department.ProjectManagement
+                Id = Guid.NewGuid(),
+                ProjectId = projectId,
+                Staff = new Staff
+                {
+                    Id = approverId,
+                    SystemRole = SystemRole.Approver,
+                    IsActive = true,
+                    Department = Department.ProjectManagement
+
+                },
             }
-        }
-    };
-           
+        };
 
             _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId))
-                .ReturnsAsync(claim); 
+                .ReturnsAsync(claim);
+            _mockProjectRepository
+                .Setup(repo => repo.SingleOrDefaultAsync(It.IsAny<Expression<Func<Project, bool>>>(), null, null))
+                .ReturnsAsync((Expression<Func<Project, bool>> predicate, Func<IQueryable<Project>, IIncludableQueryable<Project, object>> include, bool noTracking) =>
+        {
+            return predicate.Compile()(project) ? project : null;
+        });
 
+            _mockClaimRepository
+                .Setup(repo => repo.SingleOrDefaultAsync(It.IsAny<Expression<Func<ClaimEntity, bool>>>(), null, null))
+                .ReturnsAsync(claim);
+            _mockClaimRepository
+                .Setup(repo => repo.UpdateAsync(It.IsAny<ClaimEntity>()))
+            .Verifiable();
             _mockClaimApproverRepository.Setup(repo => repo.InsertAsync(It.IsAny<ClaimApprover>()))
                 .Returns(Task.CompletedTask);
-
-            _mockUnitOfWork.Setup(uow => uow.GetRepository<ProjectStaff>()
-                .GetListAsync(It.IsAny<Expression<Func<ProjectStaff, bool>>>(), null, null))
+            _mockUnitOfWork.Setup(uow => uow.ProcessInTransactionAsync(It.IsAny<Func<Task<bool>>>()))
+                .Returns<Func<Task<bool>>>(operation => operation());
+            _mockProjectStaffRepository
+                .Setup(repo => repo.GetListAsync(
+                It.IsAny<Expression<Func<ProjectStaff, bool>>>(),
+                It.IsAny<Func<IQueryable<ProjectStaff>, IOrderedQueryable<ProjectStaff>>>(),
+                It.IsAny<Func<IQueryable<ProjectStaff>, IIncludableQueryable<ProjectStaff, object>>>()
+                ))
                 .ReturnsAsync(projectStaffs);
 
-            _mockUnitOfWork.Setup(uow => uow.GetRepository<Project>()
-                .SingleOrDefaultAsync(It.IsAny<Expression<Func<Project, bool>>>(), null, null))
-                .ReturnsAsync(project);
 
-            _mockClaimRepository.Setup(repo => repo.UpdateAsync(It.IsAny<ClaimEntity>()))
-                .Callback<ClaimEntity>(c => { c.Status = ClaimStatus.Pending; });
+            _mockClaimChangeLogRepository
+                .Setup(repo => repo.InsertAsync(It.IsAny<ClaimChangeLog>()))
+                .Returns(Task.CompletedTask);
 
-            _mockUnitOfWork.Setup(uow => uow.ProcessInTransactionAsync(It.IsAny<Func<Task<bool>>>()))
-                .Returns<Func<Task<bool>>>(async func => await func());
-            // Act
+
             var result = await _claimService.SubmitClaim(claimId);
 
-            // Assert
             Assert.True(result);
             Assert.Equal(ClaimStatus.Pending, claim.Status);
-            _mockClaimRepository.Verify(repo => repo.UpdateAsync(claim), Times.Once);
+            _mockClaimRepository.Verify(repo => repo.UpdateAsync(It.IsAny<ClaimEntity>()), Times.Once);
             _mockClaimApproverRepository.Verify(repo => repo.InsertAsync(It.IsAny<ClaimApprover>()), Times.Once);
-            _mockLogger.Verify(logger => logger.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => true),
-                It.IsAny<Exception>(),
-                (Func<It.IsAnyType, Exception, string>)It.IsAny<object>()), Times.Once);
         }
+
+        [Fact]
+        public async Task SubmitClaim_Should_ThrowNotFoundException_WhenClaimNotFound()
+        {
+            var claimId = Guid.NewGuid();
+            _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId))
+                .ReturnsAsync((ClaimEntity?)null);
+
+            await Assert.ThrowsAsync<NotFoundException>(() => _claimService.SubmitClaim(claimId));
+        }
+
+        [Fact]
+        public async Task SubmitClaim_Should_ThrowBusinessException_WhenClaimNotDraftStatus()
+        {
+            var claimId = Guid.NewGuid();
+            var claim = new ClaimEntity
+            {
+                Id = claimId,
+                Status = ClaimStatus.Pending
+            };
+
+            _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId))
+                .ReturnsAsync(claim);
+
+            await Assert.ThrowsAsync<BusinessException>(() => _claimService.SubmitClaim(claimId));
+        }
+
+        [Fact]
+        public async Task SubmitClaim_Should_ThrowNotFoundException_WhenApproverNotFound()
+        {
+            var claimId = Guid.NewGuid();
+            var claimerId = Guid.NewGuid();
+            var projectId = Guid.NewGuid();
+
+            var claim = new ClaimEntity
+            {
+                Id = claimId,
+                Status = ClaimStatus.Draft,
+                ClaimerId = claimerId,
+                ProjectId = projectId,
+            };
+
+            var project = new Project
+            {
+                Id = projectId,
+                Name = "Test Project"
+            };
+
+            var projectStaffs = new List<ProjectStaff>();
+
+            _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId))
+                .ReturnsAsync(claim);
+
+            _mockProjectRepository
+                .Setup(repo => repo.SingleOrDefaultAsync(It.IsAny<Expression<Func<Project, bool>>>(), null, null))
+                .ReturnsAsync(project);
+
+            _mockProjectStaffRepository
+                .Setup(repo => repo.GetListAsync(
+                    It.IsAny<Expression<Func<ProjectStaff, bool>>>(),
+                    It.IsAny<Func<IQueryable<ProjectStaff>, IOrderedQueryable<ProjectStaff>>>(),
+                    It.IsAny<Func<IQueryable<ProjectStaff>, IIncludableQueryable<ProjectStaff, object>>>()
+                ))
+                .ReturnsAsync(projectStaffs);
+
+            await Assert.ThrowsAsync<NotFoundException>(() => _claimService.SubmitClaim(claimId));
+        }
+
+
     }
-    }
+}

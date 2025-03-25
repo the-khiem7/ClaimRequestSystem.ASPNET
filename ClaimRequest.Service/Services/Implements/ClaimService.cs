@@ -771,7 +771,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 .ToList();
 
             var existingApprovers = (await _unitOfWork.GetRepository<ClaimApprover>()
-                .GetListAsync(predicate: ca => ca.ClaimId == claimId))
+                .GetListAsync(predicate: ca => ca.ClaimId == claimId) ?? new List<ClaimApprover>())
                 .Select(ca => ca.ApproverId)
                 .ToHashSet();
 
