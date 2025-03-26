@@ -646,7 +646,14 @@ namespace ClaimRequest.BLL.Services.Implements
             {
                 return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
+                    var loggedUserId = Guid.Parse(_httpContextAccessor.HttpContext?.User?.FindFirst("StaffId")?.Value.ToString());
+
                     var claim = (await _unitOfWork.GetRepository<Claim>().GetByIdAsync(id)).ValidateExists(id);
+
+                    if (claim.ClaimerId != loggedUserId)
+                    {
+                        throw new UnauthorizedAccessException("You are not authorized to submit this claim.");
+                    }
 
                     if (claim.Status != ClaimStatus.Draft)
                     {
@@ -668,7 +675,8 @@ namespace ClaimRequest.BLL.Services.Implements
                         await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(approver);
 
 
-                        _logger.LogInformation("Submitted claim {ClaimId} by {ClaimerId} on {Time}. Approver: {ApproverId}",
+                        _logger.LogInformation(
+                            "Submitted claim {ClaimId} by {ClaimerId} on {Time}. Approver: {ApproverId}",
                             id, claim.ClaimerId, claim.UpdateAt, approver.ApproverId);
 
                         await LogChangeAsync(id, "Claim Status", "Draft", "Pending", "Claimer");
@@ -687,6 +695,58 @@ namespace ClaimRequest.BLL.Services.Implements
                 _logger.LogError(ex, "Error submitting claim: {Message}", ex.Message);
                 throw;
             }
+        }
+
+        private async Task<ClaimApprover> AssignApproverForClaim(Guid claimId)
+        {
+            var claim = (await _unitOfWork.GetRepository<Claim>()
+                .SingleOrDefaultAsync(predicate: c => c.Id == claimId)).ValidateExists(claimId);
+
+            var project = (await _unitOfWork.GetRepository<Project>()
+                .SingleOrDefaultAsync(predicate: p => p.Id == claim.ProjectId)).ValidateExists(claim.ProjectId);
+
+            var projectStaffs = await _unitOfWork.GetRepository<ProjectStaff>()
+                .GetListAsync(
+                    predicate: ps => ps.ProjectId == project.Id && ps.Staff.IsActive,
+                    include: q => q.Include(ps => ps.Staff)
+                );
+
+            if (!projectStaffs.Any())
+            {
+                throw new NotFoundException($"No active staff members found for project with ID {project.Id}");
+            }
+
+            var potentialApprovers = projectStaffs
+                .Select(ps => ps.Staff)
+                .Where(staff => staff.SystemRole == SystemRole.Approver && staff.Id != claim.ClaimerId)
+                .ToList();
+
+            var existingApprovers = (await _unitOfWork.GetRepository<ClaimApprover>()
+                    .GetListAsync(predicate: ca => ca.ClaimId == claimId) ?? new List<ClaimApprover>())
+                .Select(ca => ca.ApproverId)
+                .ToHashSet();
+
+            var approver = potentialApprovers
+                .Where(s => s.Department == Department.ProjectManagement && !existingApprovers.Contains(s.Id))
+                .FirstOrDefault();
+
+            if (approver == null)
+            {
+                approver = potentialApprovers
+                    .Where(s => s.Department == Department.BusinessOperations && !existingApprovers.Contains(s.Id))
+                    .FirstOrDefault();
+            }
+
+            if (approver == null)
+            {
+                throw new NotFoundException($"No eligible approver found for claim {claimId}");
+            }
+
+            return new ClaimApprover
+            {
+                ClaimId = claim.Id,
+                ApproverId = approver.Id
+            };
         }
 
         public async Task<bool> PaidClaim(Guid id, Guid financeId)
@@ -750,59 +810,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-
-        private async Task<ClaimApprover> AssignApproverForClaim(Guid claimId)
-        {
-            var claim = (await _unitOfWork.GetRepository<Claim>()
-                .SingleOrDefaultAsync(predicate: c => c.Id == claimId)).ValidateExists(claimId);
-
-            var project = (await _unitOfWork.GetRepository<Project>()
-                .SingleOrDefaultAsync(predicate: p => p.Id == claim.ProjectId)).ValidateExists(claim.ProjectId);
-
-            var projectStaffs = await _unitOfWork.GetRepository<ProjectStaff>()
-                .GetListAsync(
-                    predicate: ps => ps.ProjectId == project.Id && ps.Staff.IsActive,
-                    include: q => q.Include(ps => ps.Staff)
-                );
-
-            if (!projectStaffs.Any())
-            {
-                throw new NotFoundException($"No active staff members found for project with ID {project.Id}");
-            }
-
-            var potentialApprovers = projectStaffs
-                .Select(ps => ps.Staff)
-                .Where(staff => staff.SystemRole == SystemRole.Approver && staff.Id != claim.ClaimerId)
-                .ToList();
-
-            var existingApprovers = (await _unitOfWork.GetRepository<ClaimApprover>()
-                .GetListAsync(predicate: ca => ca.ClaimId == claimId) ?? new List<ClaimApprover>())
-                .Select(ca => ca.ApproverId)
-                .ToHashSet();
-
-            var approver = potentialApprovers
-                .Where(s => s.Department == Department.ProjectManagement && !existingApprovers.Contains(s.Id))
-                .FirstOrDefault();
-
-            if (approver == null)
-            {
-                approver = potentialApprovers
-                    .Where(s => s.Department == Department.BusinessOperations && !existingApprovers.Contains(s.Id))
-                    .FirstOrDefault();
-            }
-
-            if (approver == null)
-            {
-                throw new NotFoundException($"No eligible approver found for claim {claimId}");
-            }
-
-            return new ClaimApprover
-            {
-                ClaimId = claim.Id,
-                ApproverId = approver.Id
-            };
-        }
-
 
         public async Task<List<ViewClaimResponse>> GetPendingClaimsAsync()
         {
