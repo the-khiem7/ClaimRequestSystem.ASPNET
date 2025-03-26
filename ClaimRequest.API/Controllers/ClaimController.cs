@@ -96,7 +96,7 @@ namespace ClaimRequest.API.Controllers
                 if (updatedClaim == null)
                 {
                     var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
-                        null,
+                        new object(), // Provide a non-null object
                         StatusCodes.Status404NotFound,
                         "Claim not found",
                         "The claim ID provided does not exist or could not be updated"
@@ -111,12 +111,33 @@ namespace ClaimRequest.API.Controllers
                 );
                 return Ok(successResponse);
             }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogError(ex, "Claim with ID {ClaimId} not found", id);
+                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                    new object(), // Provide a non-null object
+                    StatusCodes.Status404NotFound,
+                    "Claim not found",
+                    ex.Message
+                );
+                return NotFound(errorResponse);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Invalid operation for claim with ID {ClaimId}", id);
+                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                    new object(), // Provide a non-null object
+                    StatusCodes.Status400BadRequest,
+                    "Invalid operation",
+                    ex.Message
+                );
+                return BadRequest(errorResponse);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating claim with ID {ClaimId}", id);
-
                 var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
-                    null,
+                    new object(), // Provide a non-null object
                     StatusCodes.Status500InternalServerError,
                     "An error occurred while updating the claim",
                     "Internal server error"
@@ -124,7 +145,6 @@ namespace ClaimRequest.API.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
             }
         }
-
 
 
         [Authorize(Policy = "CanRejectClaim")]
