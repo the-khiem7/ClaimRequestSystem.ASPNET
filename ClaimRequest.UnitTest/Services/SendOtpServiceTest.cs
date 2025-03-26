@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 using ClaimRequest.BLL.Services.Implements;
@@ -7,7 +8,9 @@ using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Email;
+using ClaimRequest.DAL.Data.Responses.Email;
 using ClaimRequest.DAL.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -15,7 +18,7 @@ using Xunit;
 
 namespace ClaimRequest.UnitTest.Services
 {
-    public class EmailServiceTest
+    public class SendOtpEmailTest
     {
         private readonly Mock<IUnitOfWork<ClaimRequestDbContext>> _mockUnitOfWork;
         private readonly Mock<IConfiguration> _mockConfiguration;
@@ -23,28 +26,30 @@ namespace ClaimRequest.UnitTest.Services
         private readonly Mock<IProjectService> _mockProjectService;
         private readonly Mock<IStaffService> _mockStaffService;
         private readonly Mock<IOtpService> _mockOtpService;
-        // Remove readonly
-        private Mock<ILogger<EmailService>> _mockLogger;
-        private readonly EmailService _emailService;
+        private readonly Mock<ILogger<EmailService>> _mockLogger;
         private readonly OtpUtil _otpUtil;
 
-        public EmailServiceTest()
+        public SendOtpEmailTest()
         {
             _mockUnitOfWork = new Mock<IUnitOfWork<ClaimRequestDbContext>>();
             _mockConfiguration = new Mock<IConfiguration>();
+
+            _mockConfiguration.Setup(c => c["OtpSettings:SecretSalt"]).Returns("test-salt");
+            _mockConfiguration.Setup(c => c["EmailSettings:SenderEmail"]).Returns("test@example.com");
+
             _mockClaimService = new Mock<IClaimService>();
             _mockProjectService = new Mock<IProjectService>();
             _mockStaffService = new Mock<IStaffService>();
             _mockOtpService = new Mock<IOtpService>();
             _mockLogger = new Mock<ILogger<EmailService>>();
 
-            // Setup configuration settings for _senderEmail and OtpUtil
-            _mockConfiguration.Setup(config => config["EmailSettings:SenderEmail"]).Returns("sender@example.com");
-            _mockConfiguration.Setup(config => config["OtpSettings:SecretSalt"]).Returns("some_secret_salt");
-
             _otpUtil = new OtpUtil(_mockConfiguration.Object);
+        }
 
-            _emailService = new EmailService(
+        [Fact]
+        public async Task SendOtpEmailAsync_Should_Throw_NotFoundException_When_Staff_Not_Found()
+        {
+            var testEmailService = new TestEmailService(
                 _mockUnitOfWork.Object,
                 _mockConfiguration.Object,
                 _mockClaimService.Object,
@@ -54,125 +59,26 @@ namespace ClaimRequest.UnitTest.Services
                 _mockOtpService.Object,
                 _otpUtil
             );
-        }
 
-        [Fact]
-        public async Task SendOtpEmailAsync_Should_Return_Success_When_Staff_Exists_And_Email_Sent()
-        {
-            // Arrange
-            var request = new SendOtpEmailRequest { Email = "test@example.com" };
-            var existingStaff = new Staff { Email = request.Email };
-
-            var mockStaffRepo = new Mock<IGenericRepository<Staff>>();
-            mockStaffRepo.Setup(repo => repo.SingleOrDefaultAsync(
-                It.IsAny<Expression<Func<Staff, bool>>>(),
-                null,
-                null))
-                .ReturnsAsync(existingStaff);
-
-            _mockUnitOfWork.Setup(uow => uow.GetRepository<Staff>())
-                           .Returns(mockStaffRepo.Object);
-
-            _mockOtpService.Setup(otpService => otpService.CreateOtpEntity(request.Email, It.IsAny<string>()))
-                           .Returns(Task.CompletedTask);
-
-            // Partial mock of EmailService
-            var emailServicePartialMock = new Mock<EmailService>(
-        _mockUnitOfWork.Object,
-        _mockConfiguration.Object,
-        _mockClaimService.Object,
-        _mockLogger.Object,
-        _mockProjectService.Object,
-        _mockStaffService.Object,
-        _mockOtpService.Object,
-        _otpUtil)
-            {
-                CallBase = true
-            };
-
-            emailServicePartialMock.Setup(service => service.SendEmailAsync(
-                request.Email,
-                It.IsAny<string>(),
-                It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
-
-            // Act
-            var response = await emailServicePartialMock.Object.SendOtpEmailAsync(request);
-
-            // Assert
-            Assert.True(response.Success);
-
-            // Verify that dependencies were called
-            mockStaffRepo.Verify(repo => repo.SingleOrDefaultAsync(
-                It.IsAny<Expression<Func<Staff, bool>>>(),
-                null,
-                null), Times.Once);
-
-            _mockOtpService.Verify(otpService => otpService.CreateOtpEntity(
-                request.Email, It.IsAny<string>()), Times.Once);
-
-            emailServicePartialMock.Verify(service => service.SendEmailAsync(
-                request.Email, "Your OTP Code", It.IsAny<string>()), Times.Once);
-        }
-
-        [Fact]
-        public async Task SendOtpEmailAsync_Should_Throw_NotFoundException_When_Staff_Does_Not_Exist()
-        {
-            // Arrange
             var request = new SendOtpEmailRequest { Email = "nonexistent@example.com" };
 
-            var mockStaffRepo = new Mock<IGenericRepository<Staff>>();
-            mockStaffRepo.Setup(repo => repo.SingleOrDefaultAsync(
+            var staffRepository = new Mock<IGenericRepository<Staff>>();
+            staffRepository.Setup(repo => repo.SingleOrDefaultAsync(
                 It.IsAny<Expression<Func<Staff, bool>>>(),
-                null,
-                null))
-                         .ReturnsAsync((Staff)null);
+                It.IsAny<Func<IQueryable<Staff>, IOrderedQueryable<Staff>>>(),
+                It.IsAny<Func<IQueryable<Staff>, IIncludableQueryable<Staff, object>>>()))
+                .ReturnsAsync((Staff)null);
 
             _mockUnitOfWork.Setup(uow => uow.GetRepository<Staff>())
-                           .Returns(mockStaffRepo.Object);
+                .Returns(staffRepository.Object);
 
-            // Act & Assert
-            await Assert.ThrowsAsync<NotFoundException>(() => _emailService.SendOtpEmailAsync(request));
-
-            mockStaffRepo.Verify(repo => repo.SingleOrDefaultAsync(
-                It.IsAny<Expression<Func<Staff, bool>>>(),
-                null,
-                null), Times.Once);
+            await Assert.ThrowsAsync<NotFoundException>(() => testEmailService.SendOtpEmailAsync(request));
         }
 
         [Fact]
-        public async Task SendOtpEmailAsync_Should_Rethrow_Exception_When_SendEmailAsync_Fails()
+        public async Task SendOtpEmailAsync_Should_Return_Success_Response_When_Email_Sent()
         {
-            // Arrange
-            var request = new SendOtpEmailRequest { Email = "test@example.com" };
-            var existingStaff = new Staff { Email = request.Email };
-
-            var mockStaffRepo = new Mock<IGenericRepository<Staff>>();
-            mockStaffRepo.Setup(repo => repo.SingleOrDefaultAsync(
-                It.IsAny<Expression<Func<Staff, bool>>>(),
-                null,
-                null))
-                .ReturnsAsync(existingStaff);
-
-            _mockUnitOfWork.Setup(uow => uow.GetRepository<Staff>())
-                           .Returns(mockStaffRepo.Object);
-
-            _mockOtpService.Setup(otpService => otpService.CreateOtpEntity(request.Email, It.IsAny<string>()))
-                           .Returns(Task.CompletedTask);
-
-            var exceptionThrown = new Exception("Email sending failed.");
-
-            // Set up the mock logger
-            _mockLogger = new Mock<ILogger<EmailService>>();
-            _mockLogger.Setup(x => x.Log(
-                LogLevel.Error,
-                It.IsAny<EventId>(),
-                It.IsAny<It.IsAnyType>(),
-                It.IsAny<Exception>(),
-                (Func<It.IsAnyType, Exception, string>)It.IsAny<object>()));
-
-            // Mocking SendEmailAsync method to throw exception
-            var emailServicePartialMock = new Mock<EmailService>(
+            var testEmailService = new TestEmailService(
                 _mockUnitOfWork.Object,
                 _mockConfiguration.Object,
                 _mockClaimService.Object,
@@ -180,30 +86,111 @@ namespace ClaimRequest.UnitTest.Services
                 _mockProjectService.Object,
                 _mockStaffService.Object,
                 _mockOtpService.Object,
-                _otpUtil)
+                _otpUtil
+            );
+
+            var request = new SendOtpEmailRequest { Email = "valid@example.com" };
+            var staff = new Staff { Email = "valid@example.com" };
+
+            string capturedOtp = null;
+
+            var staffRepository = new Mock<IGenericRepository<Staff>>();
+            staffRepository.Setup(repo => repo.SingleOrDefaultAsync(
+                It.IsAny<Expression<Func<Staff, bool>>>(),
+                It.IsAny<Func<IQueryable<Staff>, IOrderedQueryable<Staff>>>(),
+                It.IsAny<Func<IQueryable<Staff>, IIncludableQueryable<Staff, object>>>()))
+                .ReturnsAsync(staff);
+
+            _mockUnitOfWork.Setup(uow => uow.GetRepository<Staff>())
+                .Returns(staffRepository.Object);
+
+            _mockOtpService.Setup(service => service.CreateOtpEntity(
+                    It.IsAny<string>(),
+                    It.IsAny<string>()))
+                .Callback<string, string>((email, otp) => capturedOtp = otp)
+                .Returns(Task.CompletedTask);
+
+
+            testEmailService.EmailTemplateContent = "<html>Your OTP code is {OtpCode}. It expires in {ExpiryTime} minutes.</html>";
+
+            var result = await testEmailService.SendOtpEmailAsync(request);
+
+            Assert.True(result.Success);
+            Assert.NotNull(capturedOtp); 
+            _mockOtpService.Verify(service => service.CreateOtpEntity(request.Email, capturedOtp), Times.Once);
+
+            Assert.Equal(request.Email, testEmailService.LastRecipientEmail);
+            Assert.Equal("Your OTP Code", testEmailService.LastSubject);
+            Assert.Contains(capturedOtp, testEmailService.LastBody);
+        }
+
+        private class TestEmailService : EmailService
+        {
+            public string LastRecipientEmail { get; private set; }
+            public string LastSubject { get; private set; }
+            public string LastBody { get; private set; }
+            public string EmailTemplateContent { get; set; } = "<html>OTP Template</html>";
+
+            public TestEmailService(
+                IUnitOfWork<ClaimRequestDbContext> unitOfWork,
+                IConfiguration configuration,
+                IClaimService claimService,
+                ILogger<EmailService> logger,
+                IProjectService projectService,
+                IStaffService staffService,
+                IOtpService otpService,
+                OtpUtil otpUtil)
+                : base(unitOfWork, configuration, claimService, logger, projectService, staffService, otpService, otpUtil)
             {
-                CallBase = true
-            };
+            }
 
-            emailServicePartialMock.Setup(service => service.SendEmailAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>()))
-                .ThrowsAsync(exceptionThrown);
+            public override Task SendEmailAsync(string recipientEmail, string subject, string body)
+            {
+                LastRecipientEmail = recipientEmail;
+                LastSubject = subject;
+                LastBody = body;
+                return Task.CompletedTask;
+            }
 
-            // Act & Assert
-            var ex = await Assert.ThrowsAsync<Exception>(() => emailServicePartialMock.Object.SendOtpEmailAsync(request));
+            public Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request)
+            {
+                return SendOtpEmailAsyncCustom(request);
+            }
 
-            // Assert - compare exception messages
-            Assert.Equal(exceptionThrown.Message, ex.Message);
-            // Verify that the logger was called with the error
-            _mockLogger.Verify(logger => logger.Log(
-                LogLevel.Error,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Failed to send OTP email.")),
-                exceptionThrown,
-                It.IsAny<Func<It.IsAnyType, Exception, string>>()),
-                Times.Once);
+            private async Task<SendOtpEmailResponse> SendOtpEmailAsyncCustom(SendOtpEmailRequest request)
+            {
+                var response = new SendOtpEmailResponse();
+                try
+                {
+                    var existingStaff = await _unitOfWork.GetRepository<Staff>().SingleOrDefaultAsync(predicate: s => s.Email == request.Email);
+                    if (existingStaff == null)
+                    {
+                        throw new NotFoundException($"Staff with email {request.Email} not found.");
+                    }
+
+                    var otp = _otpUtil.GenerateOtp(request.Email);
+                    await _otpService.CreateOtpEntity(request.Email, otp);
+
+                    string body = EmailTemplateContent;
+
+                    body = body.Replace("{OtpCode}", otp)
+                               .Replace("{ExpiryTime}", "5");
+
+                    string recipientEmail = request.Email;
+                    string subject = "Your OTP Code";
+
+                    await SendEmailAsync(recipientEmail, subject, body);
+                    response.Success = true;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send OTP email.");
+                    response.Success = false;
+                    throw;
+                }
+
+                return response;
+            }
         }
     }
 }

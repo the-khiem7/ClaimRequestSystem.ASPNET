@@ -57,7 +57,6 @@ namespace ClaimRequest.UnitTest.Services
         [Fact]
         public async Task ReturnClaim_ShouldThrowException_WhenClaimNotFound()
         {
-            // Arrange
             var claimId = Guid.NewGuid();
             var approverId = Guid.NewGuid();
             var returnClaimRequest = new ReturnClaimRequest
@@ -72,7 +71,6 @@ namespace ClaimRequest.UnitTest.Services
                 It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>()))
                 .ReturnsAsync((ClaimEntity)null);
 
-            // Act & Assert
             var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
                 _claimService.ReturnClaim(claimId, returnClaimRequest));
 
@@ -82,7 +80,6 @@ namespace ClaimRequest.UnitTest.Services
         [Fact]
         public async Task ReturnClaim_ShouldThrowException_WhenClaimNotInPendingStatus()
         {
-            // Arrange
             var claimId = Guid.NewGuid();
             var approverId = Guid.NewGuid();
             var returnClaimRequest = new ReturnClaimRequest
@@ -94,7 +91,7 @@ namespace ClaimRequest.UnitTest.Services
             var claim = new ClaimEntity
             {
                 Id = claimId,
-                Status = ClaimStatus.Draft, // Not pending
+                Status = ClaimStatus.Draft, 
                 ClaimApprovers = new List<ClaimApprover>
                 {
                     new ClaimApprover { ApproverId = approverId, ClaimId = claimId }
@@ -107,7 +104,6 @@ namespace ClaimRequest.UnitTest.Services
                 It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>()))
                 .ReturnsAsync(claim);
 
-            // Act & Assert
             var exception = await Assert.ThrowsAsync<BadRequestException>(() =>
                 _claimService.ReturnClaim(claimId, returnClaimRequest));
 
@@ -117,7 +113,6 @@ namespace ClaimRequest.UnitTest.Services
         [Fact]
         public async Task ReturnClaim_ShouldThrowException_WhenApproverNotAuthorized()
         {
-            // Arrange
             var claimId = Guid.NewGuid();
             var realApproverId = Guid.NewGuid();
             var unauthorizedApproverId = Guid.NewGuid();
@@ -144,7 +139,6 @@ namespace ClaimRequest.UnitTest.Services
                 It.IsAny<Func<IQueryable<ClaimEntity>, IIncludableQueryable<ClaimEntity, object>>>()))
                 .ReturnsAsync(claim);
 
-            // Act & Assert
             var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
                 _claimService.ReturnClaim(claimId, returnClaimRequest));
 
@@ -153,7 +147,6 @@ namespace ClaimRequest.UnitTest.Services
         [Fact]
         public async Task ReturnClaim_ShouldThrowException_OnTransactionFailure()
         {
-            // Arrange
             var claimId = Guid.NewGuid();
             var approverId = Guid.NewGuid();
             var returnClaimRequest = new ReturnClaimRequest
@@ -181,7 +174,6 @@ namespace ClaimRequest.UnitTest.Services
             _mockUnitOfWork.Setup(uow => uow.ProcessInTransactionAsync(It.IsAny<Func<Task<ReturnClaimResponse>>>()))
                 .ThrowsAsync(new Exception("Database transaction failed"));
 
-            // Act & Assert
             var exception = await Assert.ThrowsAsync<Exception>(() =>
                 _claimService.ReturnClaim(claimId, returnClaimRequest));
 
@@ -191,7 +183,6 @@ namespace ClaimRequest.UnitTest.Services
         [Fact]
         public async Task ReturnClaim_ShouldUpdateClaimStatus_WhenSuccessful()
         {
-            // Arrange
             var claimId = Guid.NewGuid();
             var approverId = Guid.NewGuid();
             var returnClaimRequest = new ReturnClaimRequest
@@ -235,10 +226,8 @@ namespace ClaimRequest.UnitTest.Services
 
             _mockMapper.Setup(m => m.Map<ReturnClaimResponse>(It.IsAny<ClaimEntity>())).Returns(expectedResponse);
 
-            // Act
             var result = await _claimService.ReturnClaim(claimId, returnClaimRequest);
 
-            // Assert
             Assert.NotNull(capturedClaim);
             Assert.Equal(ClaimStatus.Draft, capturedClaim.Status);
             Assert.Equal(returnClaimRequest.Remark, capturedClaim.Remark);
