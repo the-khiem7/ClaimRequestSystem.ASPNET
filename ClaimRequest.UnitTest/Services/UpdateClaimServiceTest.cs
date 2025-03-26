@@ -1,11 +1,9 @@
-﻿#define DISABLE
-
-#if !DISABLE
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using AutoMapper;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Requests.Claim;
+using ClaimRequest.DAL.Data.Responses.Claim;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +14,7 @@ using Xunit;
 
 namespace ClaimRequest.UnitTest.Services
 {
-    public class UpdateClaimTests : IDisposable
+    public class UpdateClaimServiceTest : IDisposable
     {
         private readonly Mock<IUnitOfWork<ClaimRequestDbContext>> _mockUnitOfWork;
         private readonly Mock<ILogger<Claim>> _mockLogger;
@@ -27,7 +25,7 @@ namespace ClaimRequest.UnitTest.Services
         private readonly ClaimService _claimService;
         private readonly ClaimRequestDbContext _realDbContext;
 
-        public UpdateClaimTests()
+        public UpdateClaimServiceTest()
         {
             _mockUnitOfWork = new Mock<IUnitOfWork<ClaimRequestDbContext>>();
             _mockLogger = new Mock<ILogger<Claim>>();
@@ -60,56 +58,66 @@ namespace ClaimRequest.UnitTest.Services
             );
         }
 
-        //[Fact]
-        //public async Task UpdateClaim_Should_Update_Valid_Claim()
-        //{
-        //    // Arrange
-        //    var claimId = Guid.NewGuid();
-        //    var existingClaim = new Claim
-        //    {
-        //        Id = claimId,
-        //        StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
-        //        EndDate = DateOnly.FromDateTime(DateTime.UtcNow),
-        //        TotalWorkingHours = 8
-        //    };
+        [Fact]
+        public async Task UpdateClaim_Should_Update_Valid_Claim()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var existingClaim = new Claim
+            {
+                Id = claimId,
+                StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
+                EndDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                TotalWorkingHours = 8
+            };
 
-        //    var updateRequest = new UpdateClaimRequest
-        //    {
-        //        ClaimId = claimId,
-        //        StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)),
-        //        EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
-        //        TotalWorkingHours = 10
-        //    };
+            var updateRequest = new UpdateClaimRequest
+            {
+                ClaimType = ClaimType.HardwareRequest,
+                Name = "Updated Claim",
+                Remark = "Updated Remark",
+                Amount = 1000,
+                StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)),
+                EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
+                TotalWorkingHours = 10
+            };
 
-        //    var updateResponse = new UpdateClaimResponse
-        //    {
-        //        ClaimId = claimId,
-        //        StartDate = updateRequest.StartDate,
-        //        EndDate = updateRequest.EndDate,
-        //        TotalWorkingHours = updateRequest.TotalWorkingHours,
-        //        Success = true,
-        //        Message = "Claim updated successfully."
-        //    };
+            var updateResponse = new UpdateClaimResponse
+            {
+                ClaimType = updateRequest.ClaimType,
+                Name = updateRequest.Name,
+                Remark = updateRequest.Remark,
+                Amount = updateRequest.Amount,
+                StartDate = updateRequest.StartDate,
+                EndDate = updateRequest.EndDate,
+                TotalWorkingHours = updateRequest.TotalWorkingHours,
+                UpdateAt = DateTime.UtcNow
+            };
 
-        //    _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId))
-        //        .ReturnsAsync(existingClaim);
-        //    _mockMapper.Setup(m => m.Map(updateRequest, existingClaim)).Verifiable();
-        //    _mockMapper.Setup(m => m.Map<UpdateClaimResponse>(It.IsAny<Claim>()))
-        //        .Returns(updateResponse);
+            _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId))
+                .ReturnsAsync(existingClaim);
+            _mockMapper.Setup(m => m.Map(updateRequest, existingClaim)).Verifiable();
+            _mockMapper.Setup(m => m.Map<UpdateClaimResponse>(It.IsAny<Claim>()))
+                .Returns(updateResponse);
 
-        //    // Act
-        //    var result = await _claimService.UpdateClaim(claimId, updateRequest);
+            // Act
+            var result = await _claimService.UpdateClaim(claimId, updateRequest);
 
-        //    // Assert
-        //    Assert.NotNull(result);
-        //    Assert.True(result.Success);
-        //    Assert.Equal("Claim updated successfully.", result.Message);
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(updateResponse.ClaimType, result.ClaimType);
+            Assert.Equal(updateResponse.Name, result.Name);
+            Assert.Equal(updateResponse.Remark, result.Remark);
+            Assert.Equal(updateResponse.Amount, result.Amount);
+            Assert.Equal(updateResponse.StartDate, result.StartDate);
+            Assert.Equal(updateResponse.EndDate, result.EndDate);
+            Assert.Equal(updateResponse.TotalWorkingHours, result.TotalWorkingHours);
+            Assert.Equal(updateResponse.UpdateAt, result.UpdateAt);
 
-        //    _mockUnitOfWork.Verify(uow => uow.BeginTransactionAsync(), Times.Once);
-        //    _mockUnitOfWork.Verify(uow => uow.CommitTransactionAsync(It.IsAny<IDbContextTransaction>()), Times.Once);
-        //    _mockUnitOfWork.Verify(uow => uow.CommitAsync(), Times.Once);
-        //}
-
+            _mockUnitOfWork.Verify(uow => uow.BeginTransactionAsync(), Times.Once);
+            _mockUnitOfWork.Verify(uow => uow.CommitTransactionAsync(It.IsAny<IDbContextTransaction>()), Times.Once);
+            _mockUnitOfWork.Verify(uow => uow.CommitAsync(), Times.Once);
+        }
 
         [Fact]
         public async Task UpdateClaim_Should_Throw_Exception_When_Claim_Not_Found()
@@ -118,7 +126,10 @@ namespace ClaimRequest.UnitTest.Services
             var claimId = Guid.NewGuid();
             var updateRequest = new UpdateClaimRequest
             {
-                ClaimId = claimId,
+                ClaimType = ClaimType.HardwareRequest,
+                Name = "Updated Claim",
+                Remark = "Updated Remark",
+                Amount = 1000,
                 StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)),
                 EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
                 TotalWorkingHours = 10
@@ -137,21 +148,23 @@ namespace ClaimRequest.UnitTest.Services
         public async Task UpdateClaim_Should_Throw_Exception_When_Invalid_Request()
         {
             // Arrange
-            var claimId = Guid.Empty; // Invalid
+            var claimId = Guid.NewGuid();
             var updateRequest = new UpdateClaimRequest
             {
-                ClaimId = claimId,
-                StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)),
-                EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
-                TotalWorkingHours = -5  // Invalid
+                ClaimType = ClaimType.HardwareRequest,
+                Name = "Updated Claim",
+                Remark = "Updated Remark",
+                Amount = 1000,
+                StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
+                EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)), // Invalid: StartDate >= EndDate
+                TotalWorkingHours = 10
             };
 
             // Act & Assert
-            await Assert.ThrowsAsync<ValidationException>(() => _claimService.UpdateClaim(claimId, updateRequest));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _claimService.UpdateClaim(claimId, updateRequest));
 
             _mockUnitOfWork.Verify(uow => uow.BeginTransactionAsync(), Times.Never);
         }
-
 
         public void Dispose()
         {
@@ -165,4 +178,3 @@ namespace ClaimRequest.UnitTest.Services
         }
     }
 }
-#endif 
