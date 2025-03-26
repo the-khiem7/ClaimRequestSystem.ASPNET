@@ -27,6 +27,8 @@ using Google.Apis.Gmail.v1;
 using Google.Apis.Services;
 using Google.Apis.Gmail.v1.Data;
 using Google;
+using ClaimRequest.BLL.Utils;
+using ClaimRequest.DAL.Repositories.Interfaces;
 
 
 namespace ClaimRequest.BLL.Services.Implements
@@ -41,14 +43,19 @@ namespace ClaimRequest.BLL.Services.Implements
         public readonly IProjectService _projectService;
         public readonly IStaffService _staffService;
         public readonly ILogger _logger;
-
-        public EmailService(IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService)
+        public readonly IUnitOfWork _unitOfWork;
+        public readonly OtpUtil _otpUtil;
+        public readonly IOtpService _otpService;
+        public EmailService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService, IOtpService otpService,OtpUtil otpUtil )
         {
             _senderEmail = configuration["EmailSettings:SenderEmail"];
             _claimService = claimService;
             _projectService = projectService;
             _staffService = staffService;
             _logger = logger;
+            _otpService = otpService;
+            _unitOfWork = unitOfWork;
+            _otpUtil = otpUtil;
         }
 
 
@@ -287,7 +294,42 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
+        public async Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request)
+        {
+            var response = new SendOtpEmailResponse();
+            try
+            {
+                var existingStaff = await _unitOfWork.GetRepository<Staff>().SingleOrDefaultAsync(predicate: s => s.Email == request.Email);
+                if (existingStaff == null)
+                {
+                    throw new NotFoundException($"Staff with email {request.Email} not found.");
+                }
 
+                var otp = _otpUtil.GenerateOtp(request.Email);
+                await _otpService.CreateOtpEntity(request.Email, otp);
 
+                string templatePath = Path.Combine(AppContext.BaseDirectory, "Services", "Templates", "OtpEmailTemplate.html");
+                string body = await File.ReadAllTextAsync(templatePath);
+
+                body = body.Replace("{OtpCode}", otp)
+                           .Replace("{ExpiryTime}", "5");
+
+                string recipientEmail = request.Email;
+                string subject = "Your OTP Code";
+
+                await SendEmailAsync(recipientEmail, subject, body);
+                response.Success = true;
+            }
+
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send OTP email.");
+                response.Success = false;
+                throw;
+            }
+
+            return response;
+        }
     }
 }
+
