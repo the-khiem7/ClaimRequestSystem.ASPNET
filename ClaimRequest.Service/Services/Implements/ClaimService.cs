@@ -71,6 +71,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 var claim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(claimId)
                             ?? throw new KeyNotFoundException("Claim not found.");
+                    // Get claim by ID first before starting the transaction
 
                 if (claim.Status != ClaimStatus.Draft)
                 {
