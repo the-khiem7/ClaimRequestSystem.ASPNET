@@ -71,6 +71,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 var claim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(claimId)
                             ?? throw new KeyNotFoundException("Claim not found.");
+                    // Get claim by ID first before starting the transaction
 
                 if (claim.Status != ClaimStatus.Draft)
                 {
@@ -273,7 +274,23 @@ namespace ClaimRequest.BLL.Services.Implements
 
         public async Task<UpdateClaimResponse> UpdateClaim(Guid claimId, UpdateClaimRequest request)
         {
-            try
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            if (request.Amount < 0)
+            {
+                throw new ValidationException("Amount must be greater than or equal to 0.");
+            }
+
+            if (request.TotalWorkingHours < 0)
+            {
+                throw new ValidationException("Total Working Hours must be greater than or equal to 0.");
+            }
+
+            var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
+            return await executionStrategy.ExecuteAsync(async () =>
             {
                 var claimRepository = _unitOfWork.GetRepository<Claim>();
                 var claim = await claimRepository.GetByIdAsync(claimId);
@@ -298,17 +315,24 @@ namespace ClaimRequest.BLL.Services.Implements
                 claim.TotalWorkingHours = request.TotalWorkingHours;
                 claim.UpdateAt = DateTime.UtcNow;
 
+                await using var transaction = await _unitOfWork.BeginTransactionAsync();
+                try
+                {
                     claimRepository.UpdateAsync(claim);
+                    await _unitOfWork.CommitAsync();
+                    await _unitOfWork.CommitTransactionAsync(transaction);
 
-                _logger.LogInformation("Successfully updated claim with ID {ClaimId}.", claimId);
-                return _mapper.Map<UpdateClaimResponse>(claim);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating claim with ID {ClaimId}: {Message}", claimId, ex.Message);
-                throw;
-            }
+                    _logger.LogInformation("Successfully updated claim with ID {ClaimId}.", claimId);
+                    return _mapper.Map<UpdateClaimResponse>(claim);
+                }
+                catch (Exception)
+                {
+                    await _unitOfWork.RollbackTransactionAsync(transaction);
+                    throw;
+                }
+            });
         }
+
 
         #region Get Claims
         public async Task<PagingResponse<ViewClaimResponse>> GetClaims(
