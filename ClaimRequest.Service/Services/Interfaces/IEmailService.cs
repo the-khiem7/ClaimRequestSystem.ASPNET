@@ -11,5 +11,7 @@ namespace ClaimRequest.BLL.Services.Interfaces
         Task SendClaimSubmittedEmail(Guid claimId);
         Task SendManagerApprovedEmail(Guid approverId, Guid claimId);
         Task SendEmailAsync(string recipientEmail, string subject, string body);
+        Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request);
+
     }
 }
