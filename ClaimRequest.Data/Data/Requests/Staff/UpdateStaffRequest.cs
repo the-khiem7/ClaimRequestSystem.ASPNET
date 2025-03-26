@@ -15,9 +15,6 @@ namespace ClaimRequest.DAL.Data.Requests.Staff
         [EmailAddress(ErrorMessage = "Invalid email address")]
         public string Email { get; set; }
 
-        [MinLength(6, ErrorMessage = "Password must be at least 6 characters long")]
-        public string Password { get; set; }
-
         [Required(ErrorMessage = "Role field is required")]
         //[StringLength(50, ErrorMessage = "Role cannot exceed 50 characters")]
         public SystemRole SystemRole { get; set; }
