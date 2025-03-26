@@ -216,7 +216,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-        public async Task SendEmailAsync(string recipientEmail, string subject, string body)
+        public virtual async Task SendEmailAsync(string recipientEmail, string subject, string body)
         {
             try
             {
@@ -294,7 +294,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-        public async Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request)
+        public virtual async Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request)
         {
             var response = new SendOtpEmailResponse();
             try

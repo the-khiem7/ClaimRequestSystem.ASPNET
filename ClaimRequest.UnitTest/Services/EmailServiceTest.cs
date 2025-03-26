@@ -11,30 +11,45 @@ using ClaimRequest.DAL.Data.Responses.Staff;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using ClaimRequest.BLL.Utils;
+using ClaimRequest.DAL.Repositories.Interfaces;
 
 namespace ClaimRequest.Service.Services.Implements
 {
     public class EmailServiceTest
     {
+        private readonly Mock<IUnitOfWork<ClaimRequestDbContext>> _mockUnitOfWork;
+        private readonly Mock<IConfiguration> _mockConfiguration;
         private readonly Mock<IClaimService> _mockClaimService;
         private readonly Mock<IProjectService> _mockProjectService;
         private readonly Mock<IStaffService> _mockStaffService;
+        private readonly Mock<IOtpService> _mockOtpService;
         private readonly Mock<ILogger<EmailService>> _mockLogger;
+        private readonly OtpUtil _otpUtil;
         private readonly EmailService _emailService;
 
         public EmailServiceTest()
         {
+            _mockUnitOfWork = new Mock<IUnitOfWork<ClaimRequestDbContext>>();
+            _mockConfiguration = new Mock<IConfiguration>();
             _mockClaimService = new Mock<IClaimService>();
             _mockProjectService = new Mock<IProjectService>();
             _mockStaffService = new Mock<IStaffService>();
+            _mockOtpService = new Mock<IOtpService>();
             _mockLogger = new Mock<ILogger<EmailService>>();
 
+            // Initialize OtpUtil if necessary
+            _otpUtil = new OtpUtil(_mockConfiguration.Object);
+
             _emailService = new EmailService(
-                Mock.Of<IConfiguration>(),
+                _mockUnitOfWork.Object,
+                _mockConfiguration.Object,
                 _mockClaimService.Object,
                 _mockLogger.Object,
                 _mockProjectService.Object,
-                _mockStaffService.Object
+                _mockStaffService.Object,
+                _mockOtpService.Object,
+                _otpUtil
             );
         }
 
