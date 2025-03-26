@@ -27,6 +27,8 @@ using Google.Apis.Gmail.v1;
 using Google.Apis.Services;
 using Google.Apis.Gmail.v1.Data;
 using Google;
+using ClaimRequest.BLL.Utils;
+using ClaimRequest.DAL.Repositories.Interfaces;
 
 
 namespace ClaimRequest.BLL.Services.Implements
@@ -41,14 +43,19 @@ namespace ClaimRequest.BLL.Services.Implements
         public readonly IProjectService _projectService;
         public readonly IStaffService _staffService;
         public readonly ILogger _logger;
-
-        public EmailService(IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService)
+        public readonly IUnitOfWork _unitOfWork;
+        public readonly OtpUtil _otpUtil;
+        public readonly IOtpService _otpService;
+        public EmailService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService, IOtpService otpService,OtpUtil otpUtil )
         {
             _senderEmail = configuration["EmailSettings:SenderEmail"];
             _claimService = claimService;
             _projectService = projectService;
             _staffService = staffService;
             _logger = logger;
+            _otpService = otpService;
+            _unitOfWork = unitOfWork;
+            _otpUtil = otpUtil;
         }
 
 
@@ -287,7 +294,63 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
+        public async Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request)
+        {
+            var response = new SendOtpEmailResponse();
+            try
+            {
+                var existingStaff = await _unitOfWork.GetRepository<Staff>().SingleOrDefaultAsync(predicate: s => s.Email == request.Email);
+                if (existingStaff == null)
+                {
+                    HttpClientInitializer = credential,
+                    ApplicationName = "Claim Request System"
+                });
+
+                var otp = _otpUtil.GenerateOtp(request.Email);
+                await _otpService.CreateOtpEntity(request.Email, otp);
+
+                // Create the HTML body
+                var bodyBuilder = new BodyBuilder
+                {
+                    HtmlBody = body,
+                    TextBody = "This is the plain text version of the email body."
+                };
+                emailMessage.Body = bodyBuilder.ToMessageBody();
+
+                // Convert to Gmail API format
+                using (var memoryStream = new MemoryStream())
+                {
+                    emailMessage.WriteTo(memoryStream);
+                    var rawMessage = Convert.ToBase64String(memoryStream.ToArray())
+                        .Replace('+', '-')
+                        .Replace('/', '_')
+                        .Replace("=", "");
+
+                    var message = new Message { Raw = rawMessage };
+
+                    try
+                    {
+                        await service.Users.Messages.Send(message, "me").ExecuteAsync();
+                    }
+                    catch (GoogleApiException ex)
+                    {
+                        _logger.LogError(ex, $"Google API error: {ex.Message}");
+                        _logger.LogError($"Error details: {ex.Error?.Message}");
+                        _logger.LogError($"Error code: {ex.Error?.Code}");
+                        _logger.LogError($"Error errors: {string.Join(", ", ex.Error?.Errors.Select(e => e.Message))}");
+                        throw;
+                    }
+                }
+            }
+
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error in SendEmailAsync: {ex.Message}");
+                throw;
+            }
+        }
 
 
     }
 }
+
