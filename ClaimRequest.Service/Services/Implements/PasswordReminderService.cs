@@ -1,7 +1,6 @@
 ﻿using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
-using ClaimRequest.DAL.Data.Requests.Email;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -22,6 +21,16 @@ namespace ClaimRequest.BLL.Services.Implements
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            var enableReminder = Environment.GetEnvironmentVariable("ENABLE_PASSWORD_REMINDER");
+
+            if (!string.Equals(enableReminder, "yes", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInformation("Password Reminder Service is disabled.");
+                return;
+            }
+
+            _logger.LogInformation("Password Reminder Service is enabled.");
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
@@ -30,46 +39,57 @@ namespace ClaimRequest.BLL.Services.Implements
                     {
                         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork<ClaimRequestDbContext>>();
                         var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-                        var otpService = scope.ServiceProvider.GetRequiredService<IOtpService>(); 
+                        var otpService = scope.ServiceProvider.GetRequiredService<IOtpService>();
 
-                        DateTime timePasswordExpired = DateTime.UtcNow.AddHours(-3);
+                        DateTime timePasswordExpired = DateTime.UtcNow.AddMonths(-3);
 
-                        // Lấy danh sách staff cần remind
-                        // Chỉ lấy staff có LastChangePassword là null hoặc có thời gian đổi mật khẩu
-                        // so với hiện tại đã 3 tiếng trước
                         var staffToRemind = await unitOfWork.GetRepository<Staff>().GetListAsync(
-                            predicate: s => s.LastChangePassword != null && s.LastChangePassword <= timePasswordExpired
+                            predicate: s => s.LastChangePassword == null || s.LastChangePassword <= timePasswordExpired
                         );
 
-                        var semaphore = new SemaphoreSlim(10);
-                        var tasks = new List<Task>();
-
-                        foreach (var staff in staffToRemind)
+                        if (!staffToRemind.Any())
                         {
-                            _logger.LogInformation($"Sending email to: {staff.Email}, LastChangePassword: {staff.LastChangePassword}");
-                            var otp = OtpUtil.GenerateOtp(staff.Email);
-                            await otpService.CreateOtpEntity(staff.Email, otp); 
-
-                            await semaphore.WaitAsync();
-                            tasks.Add(Task.Run(async () =>
+                            _logger.LogInformation("No staff members require password reminders.");
+                        }
+                        else
+                        {
+                            var semaphore = new SemaphoreSlim(10);
+                            var tasks = staffToRemind.Select(async staff =>
                             {
+                                await semaphore.WaitAsync();
                                 try
                                 {
-                                    await emailService.SendEmailAsync(
-                                        staff.Email,
-                                        "Reminder: Change Your Password",
-                                        $"Hi {staff.Name}, you haven't changed your password for a while. For security reasons, please update it. Here is your OTP to proceed: {otp}"
-                                    );
+                                    using (var scope = _serviceScopeFactory.CreateScope()) 
+                                    {
+                                        var scopedUnitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork<ClaimRequestDbContext>>();
+                                        var scopedOtpService = scope.ServiceProvider.GetRequiredService<IOtpService>();
+                                        var scopedEmailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+
+                                        _logger.LogInformation($"Sending email and OTP to: {staff.Email}");
+
+                                        var otp = OtpUtil.GenerateOtp(staff.Email);
+                                        await scopedOtpService.CreateOtpEntity(staff.Email, otp); 
+
+                                        await scopedEmailService.SendEmailAsync(
+                                            staff.Email,
+                                            "Reminder: Change Your Password",
+                                            $"Hi {staff.Name}, please update your password. Your OTP is: {otp}"
+                                        );
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, $"Error sending email to {staff.Email}");
                                 }
                                 finally
                                 {
                                     semaphore.Release();
                                 }
-                            }));
-                        }
+                            }).ToList();
 
-                        await Task.WhenAll(tasks);
-                        _logger.LogInformation("All password reminder emails sent successfully.");
+                            await Task.WhenAll(tasks);
+                            _logger.LogInformation("All password reminder emails and OTPs sent successfully.");
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -81,5 +101,4 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
     }
-
 }

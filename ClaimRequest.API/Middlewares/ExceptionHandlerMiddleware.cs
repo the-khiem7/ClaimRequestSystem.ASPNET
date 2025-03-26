@@ -107,6 +107,9 @@ namespace ClaimRequest.API.Middlewares
                     (HttpStatusCode.Unauthorized, "Unauthorized access", "You don't have permission to perform this action", null),
                 SecurityTokenException =>
                     (HttpStatusCode.Unauthorized, "Invalid token", "Authentication token is invalid or expired", null),
+                WrongPasswordException =>
+                    (HttpStatusCode.Unauthorized, "Wrong password", "Invalid password. Please try again.", null),
+
                 #endregion
 
                 #region 403 Forbidden
@@ -147,7 +150,7 @@ namespace ClaimRequest.API.Middlewares
                 IsSuccess = false,
                 Data = new
                 {
-                    ResetToken = exception is PasswordExpiredException ? exception.Message : null,
+                    ResetToken = exception is PasswordExpiredException expiredException ? expiredException.ResetToken : null,
                     Method = context.Request.Method,
                     Path = context.Request.Path,
                     ExceptionType = exception.GetType().Name,

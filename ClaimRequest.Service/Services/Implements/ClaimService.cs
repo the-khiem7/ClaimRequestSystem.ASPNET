@@ -9,11 +9,14 @@ using ClaimRequest.DAL.Data.Responses.Claim;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
+using MimeKit.Encodings;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System.Drawing;
 using System.Linq.Expressions;
+using System.Net.NetworkInformation;
 using System.Security.Claims;
 using Claim = ClaimRequest.DAL.Data.Entities.Claim;
 
@@ -308,37 +311,31 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-
+        #region Get Claims
         public async Task<PagingResponse<ViewClaimResponse>> GetClaims(
             int pageNumber = 1,
             int pageSize = 20,
             ClaimStatus? status = null,
-            string? viewMode = null)
+            string viewMode = "ClaimerMode",
+            string? search = null,
+            string sortBy = "id",
+            bool descending = false,
+            DateTime? fromDate = null,
+            DateTime? toDate = null)
         {
             try
             {
                 var loggedUserId = Guid.Parse(_httpContextAccessor.HttpContext?.User?.FindFirst("StaffId")?.Value);
                 var loggedUserRole = Enum.Parse<SystemRole>(_httpContextAccessor.HttpContext?.User?
                 .FindFirst("http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value);
-                var selectedView = Enum.Parse<ViewMode>(viewMode ?? "ClaimerMode");
+                var selectedView = Enum.Parse<ViewMode>(viewMode);
                 ValidateUserAccess(selectedView, loggedUserRole);
 
-                Expression<Func<Claim, bool>> predicate = selectedView switch
-                {
-                    ViewMode.AdminMode => c => !status.HasValue || c.Status == status.Value,
-                    ViewMode.ClaimerMode => c => c.ClaimerId == loggedUserId && (!status.HasValue || c.Status == status.Value),
-                    ViewMode.ApproverMode => c => c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) && c.Status == ClaimStatus.Pending,
-                    ViewMode.FinanceMode => c => c.FinanceId == loggedUserId && (status.HasValue ? status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid ? c.Status == status.Value : false : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid),
-                    _ => throw new BadRequestException("Invalid view mode.")
-                };
-
                 var response = await _unitOfWork.GetRepository<Claim>().GetPagingListAsync(
-                    include: query => query.AsNoTracking()
-                                           .Include(c => c.Project)
-                                           .Include(c => c.Claimer)
-                                           .Include(c => c.ClaimApprovers),
-                    predicate: predicate,
+                    include: Include(selectedView),
+                    predicate: Predicate(selectedView, loggedUserId, status, search, fromDate, toDate),
                     selector: c => _mapper.Map<ViewClaimResponse>(c),
+                    orderBy: q => Sorting(q, sortBy, descending),
                     page: pageNumber,
                     size: pageSize
                 );
@@ -352,6 +349,107 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
+        #region GetClaims Helper
+        private Expression<Func<Claim, bool>> Predicate(
+            ViewMode viewMode,
+            Guid loggedUserId,
+            ClaimStatus? status,
+            string? search,
+            DateTime? fromDate,
+            DateTime? toDate)
+        {
+            search = string.IsNullOrWhiteSpace(search) ? null : search.Trim().ToLower();
+
+            return viewMode switch
+            {
+                ViewMode.AdminMode => c =>
+                    (!status.HasValue || c.Status == status.Value) &&
+                    (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)) &&
+                    (!fromDate.HasValue || c.UpdateAt >= fromDate.Value) &&
+                    (!toDate.HasValue || c.UpdateAt <= toDate.Value),
+
+                ViewMode.ClaimerMode => c =>
+                    c.ClaimerId == loggedUserId &&
+                    (!status.HasValue || c.Status == status.Value) &&
+                    (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)) &&
+                    (!fromDate.HasValue || c.UpdateAt >= fromDate.Value) &&
+                    (!toDate.HasValue || c.UpdateAt <= toDate.Value),
+
+                ViewMode.ApproverMode => c =>
+                    c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) &&
+                    (status.HasValue ?
+                        (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Pending) ? c.Status == status.Value : false
+                        : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Pending) &&
+                    (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)) &&
+                    (!fromDate.HasValue || (c.UpdateAt == default(DateTime) ? c.CreateAt : c.UpdateAt) >= fromDate.Value) &&
+                    (!toDate.HasValue || (c.UpdateAt == default(DateTime) ? c.CreateAt : c.UpdateAt) <= toDate.Value),
+
+                ViewMode.FinanceMode => c =>
+                    c.FinanceId == loggedUserId &&
+                    (status.HasValue ?
+                        (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid) ? c.Status == status.Value : false
+                        : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid) &&
+                    (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)) &&
+                    (!fromDate.HasValue || c.UpdateAt >= fromDate.Value) &&
+                    (!toDate.HasValue || c.UpdateAt <= toDate.Value),
+
+                _ => throw new BadRequestException("Invalid view mode.")
+            };
+        }
+
+
+        private Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>> Include(ViewMode viewMode)
+        {
+            return query => viewMode switch
+            {
+                ViewMode.AdminMode or ViewMode.ApproverMode => query.AsNoTracking()
+                                                                    .Include(c => c.Project)
+                                                                    .Include(c => c.Claimer)
+                                                                    .Include(c => c.ClaimApprovers),
+                _ => query.AsNoTracking()
+                          .Include(c => c.Project)
+                          .Include(c => c.Claimer)
+            };
+        }
+
+        private IOrderedQueryable<Claim> Sorting(IQueryable<Claim> query, string? sortBy, bool descending)
+        {
+            Expression<Func<Claim, object>> SortByField(string field) => field switch
+            {
+                "staffname" => c => c.Claimer != null ? c.Claimer.Name : "",
+                "projectname" => c => c.Project != null ? c.Project.Name : "",
+                "projectstartdate" => c => c.Project != null ? c.Project.StartDate : DateOnly.MinValue,
+                "projectenddate" => c => c.Project != null ? c.Project.EndDate : DateOnly.MinValue,
+                "totalworkinghours" => c => c.TotalWorkingHours,
+                "amount" => c => c.Amount,
+                "status" => c => c.Status,
+                "createat" => c => c.CreateAt,
+                "updateat" => c => c.UpdateAt,
+                "startdate" => c => c.StartDate,
+                "enddate" => c => c.EndDate,
+                _ => c => c.Id
+            };
+
+            sortBy = string.IsNullOrWhiteSpace(sortBy) ? "id" : sortBy.Trim().ToLower();
+            return descending ? query.OrderByDescending(SortByField(sortBy)) : query.OrderBy(SortByField(sortBy));
+        }
+
+        private void ValidateUserAccess(ViewMode selectedView, SystemRole role)
+        {
+            var requiredRoles = new Dictionary<ViewMode, SystemRole>
+            {
+                { ViewMode.AdminMode, SystemRole.Admin },
+                { ViewMode.ApproverMode, SystemRole.Approver },
+                { ViewMode.FinanceMode, SystemRole.Finance }
+            };
+
+            if (requiredRoles.TryGetValue(selectedView, out var requiredRole) && role != requiredRole)
+            {
+                throw new UnauthorizedAccessException($"Only {requiredRole} users can access {selectedView}.");
+            }
+        }
+        #endregion GetClaims Helper 
+        #endregion Get Claims
 
         public async Task<ViewClaimResponse> GetClaimById(Guid id)
         {
@@ -417,6 +515,10 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw new InvalidOperationException($"Claim with ID {id} is not in pending status.");
                     }
 
+                    var approver = await _unitOfWork.GetRepository<Staff>()
+                        .SingleOrDefaultAsync(predicate: s => s.Id == rejectClaimRequest.ApproverId)
+                        ?? throw new KeyNotFoundException($"Approver with ID {rejectClaimRequest.ApproverId} not found.");
+
                     var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
                         .SingleOrDefaultAsync(predicate: ps => ps.StaffId == rejectClaimRequest.ApproverId
                             && ps.ProjectId == pendingClaim.ProjectId);
@@ -426,15 +528,12 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} is not in the right project to reject this claim.");
                     }
 
-                    var approver = await _unitOfWork.GetRepository<Staff>()
-                        .SingleOrDefaultAsync(predicate: s => s.Id == rejectClaimRequest.ApproverId)
-                        ?? throw new KeyNotFoundException($"Approver with ID {id} not found.");
-
                     if (approver.SystemRole != SystemRole.Approver)
                     {
                         throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
                     }
                     var approverName = approver.Name ?? "Unknown Approver";
+
 
                     _mapper.Map(rejectClaimRequest, pendingClaim);
                     _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
@@ -602,8 +701,8 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var existingClaim = (await _unitOfWork.GetRepository<Claim>()
-                    .SingleOrDefaultAsync(predicate: c => c.Id == id).ValidateExists(id));
+                var existingClaim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(id).ValidateExists(id)
+                            ?? throw new KeyNotFoundException("Claim not found.");
 
 
                 // 🔹 Kiểm tra trạng thái của claim (chỉ được thanh toán khi Approved)
@@ -613,8 +712,8 @@ namespace ClaimRequest.BLL.Services.Implements
                 }
 
                 // 🔹 Kiểm tra Finance Staff có hợp lệ không
-                var finance = await _unitOfWork.GetRepository<Staff>()
-                    .SingleOrDefaultAsync(predicate: s => s.Id == financeId && s.SystemRole == SystemRole.Finance);
+                var finance = await _unitOfWork.GetRepository<Staff>().GetByIdAsync(financeId).ValidateExists(financeId)
+                     ?? throw new KeyNotFoundException("Finance not found.");
 
                 if (finance == null)
                 {
@@ -623,24 +722,27 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 // 🔹 Cập nhật trạng thái của claim thành "Paid"
                 var oldStatus = existingClaim.Status;
+                Console.WriteLine("Old Status: " + oldStatus);
                 existingClaim.Status = ClaimStatus.Paid;
+                existingClaim.FinanceId = financeId;
+                _logger.LogInformation("Updating claim status to 'Paid' for ClaimId: {0}", existingClaim.Id);
                 _unitOfWork.GetRepository<Claim>().UpdateAsync(existingClaim);
-                await _unitOfWork.CommitAsync(); // Lưu thay đổi vào DB
-
-                // 🔹 Ghi log thay đổi trạng thái
+                var oldValue = existingClaim.Status.ToString();
                 var claimLog = new ClaimChangeLog
                 {
                     HistoryId = Guid.NewGuid(),
                     ClaimId = existingClaim.Id,
                     FieldChanged = "Status",
-                    OldValue = oldStatus.ToString(),
+                    OldValue = oldStatus.ToString() ?? "Unknown",
                     NewValue = ClaimStatus.Paid.ToString(),
                     ChangedAt = DateTime.UtcNow,
                     ChangedBy = finance.Name ?? "System"
                 };
+                Console.WriteLine($"Hell this suck & bugging me: HistoryId: {claimLog.HistoryId}, ClaimId: {claimLog.ClaimId}, FieldChanged: {claimLog.FieldChanged}, OldValue: {claimLog.OldValue}, NewValue: {claimLog.NewValue}, ChangedAt: {claimLog.ChangedAt}, ChangedBy: {claimLog.ChangedBy}");
 
                 await _unitOfWork.GetRepository<ClaimChangeLog>().InsertAsync(claimLog);
-                await _unitOfWork.CommitAsync(); // Lưu log vào DB
+
+                await _unitOfWork.CommitAsync(); // Lưu thay đổi vào DB
 
                 return true;
             }
@@ -705,18 +807,38 @@ namespace ClaimRequest.BLL.Services.Implements
             };
         }
 
-        private void ValidateUserAccess(ViewMode selectedView, SystemRole role)
-        {
-            var requiredRoles = new Dictionary<ViewMode, SystemRole>
-            {
-                { ViewMode.AdminMode, SystemRole.Admin },
-                { ViewMode.ApproverMode, SystemRole.Approver },
-                { ViewMode.FinanceMode, SystemRole.Finance }
-            };
 
-            if (requiredRoles.TryGetValue(selectedView, out var requiredRole) && role != requiredRole)
+        public async Task<List<ViewClaimResponse>> GetPendingClaimsAsync()
+        {
+            try
             {
-                throw new UnauthorizedAccessException($"Only {requiredRole} users can access {selectedView}.");
+                var claimRepository = _unitOfWork.GetRepository<Claim>();
+                var claims = await claimRepository.GetListAsync(
+                    c => new { c, c.Claimer, c.Project },
+                    c => c.Status == ClaimStatus.Pending && c.FinanceId != null,
+                    include: q => q.Include(c => c.Claimer).Include(c => c.Project)
+                );
+
+                if (claims == null || claims.Count == 0)
+                {
+                    throw new NotFoundException("No pending claims found.");
+                }
+
+                foreach (var claim in claims)
+                {
+                    _logger.LogInformation($"Pending Claim - ID: {claim.c.Id}, FinanceId: {claim.c.FinanceId}");
+                }
+
+                return _mapper.Map<List<ViewClaimResponse>>(claims.Select(c => c.c).ToList());
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while retrieving the pending claims.");
+                throw;
             }
         }
     }

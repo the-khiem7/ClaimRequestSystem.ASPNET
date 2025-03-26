@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using ClaimRequest.DAL.Data.Entities;
+using Microsoft.AspNetCore.Http;
 
 namespace ClaimRequest.DAL.Data.Requests.Staff
 {
@@ -28,6 +29,6 @@ namespace ClaimRequest.DAL.Data.Requests.Staff
 
         public bool IsActive { get; set; } = true;
 
-        public string? Avatar { get; set; }
+        public IFormFile? Avatar { get; set; }
     }
 }
