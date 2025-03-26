@@ -149,6 +149,14 @@ namespace ClaimRequest.UnitTest.Services
         {
             // Arrange
             var claimId = Guid.NewGuid();
+            var existingClaim = new Claim
+            {
+                Id = claimId,
+                StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
+                EndDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                TotalWorkingHours = 8
+            };
+
             var updateRequest = new UpdateClaimRequest
             {
                 ClaimType = ClaimType.HardwareRequest,
@@ -159,6 +167,9 @@ namespace ClaimRequest.UnitTest.Services
                 EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)), // Invalid: StartDate >= EndDate
                 TotalWorkingHours = 10
             };
+
+            _mockClaimRepository.Setup(repo => repo.GetByIdAsync(claimId))
+                .ReturnsAsync(existingClaim);
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() => _claimService.UpdateClaim(claimId, updateRequest));
