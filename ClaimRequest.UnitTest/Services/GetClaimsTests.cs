@@ -582,7 +582,7 @@ public class GetClaimsTests
 
 
     [Fact]
-    public async Task ShouldReturnClaimWithViewModeAprrover() 
+    public async Task ShouldReturnClaimWithViewModeApprover() 
     {
         var claims = new List<ClaimEntity>
         {
