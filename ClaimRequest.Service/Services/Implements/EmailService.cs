@@ -33,30 +33,22 @@ namespace ClaimRequest.BLL.Services.Implements
 {
     public class EmailService : IEmailService
     {
-        //public readonly string _smtpServer;
-        //public readonly int _port;
-        //public readonly string _senderEmail;
-        //public readonly string _password;
+
         private static readonly string[] Scopes = { GmailService.Scope.GmailSend };
         private readonly string _applicationName;
         private readonly string _senderEmail;
         public readonly IClaimService _claimService;
         public readonly IProjectService _projectService;
         public readonly IStaffService _staffService;
-
         public readonly ILogger _logger;
 
         public EmailService(IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService)
         {
-            //_smtpServer = configuration["EmailSettings:Host"];
-            //_port = int.Parse(configuration["EmailSettings:SmtpPort"]);
-            //_senderEmail = configuration["EmailSettings:SenderEmail"];
-            //_password = configuration["EmailSettings:SenderPassword"];
+            _senderEmail = configuration["EmailSettings:SenderEmail"];
             _claimService = claimService;
             _projectService = projectService;
             _staffService = staffService;
             _logger = logger;
-
         }
 
 
@@ -104,8 +96,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 if (claim == null)
                     throw new Exception("Claim not found.");
 
-
-
                 string projectName = claim.Project.Name;
 
                 var updatedDate = claim.UpdateAt.ToString("yyyy-MM-dd HH:mm:ss");
@@ -138,7 +128,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 _logger.LogError(ex, "Error sending claim returned email with claimId: {claimId}", claimId);
                 throw;
             }
-        } 
+        }
 
         public async Task SendClaimSubmittedEmail(Guid claimerId)
         {
@@ -185,7 +175,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task SendClaimApprovedEmail(Guid claimId) 
+        public async Task SendClaimApprovedEmail(Guid claimId)
         {
             try
             {
@@ -253,12 +243,16 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 // Create the email message
                 var emailMessage = new MimeMessage();
-                emailMessage.From.Add(InternetAddress.Parse("noreply@emailservice.com"));
-                emailMessage.To.Add(InternetAddress.Parse(recipientEmail));
+                emailMessage.From.Add(new MailboxAddress("noreply@emailservice.com", _senderEmail));
+                emailMessage.To.Add(new MailboxAddress("", recipientEmail));
                 emailMessage.Subject = subject;
 
                 // Create the HTML body
-                var bodyBuilder = new BodyBuilder { HtmlBody = body };
+                var bodyBuilder = new BodyBuilder
+                {
+                    HtmlBody = body,
+                    TextBody = "This is the plain text version of the email body."
+                };
                 emailMessage.Body = bodyBuilder.ToMessageBody();
 
                 // Convert to Gmail API format
@@ -291,7 +285,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 _logger.LogError(ex, $"Error in SendEmailAsync: {ex.Message}");
                 throw;
             }
-
         }
 
 
