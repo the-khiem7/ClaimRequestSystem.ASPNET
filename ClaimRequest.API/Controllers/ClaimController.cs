@@ -1,5 +1,6 @@
-﻿using ClaimRequest.API.Constants;
+﻿﻿using ClaimRequest.API.Constants;
 using ClaimRequest.API.Extensions;
+using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Exceptions;
@@ -8,6 +9,8 @@ using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
+
 
 namespace ClaimRequest.API.Controllers
 {
@@ -17,12 +20,14 @@ namespace ClaimRequest.API.Controllers
     {
         #region Create Class Referrence
         private readonly IClaimService _claimService;
+        private readonly IEmailService _emailService;
         #endregion
 
         #region Contructor
-        public ClaimController(ILogger<ClaimController> logger, IClaimService claimService) : base(logger)
+        public ClaimController(ILogger<ClaimController> logger, IClaimService claimService, IEmailService emailService) : base(logger)
         {
             _claimService = claimService;
+            _emailService = emailService;
         }
         #endregion
 
@@ -43,14 +48,27 @@ namespace ClaimRequest.API.Controllers
         [Authorize(Policy = "CanViewClaims")]
         [HttpGet(ApiEndPointConstant.Claim.ClaimsEndpoint)]
         [ProducesResponseType(typeof(IEnumerable<ViewClaimResponse>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> GetClaims(
+            [FromQuery] ClaimStatus? status,
+            [FromQuery] string? search,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] ClaimService.ViewMode viewMode = ClaimService.ViewMode.ClaimerMode,
+            [FromQuery] string sortBy = "id",
+            [FromQuery] bool descending = false
+            )
         {
-            var response = await _claimService.GetClaims(pageNumber, pageSize, status);
+
+            var response = await _claimService.GetClaims(pageNumber, pageSize, status, viewMode.ToString(), search, sortBy, descending, fromDate, toDate);
+
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: "Get claims successfully!",
                 data: response,
                 statusCode: StatusCodes.Status200OK));
         }
+
 
         [Authorize(Policy = "CanViewClaims")]
         [HttpGet(ApiEndPointConstant.Claim.ClaimEndpointById)]
@@ -70,7 +88,7 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(UpdateClaimResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> UpdateClaim(Guid id, [FromBody] UpdateClaimRequest updateClaimRequest)
+        public async Task<IActionResult> UpdateClaim([FromRoute] Guid id, [FromBody] UpdateClaimRequest updateClaimRequest)
         {
             try
             {
@@ -108,6 +126,7 @@ namespace ClaimRequest.API.Controllers
         }
 
 
+
         [Authorize(Policy = "CanRejectClaim")]
         [HttpPut(ApiEndPointConstant.Claim.RejectClaimEndpoint)]
         [ProducesResponseType(typeof(ApiResponse<RejectClaimResponse>), StatusCodes.Status200OK)]
@@ -132,16 +151,22 @@ namespace ClaimRequest.API.Controllers
 
         [Authorize(Policy = "CanCancelClaim")]
         [HttpPut(ApiEndPointConstant.Claim.CancelClaimEndpoint)]
-        [ProducesResponseType(typeof(CancelClaimResponse), StatusCodes.Status200OK)]
-        public async Task<IActionResult> CancelClaim([FromBody] CancelClaimRequest cancelClaimRequest)
+        [ProducesResponseType(typeof(ApiResponse<CancelClaimResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> CancelClaim([FromRoute] Guid claimId, [FromBody] CancelClaimRequest cancelClaimRequest)
         {
-            var response = await _claimService.CancelClaim(cancelClaimRequest);
+            var response = await _claimService.CancelClaim(claimId, cancelClaimRequest);
             if (response == null)
             {
                 _logger.LogError("Cancel claim failed");
                 return Problem("Cancel claim failed");
             }
-            return Ok(response);
+            var successRespose = ApiResponseBuilder.BuildResponse(
+                StatusCodes.Status200OK,
+                "Claim canceled successfully!",
+                response);
+            return Ok(successRespose);
         }
 
         [Authorize(Policy = "CanDownloadClaim")]
@@ -163,31 +188,24 @@ namespace ClaimRequest.API.Controllers
 
         [Authorize(Policy = "CanApproveClaim")]
         [HttpPut(ApiEndPointConstant.Claim.ApproveClaimEndpoint)]
-        [ProducesResponseType(typeof(ApiResponse<ApproveClaimResponse>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id, [FromBody] ApproveClaimRequest approveClaimRequest)
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ApproveClaim([FromRoute] Guid id)
         {
-            try
+            var result = await _claimService.ApproveClaim(User, id);
+            if (result == null)
             {
-                var response = await _claimService.ApproveClaim(id, approveClaimRequest);
-                return Ok(response);
+                _logger.LogError("Approve claim failed");
+                return Problem("Approve claim failed");
             }
-            catch (NotFoundException ex)
-            {
-                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
-                return NotFound(new { message = ex.Message });
-            }
-            catch (BadRequestException ex)
-            {
-                _logger.LogError(ex, "Approve claim failed: {Message}", ex.Message);
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error approving claim with ID {Id}: {Message}", id, ex.Message);
-                return StatusCode(500, new { message = ex.Message });
-            }
+            await _emailService.SendClaimApprovedEmail(id);
+            var successRespose = ApiResponseBuilder.BuildResponse(
+                message: "Claim approved successfully!",
+                data: result,
+                statusCode: StatusCodes.Status200OK);
+            return Ok(successRespose);
         }
 
         [Authorize(Policy = "CanReturnClaim")]
@@ -226,6 +244,43 @@ namespace ClaimRequest.API.Controllers
                     null,
                     StatusCodes.Status500InternalServerError,
                     "An error occurred while returning the claim",
+                    "Internal server error"
+                );
+                return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+            }
+        }
+
+        [Authorize(Policy = "CanSubmitClaim")]
+        [HttpPut(ApiEndPointConstant.Claim.SubmitClaimEndpoint)]
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> SubmitClaim(Guid id)
+        {
+            try
+            {
+                var result = await _claimService.SubmitClaim(id);
+                if (!result)
+                {
+                    _logger.LogError("Submit claim failed");
+                    return NotFound(new { message = "Submit claim failed" });
+                }
+
+                var successResponse = ApiResponseBuilder.BuildResponse(
+                    StatusCodes.Status200OK,
+                    "Claim submitted successfully",
+                    result
+                );
+                return Ok(successResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error submitting claim with ID {ClaimId}", id);
+
+                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status500InternalServerError,
+                    "An error occurred while submitting the claim",
                     "Internal server error"
                 );
                 return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);

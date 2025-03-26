@@ -1,11 +1,12 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace ClaimRequest.DAL.Repositories.Implements
 {
-    public class UnitOfWork<TContext> : IUnitOfWork<TContext> where TContext : DbContext
+    public class UnitOfWork<TContext> : IUnitOfWork<TContext> where TContext : ClaimRequestDbContext
     {
         public TContext Context { get; }
         private Dictionary<Type, object> _repositories;
@@ -28,6 +29,41 @@ namespace ClaimRequest.DAL.Repositories.Implements
             _repositories.Add(typeof(TEntity), repository);
             return (IGenericRepository<TEntity>)repository;
         }
+        #endregion
+
+        #region Packed Transaction Management
+        public async Task<TOperation> ProcessInTransactionAsync<TOperation>(Func<Task<TOperation>> operation)
+        {
+            var executionStrategy = Context.Database.CreateExecutionStrategy();
+            return await executionStrategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await Context.Database.BeginTransactionAsync();
+                try
+                {
+                    var result = await operation();
+                    await Context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return result;
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+        }
+
+        // Overload for void operation
+        public async Task ProcessInTransactionAsync(Func<Task> operation)
+        {
+            await ProcessInTransactionAsync(async () =>
+            {
+                await operation();
+                return true;
+            });
+        }
+
+
         #endregion
 
         #region Transaction Management

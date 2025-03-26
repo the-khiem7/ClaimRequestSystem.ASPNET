@@ -35,6 +35,10 @@ namespace ClaimRequest.DAL.Repositories.Interfaces
         #endregion
         Task<T> GetByIdAsync(Guid id);
 
+        IQueryable<T> GetQueryable(
+            Expression<Func<T, bool>> predicate = null,
+            Func<IQueryable<T>, IIncludableQueryable<T, object>> include = null);
+
         Task<PagingResponse<T>> GetPagingListAsync(
             Expression<Func<T, bool>> predicate = null,
             Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null,
