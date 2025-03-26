@@ -8,11 +8,11 @@ using ClaimRequest.DAL.Data.Responses;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
-    public class WebNavigatorService : IWebNavigatorService
+    public class SidebarElementService : ISidebarElementService
     {
         private readonly IConfiguration _configuration;
-        private readonly ILogger<WebNavigatorService> _logger;
-        public WebNavigatorService(IConfiguration configuration, ILogger<WebNavigatorService> logger)
+        private readonly ILogger<SidebarElementService> _logger;
+        public SidebarElementService(IConfiguration configuration, ILogger<SidebarElementService> logger)
         {
             _configuration = configuration;
             _logger = logger;

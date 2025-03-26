@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ClaimRequest.BLL.Services.Interfaces
 {
-    public interface IWebNavigatorService
+    public interface ISidebarElementService
     {
         Task<string> GetSidebarElement();
     }
