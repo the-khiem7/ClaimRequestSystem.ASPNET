@@ -1,14 +1,34 @@
-﻿using ClaimRequest.BLL.Services.Interfaces;
+﻿#define SMTP
+//#define OAUTH
+using ClaimRequest.BLL.Services.Interfaces;
+using MailKit.Security;
 using ClaimRequest.DAL.Data.Entities;
+using MailKit.Security;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Mail;
 using System.Net;
+using System.Text;
+using System.Threading.Tasks;
+using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Responses.Project;
 using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.DAL.Data.Exceptions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using ClaimRequest.DAL.Data.Responses.Email;
 using ClaimRequest.DAL.Data.Requests.Email;
+using MimeKit;
+using static System.Formats.Asn1.AsnWriter;
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Util.Store;
+using Auth0.ManagementApi.Models;
+using Google.Apis.Gmail.v1;
+using Google.Apis.Services;
+using Google.Apis.Gmail.v1.Data;
+using Google;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Repositories.Interfaces;
 
@@ -17,61 +37,41 @@ namespace ClaimRequest.BLL.Services.Implements
 {
     public class EmailService : IEmailService
     {
-        public readonly string _smtpServer;
-        public readonly int _port;
-        public readonly string _senderEmail;
-        public readonly string _password;
+        private static readonly string[] Scopes = { GmailService.Scope.GmailSend };
+        private readonly string _applicationName;
+        private readonly string _senderEmail;
         public readonly IClaimService _claimService;
         public readonly IProjectService _projectService;
         public readonly IStaffService _staffService;
-        public readonly IOtpService _otpService;
         public readonly ILogger _logger;
         public readonly IUnitOfWork _unitOfWork;
-        public EmailService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService, IOtpService otpService)
+        public readonly OtpUtil _otpUtil;
+        public readonly IOtpService _otpService;
+
+        public readonly string _smtpServer;
+        public readonly int _port;
+        public readonly string _password;
+
+        public EmailService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService, IOtpService otpService, OtpUtil otpUtil)
         {
+#if OAUTH
+            _senderEmail = configuration["EmailSettings:SenderEmailOauth"];
+#endif
+#if SMTP
+            _senderEmail = configuration["EmailSettings:SenderEmailSMTP"];
+#endif
             _smtpServer = configuration["EmailSettings:Host"];
             _port = int.Parse(configuration["EmailSettings:SmtpPort"]);
-            _senderEmail = configuration["EmailSettings:SenderEmail"];
             _password = configuration["EmailSettings:SenderPassword"];
+
             _claimService = claimService;
             _projectService = projectService;
             _staffService = staffService;
             _logger = logger;
             _otpService = otpService;
             _unitOfWork = unitOfWork;
+            _otpUtil = otpUtil;
         }
-
-        //public async Task SendEmailReminderAsync()
-        //{
-        //    try
-        //    {
-        //        var pendingClaims = await _claimService.GetPendingClaimsAsync();
-        //        if (!pendingClaims.Any()) return; // Không có claim nào Pending thì không gửi
-
-        //        string recipientEmail = "thongnmse172317@fpt.edu.vn";
-        //        string subject = "Reminder: Pending Claim Requests";
-        //        var updatedDate = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
-
-        //        // Đọc template email
-        //        string templatePath = Path.Combine(AppContext.BaseDirectory, "Services", "Templates", "ClaimReminderTemplate.html");
-        //        string body = await File.ReadAllTextAsync(templatePath);
-
-        //        // Danh sách claim Pending
-        //        string claimsList = string.Join("<br/>", pendingClaims.Select(c => $"• Staff: {c.StaffName} - Project: {c.ProjectName}"));
-
-        //        // Thay thế placeholder trong template
-        //        body = body.Replace("{ClaimerName}", "Approver")
-        //                   .Replace("{ListName}", claimsList)
-        //                   .Replace("{UpdatedDate}", updatedDate);
-
-        //        await SendEmailAsync(recipientEmail, subject, body);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Error sending claim reminder email");
-        //        throw;
-        //    }
-        //}
 
 
 
@@ -118,16 +118,22 @@ namespace ClaimRequest.BLL.Services.Implements
                 if (claim == null)
                     throw new Exception("Claim not found.");
 
-
-
                 string projectName = claim.Project.Name;
 
                 var updatedDate = claim.UpdateAt.ToString("yyyy-MM-dd HH:mm:ss");
 
                 CreateStaffResponse claimer = await _staffService.GetStaffById(claim.ClaimerId);
-                string recipientEmail = claimer.Email;
-                string subject = $"Claim Request for {projectName} - {claimer.ResponseName} ({claimer.Id})";
 
+                // Get finance staff using FinanceId from claim
+                if (!claim.FinanceId.HasValue)
+                    throw new Exception("Finance staff not assigned to this claim.");
+
+                var financeStaff = await _staffService.GetStaffById(claim.FinanceId.Value);
+                if (financeStaff == null || string.IsNullOrEmpty(financeStaff.Email))
+                    throw new Exception("Finance staff not found or email is invalid.");
+
+                string recipientEmail = financeStaff.Email;
+                string subject = $"Claim Request for {projectName} - {claimer.ResponseName} ({claimer.Id})";
 
                 string templatePath = Path.Combine(AppContext.BaseDirectory, "Services", "Templates", "ManagerApprovedEmailTemplate.html");
                 string body = await File.ReadAllTextAsync(templatePath);
@@ -144,7 +150,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 _logger.LogError(ex, "Error sending claim returned email with claimId: {claimId}", claimId);
                 throw;
             }
-        } //Staff approves
+        }
 
         public async Task SendClaimSubmittedEmail(Guid claimerId)
         {
@@ -191,7 +197,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task SendClaimApprovedEmail(Guid claimId) //Approver approves
+        public async Task SendClaimApprovedEmail(Guid claimId)
         {
             try
             {
@@ -227,6 +233,84 @@ namespace ClaimRequest.BLL.Services.Implements
         }
         public async Task SendEmailAsync(string recipientEmail, string subject, string body)
         {
+#if OAUTH
+            try
+            {
+                // Validate email format
+                try
+                {
+                    var mailAddress = new MailAddress(recipientEmail);
+                }
+                catch (FormatException)
+                {
+                    throw new ArgumentException("Invalid email format", nameof(recipientEmail));
+                }
+
+                UserCredential credential;
+                using (var stream = new FileStream("client_secrect.json", FileMode.Open, FileAccess.Read))
+                {
+                    credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
+                        GoogleClientSecrets.FromStream(stream).Secrets,
+                        Scopes,
+                        "user",
+                        CancellationToken.None,
+                        new FileDataStore("token.json", true));
+                }
+
+                // Create Gmail API service.
+                var service = new GmailService(new BaseClientService.Initializer()
+                {
+                    HttpClientInitializer = credential,
+                    ApplicationName = "Claim Request System"
+                });
+
+                // Create the email message
+                var emailMessage = new MimeMessage();
+                emailMessage.From.Add(new MailboxAddress("noreply@emailservice.com", _senderEmail));
+                emailMessage.To.Add(new MailboxAddress("", recipientEmail));
+                emailMessage.Subject = subject;
+
+                // Create the HTML body
+                var bodyBuilder = new BodyBuilder
+                {
+                    HtmlBody = body,
+                    TextBody = "This is the plain text version of the email body."
+                };
+                emailMessage.Body = bodyBuilder.ToMessageBody();
+
+                // Convert to Gmail API format
+                using (var memoryStream = new MemoryStream())
+                {
+                    emailMessage.WriteTo(memoryStream);
+                    var rawMessage = Convert.ToBase64String(memoryStream.ToArray())
+                        .Replace('+', '-')
+                        .Replace('/', '_')
+                        .Replace("=", "");
+
+                    var message = new Message { Raw = rawMessage };
+
+                    try
+                    {
+                        await service.Users.Messages.Send(message, "me").ExecuteAsync();
+                    }
+                    catch (GoogleApiException ex)
+                    {
+                        _logger.LogError(ex, $"Google API error: {ex.Message}");
+                        _logger.LogError($"Error details: {ex.Error?.Message}");
+                        _logger.LogError($"Error code: {ex.Error?.Code}");
+                        _logger.LogError($"Error errors: {string.Join(", ", ex.Error?.Errors.Select(e => e.Message))}");
+                        throw;
+                    }
+                }
+            }
+
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error in SendEmailAsync: {ex.Message}");
+                throw;
+            }
+#endif
+#if SMTP
             try
             {
                 using (var smtpClient = new SmtpClient(_smtpServer, _port))
@@ -251,20 +335,21 @@ namespace ClaimRequest.BLL.Services.Implements
                 _logger.LogError(ex, "Error sending email to {recipientEmail}", recipientEmail);
                 throw;
             }
-        }
 
+#endif
+        }
         public async Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request)
         {
             var response = new SendOtpEmailResponse();
             try
             {
-                var existingStaff = await _unitOfWork.GetRepository<Staff>().SingleOrDefaultAsync(predicate:s => s.Email == request.Email);
+                var existingStaff = await _unitOfWork.GetRepository<Staff>().SingleOrDefaultAsync(predicate: s => s.Email == request.Email);
                 if (existingStaff == null)
                 {
                     throw new NotFoundException($"Staff with email {request.Email} not found.");
                 }
 
-                var otp = OtpUtil.GenerateOtp(request.Email);
+                var otp = _otpUtil.GenerateOtp(request.Email);
                 await _otpService.CreateOtpEntity(request.Email, otp);
 
                 string templatePath = Path.Combine(AppContext.BaseDirectory, "Services", "Templates", "OtpEmailTemplate.html");
@@ -279,7 +364,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 await SendEmailAsync(recipientEmail, subject, body);
                 response.Success = true;
             }
-            
+
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send OTP email.");
@@ -291,3 +376,4 @@ namespace ClaimRequest.BLL.Services.Implements
         }
     }
 }
+
