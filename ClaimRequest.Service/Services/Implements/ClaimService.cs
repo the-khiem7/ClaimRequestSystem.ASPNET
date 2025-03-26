@@ -640,13 +640,16 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
+        #region Submit Claim
+
         public async Task<bool> SubmitClaim(Guid id)
         {
             try
             {
                 return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
-                    var loggedUserId = Guid.Parse(_httpContextAccessor.HttpContext?.User?.FindFirst("StaffId")?.Value.ToString());
+                    var loggedUserId = Guid.Parse(_httpContextAccessor.HttpContext?.User?.FindFirst("StaffId")?.Value
+                        .ToString());
 
                     var claim = (await _unitOfWork.GetRepository<Claim>().GetByIdAsync(id)).ValidateExists(id);
 
@@ -748,6 +751,8 @@ namespace ClaimRequest.BLL.Services.Implements
                 ApproverId = approver.Id
             };
         }
+
+        #endregion Submit Claim
 
         public async Task<bool> PaidClaim(Guid id, Guid financeId)
         {
