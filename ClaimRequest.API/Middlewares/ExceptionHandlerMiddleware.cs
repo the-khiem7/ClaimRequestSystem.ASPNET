@@ -124,8 +124,13 @@ namespace ClaimRequest.API.Middlewares
                     (HttpStatusCode.NotFound, "Resource not found", exception.Message, null),
                 #endregion
 
+                #region 409 Conflict
+                EmailAlreadyRegisteredException =>
+                    (HttpStatusCode.Conflict, "Email already registed, please use another email", exception.Message, null),
+                #endregion
+
                 #region 500 Internal Server Error
-                DbUpdateException dbUpdateEx =>
+            DbUpdateException dbUpdateEx =>
                     (HttpStatusCode.InternalServerError, "Database update error", dbUpdateEx.Message, null),
                 _ => (HttpStatusCode.InternalServerError,
                     "An unexpected error occurred",

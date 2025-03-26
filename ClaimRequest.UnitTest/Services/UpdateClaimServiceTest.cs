@@ -115,7 +115,7 @@ namespace ClaimRequest.UnitTest.Services
             var claimId = Guid.NewGuid();
             var updateRequest = new UpdateClaimRequest
             {
-                ClaimId = claimId,
+                //ClaimId = claimId,
                 StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)),
                 EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
                 TotalWorkingHours = 10
@@ -137,7 +137,7 @@ namespace ClaimRequest.UnitTest.Services
             var claimId = Guid.Empty; // Invalid
             var updateRequest = new UpdateClaimRequest
             {
-                ClaimId = claimId,
+                //ClaimId = claimId,
                 StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)),
                 EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
                 TotalWorkingHours = -5  // Invalid
