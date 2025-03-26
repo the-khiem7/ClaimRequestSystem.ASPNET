@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using ClaimRequest.DAL.Data.Entities;
+using Microsoft.AspNetCore.Http;
 
 namespace ClaimRequest.DAL.Data.Requests.Staff
 {
@@ -30,5 +31,7 @@ namespace ClaimRequest.DAL.Data.Requests.Staff
         public decimal Salary { get; set; }
 
         public bool IsActive { get; set; } = true;
+
+        public IFormFile? Avatar { get; set; }
     }
 }

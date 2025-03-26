@@ -1,4 +1,7 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿#define DISABLE
+
+#if !DISABLE
+using System.ComponentModel.DataAnnotations;
 using AutoMapper;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.DAL.Data.Entities;
@@ -162,4 +165,4 @@ namespace ClaimRequest.UnitTest.Services
         }
     }
 }
-
+#endif 

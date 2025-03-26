@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
+using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -8,10 +9,10 @@ namespace ClaimRequest.DAL.Repositories.Implements
 {
     public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
-        protected readonly DbContext _dbContext;
+        protected readonly ClaimRequestDbContext _dbContext;
         protected readonly DbSet<T> _dbSet;
 
-        public GenericRepository(DbContext context)
+        public GenericRepository(ClaimRequestDbContext context)
         {
             _dbContext = context;
             _dbSet = context.Set<T>();
@@ -99,6 +100,25 @@ namespace ClaimRequest.DAL.Repositories.Implements
             if (predicate != null) query = query.Where(predicate);
             if (orderBy != null) return orderBy(query).Select(selector).ToPagingResponse(page, size, 1);
             return query.AsNoTracking().Select(selector).ToPagingResponse(page, size, 1);
+        }
+
+        public IQueryable<T> GetQueryable(
+        Expression<Func<T, bool>> predicate = null,
+        Func<IQueryable<T>, IIncludableQueryable<T, object>> include = null)
+        {
+            IQueryable<T> query = _dbSet.AsQueryable();
+
+            if (include != null)
+            {
+                query = include(query);
+            }
+
+            if (predicate != null)
+            {
+                query = query.Where(predicate);
+            }
+
+            return query;
         }
 
         #endregion

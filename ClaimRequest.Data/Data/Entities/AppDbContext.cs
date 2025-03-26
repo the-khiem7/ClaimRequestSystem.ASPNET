@@ -15,6 +15,7 @@ namespace ClaimRequest.DAL.Data.Entities
         public DbSet<Staff> Staffs { get; set; }
         public DbSet<Project> Projects { get; set; }
         public DbSet<ProjectStaff> ProjectStaffs { get; set; }
+        public DbSet<Payment> Payments { get; set; }
         public DbSet<Claim> Claims { get; set; }
         public DbSet<ClaimApprover> ClaimApprovers { get; set; }
         public DbSet<Otp> Otps { get; set; }

@@ -280,6 +280,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     }
                 }
             }
+            
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error in SendEmailAsync: {ex.Message}");
