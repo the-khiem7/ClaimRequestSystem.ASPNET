@@ -50,6 +50,7 @@ void ConfigureServices()
 
     // Register utility services
     builder.Services.AddSingleton<JwtUtil>();
+    builder.Services.AddSingleton<OtpUtil>();
 
     // Register application services
     RegisterApplicationServices();
