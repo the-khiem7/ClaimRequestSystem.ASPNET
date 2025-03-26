@@ -273,6 +273,21 @@ namespace ClaimRequest.BLL.Services.Implements
 
         public async Task<UpdateClaimResponse> UpdateClaim(Guid claimId, UpdateClaimRequest request)
         {
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            if (request.Amount < 0)
+            {
+                throw new ValidationException("Amount must be greater than or equal to 0.");
+            }
+
+            if (request.TotalWorkingHours < 0)
+            {
+                throw new ValidationException("Total Working Hours must be greater than or equal to 0.");
+            }
+
             var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
             return await executionStrategy.ExecuteAsync(async () =>
             {
@@ -316,10 +331,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 }
             });
         }
-
-
-
-
 
 
         #region Get Claims
