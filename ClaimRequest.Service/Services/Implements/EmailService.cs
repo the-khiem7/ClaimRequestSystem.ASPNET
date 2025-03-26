@@ -27,7 +27,8 @@ namespace ClaimRequest.BLL.Services.Implements
         public readonly IOtpService _otpService;
         public readonly ILogger _logger;
         public readonly IUnitOfWork _unitOfWork;
-        public EmailService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService, IOtpService otpService)
+        public readonly OtpUtil _otpUtil;
+        public EmailService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService, IOtpService otpService,OtpUtil otpUtil )
         {
             _smtpServer = configuration["EmailSettings:Host"];
             _port = int.Parse(configuration["EmailSettings:SmtpPort"]);
@@ -39,6 +40,7 @@ namespace ClaimRequest.BLL.Services.Implements
             _logger = logger;
             _otpService = otpService;
             _unitOfWork = unitOfWork;
+            _otpUtil = otpUtil;
         }
 
         //public async Task SendEmailReminderAsync()
@@ -264,7 +266,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     throw new NotFoundException($"Staff with email {request.Email} not found.");
                 }
 
-                var otp = OtpUtil.GenerateOtp(request.Email);
+                var otp = _otpUtil.GenerateOtp(request.Email);
                 await _otpService.CreateOtpEntity(request.Email, otp);
 
                 string templatePath = Path.Combine(AppContext.BaseDirectory, "Services", "Templates", "OtpEmailTemplate.html");
