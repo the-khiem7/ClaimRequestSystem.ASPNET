@@ -61,7 +61,7 @@ namespace ClaimRequest.API.Extensions
 
             options.AddPolicy("CanViewProjects", policy =>
                 policy.RequireRole(RoleConstants.AllRoles));
-            
+
             options.AddPolicy("CanUpdateProject", policy =>
                 policy.RequireRole(SystemRole.Admin.ToString()));
 
@@ -70,21 +70,22 @@ namespace ClaimRequest.API.Extensions
             
 
             options.AddPolicy("CanAssignProjectManager", policy =>
-                policy.RequireRole(SystemRole.Approver.ToString()));
-            
+                policy.RequireRole(SystemRole.Admin.ToString(), SystemRole.Approver.ToString()));
+
             options.AddPolicy("CanAssignProjectRole", policy =>
-                policy.RequireRole(SystemRole.Approver.ToString()));
-            
+                policy.RequireRole(SystemRole.Admin.ToString(), SystemRole.Approver.ToString()));
+
             options.AddPolicy("CanAssignProjectMember", policy =>
-                policy.RequireRole(SystemRole.Approver.ToString()));
-            
+                policy.RequireRole(SystemRole.Admin.ToString(), SystemRole.Approver.ToString()));
+
             options.AddPolicy("CanRemoveProjectMember", policy =>
-                policy.RequireRole(SystemRole.Approver.ToString()));
-            
+                policy.RequireRole(SystemRole.Admin.ToString(), SystemRole.Approver.ToString()));
+
             options.AddPolicy("CanViewProjectMembers", policy =>
                 policy.RequireRole(RoleConstants.AllRoles));
         }
-        
+
+
         private static void AddManagementPolicies(AuthorizationOptions options)
         {
             options.AddPolicy("CanManageStaff", policy => 
