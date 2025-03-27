@@ -1,4 +1,6 @@
-﻿using ClaimRequest.BLL.Services.Interfaces;
+﻿#define SMTP
+//#define OAUTH
+using ClaimRequest.BLL.Services.Interfaces;
 using MailKit.Security;
 using ClaimRequest.DAL.Data.Entities;
 using MailKit.Security;
@@ -35,7 +37,6 @@ namespace ClaimRequest.BLL.Services.Implements
 {
     public class EmailService : IEmailService
     {
-
         private static readonly string[] Scopes = { GmailService.Scope.GmailSend };
         private readonly string _applicationName;
         private readonly string _senderEmail;
@@ -46,9 +47,23 @@ namespace ClaimRequest.BLL.Services.Implements
         public readonly IUnitOfWork _unitOfWork;
         public readonly OtpUtil _otpUtil;
         public readonly IOtpService _otpService;
-        public EmailService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService, IOtpService otpService,OtpUtil otpUtil )
+
+        public readonly string _smtpServer;
+        public readonly int _port;
+        public readonly string _password;
+
+        public EmailService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService, IOtpService otpService, OtpUtil otpUtil)
         {
-            _senderEmail = configuration["EmailSettings:SenderEmail"];
+#if OAUTH
+            _senderEmail = configuration["EmailSettings:SenderEmailOauth"];
+#endif
+#if SMTP
+            _senderEmail = configuration["EmailSettings:SenderEmailSMTP"];
+#endif
+            _smtpServer = configuration["EmailSettings:Host"];
+            _port = int.Parse(configuration["EmailSettings:SmtpPort"]);
+            _password = configuration["EmailSettings:SenderPassword"];
+
             _claimService = claimService;
             _projectService = projectService;
             _staffService = staffService;
@@ -218,6 +233,7 @@ namespace ClaimRequest.BLL.Services.Implements
         }
         public virtual async Task SendEmailAsync(string recipientEmail, string subject, string body)
         {
+#if OAUTH
             try
             {
                 // Validate email format
@@ -287,12 +303,40 @@ namespace ClaimRequest.BLL.Services.Implements
                     }
                 }
             }
-            
+
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error in SendEmailAsync: {ex.Message}");
                 throw;
             }
+#endif
+#if SMTP
+            try
+            {
+                using (var smtpClient = new SmtpClient(_smtpServer, _port))
+                {
+                    smtpClient.Credentials = new NetworkCredential(_senderEmail, _password);
+                    smtpClient.EnableSsl = true;
+
+                    var mailMessage = new MailMessage
+                    {
+                        From = new MailAddress(_senderEmail, "noreply@emailservice.com"),
+                        Subject = subject,
+                        Body = body,
+                        IsBodyHtml = true,
+                    };
+                    mailMessage.To.Add(recipientEmail);
+
+                    await smtpClient.SendMailAsync(mailMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending email to {recipientEmail}", recipientEmail);
+                throw;
+            }
+
+#endif
         }
         public async Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request)
         {

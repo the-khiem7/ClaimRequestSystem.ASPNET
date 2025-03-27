@@ -237,11 +237,13 @@ void ConfigureMiddleware()
     // FOR DOCKER COMPOSE => OFF THIS
     app.UseHttpsRedirection();
 
-    // Configure CORS to allow requests from localhost
+    // Configure CORS to allow requests from localhost and vercel.app
     app.UseCors(options =>
     {
         options.SetIsOriginAllowed(origin =>
-           origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:"))
+           origin.StartsWith("http://localhost:") ||
+           origin.StartsWith("https://localhost:") ||
+           origin.EndsWith(".vercel.app"))
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();

@@ -62,6 +62,13 @@ namespace ClaimRequest.DAL.Data.Exceptions
         }
     }
 
+    public class EmailAlreadyRegisteredException : ApiException
+    {
+        public EmailAlreadyRegisteredException(string message)
+            : base(message, HttpStatusCode.Conflict)
+        { 
+        }
+    }
     public class OtpValidationException : Exception
     {
         public int AttemptsLeft { get; }
