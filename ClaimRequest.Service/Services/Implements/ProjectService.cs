@@ -43,7 +43,7 @@ namespace ClaimRequest.BLL.Services.Implements
                                 include: null
                             )).ValidateExists(createProjectRequest.ProjectManagerId, "Can't create project because of invalid project manager");
 
-                        if (projectManager.SystemRole != SystemRole.Approver)
+                        if (projectManager.SystemRole != SystemRole.Approver)// Add Admin
                         {
                             throw new InvalidOperationException("The specified staff member is not a Project Manager");
                         }
