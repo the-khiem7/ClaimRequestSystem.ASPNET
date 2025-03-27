@@ -15,7 +15,7 @@ using ClaimEntity = ClaimRequest.DAL.Data.Entities.Claim;
 
 namespace ClaimRequest.UnitTest.Services
 {
-    public class GetClaimsTests
+    public class GetClaimsServiceTests
     {
         private readonly ITestOutputHelper _testOutputHelper;
         private readonly Mock<IUnitOfWork<ClaimRequestDbContext>> _mockUnitOfWork;
@@ -25,7 +25,7 @@ namespace ClaimRequest.UnitTest.Services
         private readonly Mock<IGenericRepository<ClaimEntity>> _mockClaimRepository;
         private readonly ClaimService _claimService;
 
-        public GetClaimsTests(ITestOutputHelper testOutputHelper)
+        public GetClaimsServiceTests(ITestOutputHelper testOutputHelper)
         {
             _testOutputHelper = testOutputHelper;
             _mockUnitOfWork = new Mock<IUnitOfWork<ClaimRequestDbContext>>();
@@ -658,6 +658,7 @@ namespace ClaimRequest.UnitTest.Services
                 Times.Once
                 );
         }
+
 
     }
 }
