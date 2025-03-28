@@ -111,17 +111,7 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> SendOtp([FromBody] SendOtpEmailRequest request)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ApiResponseBuilder.BuildErrorResponse<object>(
-                    null,
-                    StatusCodes.Status400BadRequest,
-                    "Invalid request",
-                    "The request data is invalid."
-                ));
-            }
-
-            try
+        try
             {
                 var response = await _emailService.SendOtpEmailAsync(request);
                 return Ok(ApiResponseBuilder.BuildResponse(
