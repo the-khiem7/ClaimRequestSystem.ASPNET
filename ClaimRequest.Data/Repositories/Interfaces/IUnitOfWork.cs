@@ -15,6 +15,7 @@ namespace ClaimRequest.DAL.Repositories.Interfaces
 
         Task<IDbContextTransaction> BeginTransactionAsync();
 
+
         Task CommitTransactionAsync(IDbContextTransaction transaction);
 
         Task RollbackTransactionAsync(IDbContextTransaction transaction);
