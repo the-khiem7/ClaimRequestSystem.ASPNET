@@ -1,5 +1,5 @@
-﻿#define SMTP
-//#define OAUTH
+﻿//#define SMTP
+#define OAUTH
 using ClaimRequest.BLL.Services.Interfaces;
 using MailKit.Security;
 using ClaimRequest.DAL.Data.Entities;
