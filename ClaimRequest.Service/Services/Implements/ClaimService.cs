@@ -808,6 +808,10 @@ namespace ClaimRequest.BLL.Services.Implements
                 {
                     throw new BadRequestException($"Finance staff with ID {financeId} not found or does not have the Finance role.");
                 }
+                if (finance.SystemRole != SystemRole.Finance)
+                {
+                    throw new UnauthorizedAccessException("The user does not have permission to paid this claim.");
+                }
 
                 // 🔹 Cập nhật trạng thái của claim thành "Paid"
                 var oldStatus = existingClaim.Status;
@@ -825,13 +829,13 @@ namespace ClaimRequest.BLL.Services.Implements
                     OldValue = oldStatus.ToString() ?? "Unknown",
                     NewValue = ClaimStatus.Paid.ToString(),
                     ChangedAt = DateTime.UtcNow,
-                    ChangedBy = finance.Name ?? "System"
+                    ChangedBy = finance?.Name ?? "System"
                 };
-                Console.WriteLine($"Hell this suck & bugging me: HistoryId: {claimLog.HistoryId}, ClaimId: {claimLog.ClaimId}, FieldChanged: {claimLog.FieldChanged}, OldValue: {claimLog.OldValue}, NewValue: {claimLog.NewValue}, ChangedAt: {claimLog.ChangedAt}, ChangedBy: {claimLog.ChangedBy}");
+                Console.WriteLine($"HistoryId: {claimLog.HistoryId}, ClaimId: {claimLog.ClaimId}, FieldChanged: {claimLog.FieldChanged}, OldValue: {claimLog.OldValue}, NewValue: {claimLog.NewValue}, ChangedAt: {claimLog.ChangedAt}, ChangedBy: {claimLog.ChangedBy}");
 
                 await _unitOfWork.GetRepository<ClaimChangeLog>().InsertAsync(claimLog);
 
-                await _unitOfWork.CommitAsync(); // Lưu thay đổi vào DB
+                await _unitOfWork.CommitAsync(); 
 
                 return true;
             }
