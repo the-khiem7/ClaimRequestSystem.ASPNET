@@ -27,7 +27,6 @@ namespace ClaimRequest.UnitTest.Services
         private readonly Mock<IGenericRepository<Staff>> _mockStaffRepository;
         private readonly Mock<IGenericRepository<Otp>> _mockOtpRepository;
 
-        // Instead of subclassing, we'll create a simplified test version of the methods
         public PasswordServiceTests()
         {
             _mockUnitOfWork = new Mock<IUnitOfWork<ClaimRequestDbContext>>();
@@ -39,13 +38,11 @@ namespace ClaimRequest.UnitTest.Services
             _mockStaffRepository = new Mock<IGenericRepository<Staff>>();
             _mockOtpRepository = new Mock<IGenericRepository<Otp>>();
 
-            // Setup unit of work to return successfully
             _mockUnitOfWork.Setup(u => u.CommitAsync()).ReturnsAsync(1);
             _mockUnitOfWork.Setup(u => u.GetRepository<Staff>()).Returns(_mockStaffRepository.Object);
             _mockUnitOfWork.Setup(u => u.GetRepository<Otp>()).Returns(_mockOtpRepository.Object);
         }
 
-        // Create mock repositories as needed per test
         private void SetupStaffRepository(Staff staffToReturn)
         {
             _mockStaffRepository.Setup(r => r.SingleOrDefaultAsync(
@@ -64,11 +61,9 @@ namespace ClaimRequest.UnitTest.Services
                 .ReturnsAsync(otpToReturn);
         }
 
-        // Test for ForgotPassword
         [Fact]
         public async Task ForgotPassword_ValidRequest_ReturnsSuccessResponse()
         {
-            // Arrange
             var email = "test@example.com";
             var otp = "123456";
             var newPassword = "newPassword123";
@@ -94,10 +89,8 @@ namespace ClaimRequest.UnitTest.Services
             _mockOtpService.Setup(s => s.ValidateOtp(email, otp))
                 .ReturnsAsync(otpValidationResult);
 
-            // Act - Use the test implementation directly
             var result = await TestForgotPassword(forgotPasswordRequest);
 
-            // Assert
             Assert.NotNull(result);
             Assert.True(result.Success);
             Assert.Equal(otpValidationResult.AttemptsLeft, result.AttemptsLeft);
@@ -109,7 +102,6 @@ namespace ClaimRequest.UnitTest.Services
         [Fact]
         public async Task ForgotPassword_InvalidOtp_ThrowsOtpValidationException()
         {
-            // Arrange
             var email = "test@example.com";
             var otp = "123456";
             var newPassword = "newPassword123";
@@ -135,7 +127,6 @@ namespace ClaimRequest.UnitTest.Services
             _mockOtpService.Setup(s => s.ValidateOtp(email, otp))
                 .ReturnsAsync(otpValidationResult);
 
-            // Act & Assert
             var exception = await Assert.ThrowsAsync<OtpValidationException>(
                 () => TestForgotPassword(forgotPasswordRequest));
 
@@ -146,7 +137,6 @@ namespace ClaimRequest.UnitTest.Services
         [Fact]
         public async Task ForgotPassword_StaffNotFound_ThrowsInvalidOperationException()
         {
-            // Arrange
             var email = "nonexistent@example.com";
             var otp = "123456";
             var newPassword = "newPassword123";
@@ -160,7 +150,6 @@ namespace ClaimRequest.UnitTest.Services
 
             SetupStaffRepository(null);
 
-            // Act & Assert
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => TestForgotPassword(forgotPasswordRequest));
 
@@ -170,7 +159,6 @@ namespace ClaimRequest.UnitTest.Services
         [Fact]
         public async Task ChangePassword_ValidRequest_ReturnsSuccessResponse()
         {
-            // Arrange
             var email = "test@example.com";
             var oldPassword = "oldPassword123";
             var newPassword = "newPassword123";
@@ -188,7 +176,7 @@ namespace ClaimRequest.UnitTest.Services
             {
                 Id = Guid.NewGuid(),
                 Email = email,
-                Password = "hashed_" + oldPassword,  // Match our fake hash method
+                Password = "hashed_" + oldPassword, 
                 IsActive = true
             };
 
@@ -206,10 +194,8 @@ namespace ClaimRequest.UnitTest.Services
             _mockOtpService.Setup(s => s.ValidateOtp(email, otp))
                 .ReturnsAsync(otpValidationResult);
 
-            // Act
             var result = await TestChangePassword(changePasswordRequest);
 
-            // Assert
             Assert.NotNull(result);
             Assert.True(result.Success);
             Assert.Equal(otpValidationResult.AttemptsLeft, result.AttemptsLeft);
@@ -221,7 +207,6 @@ namespace ClaimRequest.UnitTest.Services
         [Fact]
         public async Task ChangePassword_InvalidOldPassword_ThrowsOtpValidationException()
         {
-            // Arrange
             var email = "test@example.com";
             var wrongOldPassword = "wrongPassword";
             var correctOldPassword = "correctPassword";
@@ -240,7 +225,7 @@ namespace ClaimRequest.UnitTest.Services
             {
                 Id = Guid.NewGuid(),
                 Email = email,
-                Password = "hashed_" + correctOldPassword,  // Won't match the request
+                Password = "hashed_" + correctOldPassword,  
                 IsActive = true
             };
 
@@ -254,7 +239,6 @@ namespace ClaimRequest.UnitTest.Services
             SetupStaffRepository(staff);
             SetupOtpRepository(otpEntity);
 
-            // Act & Assert
             var exception = await Assert.ThrowsAsync<OtpValidationException>(
                 () => TestChangePassword(changePasswordRequest));
 
@@ -268,7 +252,6 @@ namespace ClaimRequest.UnitTest.Services
         [Fact]
         public async Task ChangePassword_SameNewAndOldPassword_ThrowsInvalidOperationException()
         {
-            // Arrange
             var email = "test@example.com";
             var password = "samePassword123";
             var otp = "123456";
@@ -277,7 +260,7 @@ namespace ClaimRequest.UnitTest.Services
             {
                 Email = email,
                 OldPassword = password,
-                NewPassword = password, // Same as old password
+                NewPassword = password, 
                 Otp = otp
             };
 
@@ -299,14 +282,12 @@ namespace ClaimRequest.UnitTest.Services
             SetupStaffRepository(staff);
             SetupOtpRepository(otpEntity);
 
-            // Act & Assert
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => TestChangePassword(changePasswordRequest));
 
             Assert.Equal("New password must be different from the old password.", exception.Message);
         }
 
-        // These are test implementations to avoid having to subclass AuthService
         private async Task<ForgotPasswordResponse> TestForgotPassword(ForgotPasswordRequest request)
         {
             var repo = _mockUnitOfWork.Object.GetRepository<Staff>();
@@ -323,7 +304,6 @@ namespace ClaimRequest.UnitTest.Services
                 throw new OtpValidationException("Invalid OTP.", otpValidationResult.AttemptsLeft);
             }
 
-            // Fake password hash
             staff.Password = "hashed_" + request.NewPassword;
             staff.LastChangePassword = DateTime.UtcNow;
 
@@ -354,7 +334,6 @@ namespace ClaimRequest.UnitTest.Services
 
             int attemptsLeft = otpEntity?.AttemptLeft ?? 0;
 
-            // Fake password verification
             bool oldPasswordVerify = staff.Password == "hashed_" + request.OldPassword;
             if (!oldPasswordVerify)
             {
@@ -389,7 +368,6 @@ namespace ClaimRequest.UnitTest.Services
                 throw new OtpValidationException("Invalid OTP.", otpValidationResult.AttemptsLeft);
             }
 
-            // Fake password hash
             staff.Password = "hashed_" + request.NewPassword;
             staff.LastChangePassword = DateTime.UtcNow;
 

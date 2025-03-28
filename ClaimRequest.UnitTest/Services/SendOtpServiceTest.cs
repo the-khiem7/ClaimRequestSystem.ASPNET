@@ -39,20 +39,16 @@ namespace ClaimRequest.UnitTest.Services
             _mockLogger = new Mock<ILogger<EmailService>>();
             _mockStaffRepository = new Mock<IGenericRepository<Staff>>();
 
-            // Setup configuration for OtpUtil - correct key from the actual OtpUtil class
             _mockConfiguration.Setup(c => c["OtpSettings:SecretSalt"]).Returns("TestSalt123");
 
-            // Setup unit of work
             _mockUnitOfWork.Setup(uow => uow.GetRepository<Staff>())
                 .Returns(_mockStaffRepository.Object);
 
-            // Mock configuration settings needed for email service
             _mockConfiguration.Setup(c => c["EmailSettings:SenderEmailSMTP"]).Returns("test@example.com");
             _mockConfiguration.Setup(c => c["EmailSettings:Host"]).Returns("smtp.example.com");
             _mockConfiguration.Setup(c => c["EmailSettings:SmtpPort"]).Returns("587");
             _mockConfiguration.Setup(c => c["EmailSettings:SenderPassword"]).Returns("testPassword");
 
-            // Create the test email service with a mocked OtpUtil
             var mockOtpUtil = new Mock<OtpUtil>(_mockConfiguration.Object);
             mockOtpUtil.Setup(u => u.GenerateOtp(It.IsAny<string>())).Returns("123456");
 
@@ -71,7 +67,6 @@ namespace ClaimRequest.UnitTest.Services
         [Fact]
         public async Task SendOtpEmailAsync_ValidRequest_ReturnsSuccessResponse()
         {
-            // Arrange
             var email = "test@example.com";
             var request = new SendOtpEmailRequest { Email = email };
             var staff = new Staff { Id = Guid.NewGuid(), Email = email, Name = "Test User" };
@@ -82,16 +77,13 @@ namespace ClaimRequest.UnitTest.Services
                 null))
                 .ReturnsAsync(staff);
 
-            // Setup OtpService to mock CreateOtpEntity
             _mockOtpService.Setup(s => s.CreateOtpEntity(
                 It.IsAny<string>(),
                 It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
 
-            // Act
             var result = await _emailService.SendOtpEmailAsync(request);
 
-            // Assert
             Assert.NotNull(result);
             Assert.True(result.Success);
             _mockOtpService.Verify(s => s.CreateOtpEntity(
@@ -102,7 +94,6 @@ namespace ClaimRequest.UnitTest.Services
         [Fact]
         public async Task SendOtpEmailAsync_StaffNotFound_ThrowsNotFoundException()
         {
-            // Arrange
             var email = "nonexistent@example.com";
             var request = new SendOtpEmailRequest { Email = email };
 
@@ -112,7 +103,6 @@ namespace ClaimRequest.UnitTest.Services
                 null))
                 .ReturnsAsync((Staff)null);
 
-            // Act & Assert
             var exception = await Assert.ThrowsAsync<NotFoundException>(() =>
                 _emailService.SendOtpEmailAsync(request));
 
@@ -122,7 +112,6 @@ namespace ClaimRequest.UnitTest.Services
         [Fact]
         public async Task SendOtpEmailAsync_ExceptionDuringProcessing_ThrowsException()
         {
-            // Arrange
             var email = "test@example.com";
             var request = new SendOtpEmailRequest { Email = email };
             var staff = new Staff { Id = Guid.NewGuid(), Email = email, Name = "Test User" };
@@ -138,14 +127,12 @@ namespace ClaimRequest.UnitTest.Services
                 It.IsAny<string>()))
                 .ThrowsAsync(new Exception("Database error"));
 
-            // Act & Assert
             var exception = await Assert.ThrowsAsync<Exception>(() =>
                 _emailService.SendOtpEmailAsync(request));
 
             Assert.Equal("Database error", exception.Message);
         }
 
-        // Special class for testing that avoids actually sending emails
         private class MockedEmailService : EmailService
         {
             public MockedEmailService(
@@ -161,16 +148,13 @@ namespace ClaimRequest.UnitTest.Services
             {
             }
 
-            // Override to prevent actual email sending
             public override Task SendEmailAsync(string recipientEmail, string subject, string body)
             {
                 return Task.CompletedTask;
             }
 
-            // Override to prevent actual file operations
             protected Task<string> ReadTemplateFileAsync(string templatePath)
             {
-                // Return a mock template instead of reading from file
                 return Task.FromResult("<html><body>OTP: {OtpCode}, Expires in {ExpiryTime} minutes</body></html>");
             }
         }
