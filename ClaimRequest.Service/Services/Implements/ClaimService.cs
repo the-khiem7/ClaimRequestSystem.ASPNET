@@ -638,7 +638,10 @@ namespace ClaimRequest.BLL.Services.Implements
                             predicate: s => s.Id == id,
                             include: q => q.Include(c => c.ClaimApprovers));
 
-                    pendingClaim.ValidateExists(id);
+                   if(pendingClaim==null)
+                    {
+                        throw new KeyNotFoundException($"Claim with ID {id} not found.");
+                    }
 
                     if (pendingClaim.Status != ClaimStatus.Pending)
                     {
