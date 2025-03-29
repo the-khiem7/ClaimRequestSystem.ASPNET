@@ -223,7 +223,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             predicate: p => p.Id == assignStaffRequest.projectId
                             );
 
-                        if (existingProject == null) 
+                        if (existingProject == null)
                         {
                             throw new NotFoundException("Project not found.");
                         }
