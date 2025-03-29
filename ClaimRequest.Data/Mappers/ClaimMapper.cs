@@ -67,6 +67,12 @@ namespace ClaimRequest.DAL.Mappers
                 .ForMember(dest => dest.ProjectStartDate, opt => opt.MapFrom(src => src.Project.StartDate))
                 .ForMember(dest => dest.ProjectEndDate, opt => opt.MapFrom(src => src.Project.EndDate));
 
+            CreateMap<Claim, ViewClaimByIdResponse>()
+                .ForMember(dest => dest.StaffName, opt => opt.MapFrom(src => src.Claimer.Name))
+                .ForMember(dest => dest.ProjectName, opt => opt.MapFrom(src => src.Project.Name))
+                .ForMember(dest => dest.ProjectStartDate, opt => opt.MapFrom(src => src.Project.StartDate))
+                .ForMember(dest => dest.ProjectEndDate, opt => opt.MapFrom(src => src.Project.EndDate));
+
             // Add missing mappings
             CreateMap<ReturnClaimRequest, Claim>()
                 .ForMember(dest => dest.Remark, opt => opt.MapFrom(src => src.Remark))
