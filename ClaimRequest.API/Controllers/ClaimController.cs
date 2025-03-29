@@ -291,6 +291,7 @@ namespace ClaimRequest.API.Controllers
                     "Claim submitted successfully",
                     result
                 );
+                await _emailService.SendClaimSubmittedEmail(id);
                 return Ok(successResponse);
             }
             catch (Exception ex)
