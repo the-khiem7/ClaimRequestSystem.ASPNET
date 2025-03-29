@@ -19,6 +19,7 @@ namespace ClaimRequest.DAL.Data.Entities
         public DbSet<Claim> Claims { get; set; }
         public DbSet<ClaimApprover> ClaimApprovers { get; set; }
         public DbSet<Otp> Otps { get; set; }
+        public DbSet<RefreshTokens> RefreshTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -136,6 +137,15 @@ namespace ClaimRequest.DAL.Data.Entities
             // Configure Otp entity to use Redis schema
             modelBuilder.Entity<Otp>()
                 .ToTable("Otps", "redis");
+
+            modelBuilder.Entity<RefreshTokens>()
+                .ToTable("RefreshTokens", "redis");
+
+            modelBuilder.Entity<RefreshTokens>()
+                .HasOne(rt => rt.Staff)
+                .WithMany(s => s.RefreshTokens)
+                .HasForeignKey(rt => rt.UserId)
+                .HasPrincipalKey(s => s.Id);
         }
 
         public override int SaveChanges()

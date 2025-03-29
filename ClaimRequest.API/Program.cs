@@ -91,6 +91,7 @@ void RegisterApplicationServices()
     builder.Services.AddScoped<IVnPayService, VnPayService>();
     builder.Services.AddScoped<IGenericRepository<Claim>, GenericRepository<Claim>>();
     builder.Services.AddScoped<IGenericRepository<Payment>, GenericRepository<Payment>>();
+    builder.Services.AddScoped<IRefreshTokensService, RefreshTokensService>();
 }
 
 // Method to configure the database

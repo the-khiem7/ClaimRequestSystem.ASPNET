@@ -62,6 +62,8 @@ namespace ClaimRequest.DAL.Data.Entities
 
         public virtual ICollection<ProjectStaff> ProjectStaffs { get; set; } = [];
 
+        public virtual ICollection<RefreshTokens> RefreshTokens { get; set; }
+
         //public string PasswordHash { get; set; }
     }
 }
