@@ -482,7 +482,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
         #endregion Get Claims
 
-        public async Task<ViewClaimResponse> GetClaimById(Guid id)
+        public async Task<ViewClaimByIdResponse> GetClaimById(Guid id)
         {
             try
             {
@@ -493,7 +493,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     include: q => q.Include(c => c.Claimer).Include(c => c.Project)
                 )).ValidateExists(id);
 
-                return _mapper.Map<ViewClaimResponse>(claim.c);
+                return _mapper.Map<ViewClaimByIdResponse>(claim.c);
             }
             catch (NotFoundException)
             {
@@ -538,7 +538,8 @@ namespace ClaimRequest.BLL.Services.Implements
                 {
                     var pendingClaim = await _unitOfWork.GetRepository<Claim>()
                         .SingleOrDefaultAsync(
-                            predicate: s => s.Id == id
+                            predicate: s => s.Id == id,
+                            include: q => q.Include(c => c.ClaimApprovers)
                         ) ?? throw new KeyNotFoundException($"Claim with ID {id} not found.");
 
                     if (pendingClaim.Status != ClaimStatus.Pending)
@@ -564,7 +565,6 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
                     }
                     var approverName = approver.Name ?? "Unknown Approver";
-
 
                     _mapper.Map(rejectClaimRequest, pendingClaim);
                     _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
