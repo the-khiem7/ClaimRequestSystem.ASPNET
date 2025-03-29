@@ -4,6 +4,7 @@ using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Project;
+using ClaimRequest.DAL.Data.Requests.Staff;
 using ClaimRequest.DAL.Data.Responses.Project;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
@@ -43,9 +44,9 @@ namespace ClaimRequest.BLL.Services.Implements
                                 include: null
                             )).ValidateExists(createProjectRequest.ProjectManagerId, "Can't create project because of invalid project manager");
 
-                        if (projectManager.SystemRole != SystemRole.Approver)// Add Admin
+                        if (projectManager.SystemRole != SystemRole.Admin)
                         {
-                            throw new InvalidOperationException("The specified staff member is not a Project Manager");
+                            throw new InvalidOperationException("The specified staff member can't be project mananger");
                         }
 
                         if (!projectManager.IsActive)
@@ -57,6 +58,18 @@ namespace ClaimRequest.BLL.Services.Implements
                         newProject.Status = createProjectRequest.Status;  // Set status here
 
                         await _unitOfWork.GetRepository<Project>().InsertAsync(newProject);
+                        await _unitOfWork.CommitAsync();
+
+                        var newProjectStaff = new ProjectStaff
+                        {
+                            Id = Guid.NewGuid(),
+                            ProjectId = newProject.Id,
+                            StaffId = createProjectRequest.ProjectManagerId,
+                            ProjectRole = ProjectRole.ProjectManager
+                        };
+
+                        await _unitOfWork.GetRepository<ProjectStaff>().InsertAsync(newProjectStaff);
+
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();
 
@@ -319,10 +332,11 @@ namespace ClaimRequest.BLL.Services.Implements
                                     include: null
                                 ).ValidateExists(updateProjectRequest.ProjectManagerId, "Can't update this project because your ProjectManager doesn't exist ");
 
-                            if (newProjectManager.SystemRole != SystemRole.Approver)
+                            if (newProjectManager.SystemRole != SystemRole.Admin && newProjectManager.SystemRole != SystemRole.Staff)
                             {
-                                throw new InvalidOperationException("The specified staff member is not a Project Manager");
+                                throw new UnauthorizedAccessException("Only Admin or Staff can be a Project Manager.");
                             }
+
 
                             if (!newProjectManager.IsActive)
                             {

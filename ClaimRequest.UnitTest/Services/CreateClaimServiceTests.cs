@@ -2,135 +2,175 @@ using AutoMapper;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Requests.Claim;
-using ClaimRequest.DAL.Mappers;
+using ClaimRequest.DAL.Data.Responses.Claim;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace ClaimRequest.UnitTest.Services
 {
-    public class TestClaimRequestDbContext : ClaimRequestDbContext
-    {
-        public TestClaimRequestDbContext()
-            : base(new DbContextOptionsBuilder<ClaimRequestDbContext>()
-                .UseInMemoryDatabase(databaseName: "TestDb")
-                .Options)
-        {
-        }
-    }
-
     public class CreateClaimServiceTests : IDisposable
     {
         private readonly Mock<IUnitOfWork<ClaimRequestDbContext>> _mockUnitOfWork;
         private readonly Mock<ILogger<Claim>> _mockLogger;
+        private readonly Mock<IMapper> _mockMapper;
         private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
-        private readonly IMapper _mapper;
-        private readonly ClaimService _claimService;
         private readonly Mock<IGenericRepository<Claim>> _mockClaimRepository;
-        private readonly TestClaimRequestDbContext _dbContext;
+        private readonly ClaimService _claimService;
+        private readonly ClaimRequestDbContext _realDbContext;
 
         public CreateClaimServiceTests()
         {
-            // Initialize mocks
+            var options = new DbContextOptionsBuilder<ClaimRequestDbContext>()
+                .UseInMemoryDatabase("TestDb")
+                .Options;
+
+            _realDbContext = new ClaimRequestDbContext(options);
             _mockUnitOfWork = new Mock<IUnitOfWork<ClaimRequestDbContext>>();
             _mockLogger = new Mock<ILogger<Claim>>();
+            _mockMapper = new Mock<IMapper>();
             _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
             _mockClaimRepository = new Mock<IGenericRepository<Claim>>();
-            _dbContext = new TestClaimRequestDbContext();
 
-            // Setup mapper
-            var mapperConfig = new MapperConfiguration(cfg =>
+            _mockUnitOfWork.Setup(u => u.Context).Returns(_realDbContext);
+            _mockUnitOfWork.Setup(u => u.GetRepository<Claim>()).Returns(_mockClaimRepository.Object);
+
+            _claimService = new ClaimService(_mockUnitOfWork.Object, _mockLogger.Object, _mockMapper.Object, _mockHttpContextAccessor.Object);
+        }
+
+        public void Dispose() => _realDbContext.Dispose();
+
+        [Fact]
+        public async Task CreateClaim_ShouldReturn_CreateClaimResponse_WhenSuccessful()
+        {
+            var createClaimRequest = new CreateClaimRequest
             {
-                cfg.AddProfile<ClaimMapper>();
-            });
-            _mapper = mapperConfig.CreateMapper();
+                ClaimType = ClaimType.OvertimeCompensation,
+                Name = "Test Claim",
+                Amount = 100,
+                StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+                TotalWorkingHours = 8,
+                CreateAt = DateTime.UtcNow,
+                ProjectId = Guid.NewGuid(),
+                ClaimerId = Guid.NewGuid()
+            };
 
-            // Setup repository
-            _mockUnitOfWork.Setup(uow => uow.GetRepository<Claim>())
-                .Returns(_mockClaimRepository.Object);
+            var claim = new Claim
+            {
+                Id = Guid.NewGuid(),
+                ClaimType = createClaimRequest.ClaimType,
+                Name = createClaimRequest.Name,
+                Amount = createClaimRequest.Amount,
+                StartDate = createClaimRequest.StartDate,
+                EndDate = createClaimRequest.EndDate,
+                TotalWorkingHours = createClaimRequest.TotalWorkingHours,
+                CreateAt = createClaimRequest.CreateAt,
+                Status = ClaimStatus.Draft,
+                ProjectId = createClaimRequest.ProjectId,
+                ClaimerId = createClaimRequest.ClaimerId
+            };
 
-            // Setup unit of work
-            _mockUnitOfWork.Setup(uow => uow.CommitAsync())
-                .ReturnsAsync(1);
+            var expectedResponse = new CreateClaimResponse
+            {
+                ClaimType = claim.ClaimType,
+                Name = claim.Name,
+                CreateAt = claim.CreateAt
+            };
 
-            // Initialize service
-            _claimService = new ClaimService(
-                _mockUnitOfWork.Object,
-                _mockLogger.Object,
-                _mapper,
-                _mockHttpContextAccessor.Object
-            );
+            _mockMapper.Setup(m => m.Map<Claim>(createClaimRequest)).Returns(claim);
+            _mockMapper.Setup(m => m.Map<CreateClaimResponse>(claim)).Returns(expectedResponse);
+            _mockClaimRepository.Setup(repo => repo.InsertAsync(It.IsAny<Claim>())).Returns(Task.CompletedTask);
+
+            _mockUnitOfWork
+                .Setup(uow => uow.ProcessInTransactionAsync(It.IsAny<Func<Task<CreateClaimResponse>>>()))
+                .Returns<Func<Task<CreateClaimResponse>>>(async func => await func());
+
+            var result = await _claimService.CreateClaim(createClaimRequest);
+
+            Assert.NotNull(result);
+            Assert.Equal(expectedResponse.ClaimType, result.ClaimType);
+            Assert.Equal(expectedResponse.Name, result.Name);
+            Assert.Equal(expectedResponse.CreateAt, result.CreateAt);
+            _mockClaimRepository.Verify(repo => repo.InsertAsync(It.IsAny<Claim>()), Times.Once);
         }
 
         [Fact]
-        public async Task CreateClaim_ShouldCreateNewClaim()
+        public async Task CreateClaim_ShouldThrowException_WhenRepositoryFails()
         {
-            // Arrange
             var createClaimRequest = new CreateClaimRequest
             {
-                ClaimType = ClaimType.HardwareRequest,
-                Name = "Test Hardware Request",
-                Remark = "Test Remark",
-                Amount = 100.00m,
-                ProjectId = Guid.NewGuid(),
-                ClaimerId = Guid.NewGuid(),
+                ClaimType = ClaimType.OvertimeCompensation,
+                Name = "Test Claim",
+                Amount = 100,
+                StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
                 TotalWorkingHours = 8,
-                StartDate = DateOnly.FromDateTime(DateTime.Today),
-                EndDate = DateOnly.FromDateTime(DateTime.Today.AddDays(1))
+                CreateAt = DateTime.UtcNow,
+                ProjectId = Guid.NewGuid(),
+                ClaimerId = Guid.NewGuid()
             };
 
-            Claim capturedClaim = null;
-            _mockClaimRepository.Setup(repo => repo.InsertAsync(It.IsAny<Claim>()))
-                .Callback<Claim>(claim => capturedClaim = claim)
-                .Returns(Task.CompletedTask);
+            var claim = new Claim
+            {
+                Id = Guid.NewGuid(),
+                ClaimType = createClaimRequest.ClaimType,
+                Name = createClaimRequest.Name
+            };
 
-            // Act
-            var result = await _claimService.CreateClaim(createClaimRequest);
+            _mockMapper.Setup(m => m.Map<Claim>(createClaimRequest)).Returns(claim);
+            _mockClaimRepository.Setup(repo => repo.InsertAsync(It.IsAny<Claim>())).ThrowsAsync(new Exception("Database error"));
 
-            // Assert
-            Assert.NotNull(result);
-            Assert.NotNull(capturedClaim);
+            _mockUnitOfWork
+                .Setup(uow => uow.ProcessInTransactionAsync(It.IsAny<Func<Task<CreateClaimResponse>>>()))
+                .Returns<Func<Task<CreateClaimResponse>>>(async func =>
+                {
+                    return await func();
+                });
 
-            // Verify the claim was created with correct data
-            Assert.Equal(createClaimRequest.Name, capturedClaim.Name);
-            Assert.Equal(createClaimRequest.Amount, capturedClaim.Amount);
-            Assert.Equal(createClaimRequest.ClaimType, capturedClaim.ClaimType);
-            Assert.Equal(createClaimRequest.Remark, capturedClaim.Remark);
-            Assert.Equal(createClaimRequest.ProjectId, capturedClaim.ProjectId);
-            Assert.Equal(createClaimRequest.ClaimerId, capturedClaim.ClaimerId);
-            Assert.Equal(createClaimRequest.TotalWorkingHours, capturedClaim.TotalWorkingHours);
-            Assert.Equal(createClaimRequest.StartDate, capturedClaim.StartDate);
-            Assert.Equal(createClaimRequest.EndDate, capturedClaim.EndDate);
-            Assert.Equal(ClaimStatus.Draft, capturedClaim.Status);
-
-            // Verify repository and unit of work interactions
-            _mockClaimRepository.Verify(repo => repo.InsertAsync(It.IsAny<Claim>()), Times.Once);
-            _mockUnitOfWork.Verify(uow => uow.CommitAsync(), Times.Once);
+            var exception = await Assert.ThrowsAsync<Exception>(() => _claimService.CreateClaim(createClaimRequest));
+            Assert.Equal("Database error", exception.Message);
         }
 
-        public void Dispose()
+        [Fact]
+        public async Task CreateClaim_ShouldLogError_WhenExceptionOccurs()
         {
-            _dbContext.Dispose();
-        }
-    }
+            var createClaimRequest = new CreateClaimRequest
+            {
+                ClaimType = ClaimType.OvertimeCompensation,
+                Name = "Test Claim",
+                Amount = 100,
+                StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+                TotalWorkingHours = 8,
+                CreateAt = DateTime.UtcNow,
+                ProjectId = Guid.NewGuid(),
+                ClaimerId = Guid.NewGuid()
+            };
 
-    // Helper class for mocking execution strategy
-    public class MockExecutionStrategy : IExecutionStrategy
-    {
-        public bool RetriesOnFailure => false;
+            var expectedError = new Exception("Database error");
 
-        public TResult Execute<TState, TResult>(TState state, Func<DbContext, TState, TResult> operation, Func<DbContext, TState, ExecutionResult<TResult>>? verifySucceeded)
-        {
-            throw new NotImplementedException();
-        }
+            _mockMapper.Setup(m => m.Map<Claim>(createClaimRequest)).Throws(expectedError);
 
-        public async Task<TResult> ExecuteAsync<TState, TResult>(TState state, Func<DbContext, TState, CancellationToken, Task<TResult>> operation, Func<DbContext, TState, CancellationToken, Task<ExecutionResult<TResult>>>? verifySucceeded, CancellationToken cancellationToken = default)
-        {
-            return await operation(null!, state, cancellationToken);
+            _mockUnitOfWork
+                .Setup(uow => uow.ProcessInTransactionAsync(It.IsAny<Func<Task<CreateClaimResponse>>>()))
+                .ThrowsAsync(expectedError);
+
+            var exception = await Assert.ThrowsAsync<Exception>(() => _claimService.CreateClaim(createClaimRequest));
+
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error creating claim")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
         }
     }
 }

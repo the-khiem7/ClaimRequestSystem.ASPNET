@@ -57,16 +57,17 @@ namespace ClaimRequest.API.Extensions
         private static void AddProjectPolicies(AuthorizationOptions options)
         {
             options.AddPolicy("CanCreateProject", policy =>
-                policy.RequireRole(SystemRole.Admin.ToString(), SystemRole.Approver.ToString()));
+                policy.RequireRole(SystemRole.Admin.ToString()));
 
             options.AddPolicy("CanViewProjects", policy =>
                 policy.RequireRole(RoleConstants.AllRoles));
 
             options.AddPolicy("CanUpdateProject", policy =>
-                policy.RequireRole(SystemRole.Admin.ToString(), SystemRole.Approver.ToString()));
+                policy.RequireRole(SystemRole.Admin.ToString()));
 
             options.AddPolicy("CanDeleteProject", policy =>
-                policy.RequireRole(SystemRole.Admin.ToString(), SystemRole.Approver.ToString()));
+                policy.RequireRole(SystemRole.Admin.ToString()));
+            
 
             options.AddPolicy("CanAssignProjectManager", policy =>
                 policy.RequireRole(SystemRole.Admin.ToString(), SystemRole.Approver.ToString()));
