@@ -22,9 +22,12 @@ namespace ClaimRequest.UnitTest.Services
     public class EmailServiceTest
     {
         private readonly Mock<IUnitOfWork<ClaimRequestDbContext>> _mockUnitOfWork;
+        private readonly Mock<IConfiguration> _mockConfiguration;
+        private readonly Mock<IUnitOfWork<ClaimRequestDbContext>> _mockUnitOfWork;
         private readonly Mock<IClaimService> _mockClaimService;
         private readonly Mock<IProjectService> _mockProjectService;
         private readonly Mock<IStaffService> _mockStaffService;
+        private readonly Mock<IOtpService> _mockOtpService;
         private readonly Mock<ILogger<EmailService>> _mockLogger;
         private readonly Mock<IConfiguration> _mockConfiguration;
         private readonly Mock<IOtpService> _mockOtpService;
@@ -38,6 +41,7 @@ namespace ClaimRequest.UnitTest.Services
             _mockClaimService = new Mock<IClaimService>();
             _mockProjectService = new Mock<IProjectService>();
             _mockStaffService = new Mock<IStaffService>();
+            _mockOtpService = new Mock<IOtpService>();
             _mockLogger = new Mock<ILogger<EmailService>>();
             _mockConfiguration = new Mock<IConfiguration>();
             _mockOtpService = new Mock<IOtpService>();

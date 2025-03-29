@@ -231,7 +231,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-        public async Task SendEmailAsync(string recipientEmail, string subject, string body)
+        public virtual async Task SendEmailAsync(string recipientEmail, string subject, string body)
         {
 #if OAUTH
             try
