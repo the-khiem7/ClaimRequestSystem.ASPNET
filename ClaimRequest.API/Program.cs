@@ -93,6 +93,7 @@ void RegisterApplicationServices()
     builder.Services.AddScoped<IWebNavigatorService, WebNavigatorService>(); // Register WebNavigatorService
     builder.Services.AddScoped<IGenericRepository<Claim>, GenericRepository<Claim>>();
     builder.Services.AddScoped<IGenericRepository<Payment>, GenericRepository<Payment>>();
+    builder.Services.AddScoped<IRefreshTokensService, RefreshTokensService>();
 }
 
 // Method to configure the database
