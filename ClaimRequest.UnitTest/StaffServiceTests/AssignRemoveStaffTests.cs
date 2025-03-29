@@ -355,12 +355,7 @@ namespace ClaimRequest.Tests.Services
 
             var staff = new Staff { Id = staffId, IsActive = true };
             var project = new Project { Id = projectId };
-            var remover = new ProjectStaff
-            {
-                StaffId = removerId,
-                ProjectId = projectId,
-                ProjectRole = ProjectRole.ProjectManager
-            };
+            var remover = new Staff { Id = removerId, SystemRole = SystemRole.Admin }; // Admin can remove staff
             var projectStaff = new ProjectStaff
             {
                 Id = Guid.NewGuid(),
@@ -377,26 +372,34 @@ namespace ClaimRequest.Tests.Services
                 ProjectRole = ProjectRole.Developer
             };
 
+            // Setup staff validation
             _mockStaffRepository.Setup(r => r.SingleOrDefaultAsync(
-                It.IsAny<Expression<Func<Staff, bool>>>(),
+                It.Is<Expression<Func<Staff, bool>>>(expr =>
+                    expr.Compile().Invoke(new Staff { Id = staffId, IsActive = true })),
                 It.IsAny<Func<IQueryable<Staff>, IOrderedQueryable<Staff>>>(),
                 It.IsAny<Func<IQueryable<Staff>, IIncludableQueryable<Staff, object>>>()))
                 .ReturnsAsync(staff);
 
+            // Setup project validation
             _mockProjectRepository.Setup(r => r.SingleOrDefaultAsync(
-                It.IsAny<Expression<Func<Project, bool>>>(),
+                It.Is<Expression<Func<Project, bool>>>(expr =>
+                    expr.Compile().Invoke(new Project { Id = projectId })),
                 It.IsAny<Func<IQueryable<Project>, IOrderedQueryable<Project>>>(),
                 It.IsAny<Func<IQueryable<Project>, IIncludableQueryable<Project, object>>>()))
                 .ReturnsAsync(project);
 
-            _mockProjectStaffRepository.Setup(r => r.SingleOrDefaultAsync(
-                It.Is<Expression<Func<ProjectStaff, bool>>>(expr => expr.ToString().Contains("RemoverId")),
-                It.IsAny<Func<IQueryable<ProjectStaff>, IOrderedQueryable<ProjectStaff>>>(),
-                It.IsAny<Func<IQueryable<ProjectStaff>, IIncludableQueryable<ProjectStaff, object>>>()))
+            // Setup remover validation
+            _mockStaffRepository.Setup(r => r.SingleOrDefaultAsync(
+                It.Is<Expression<Func<Staff, bool>>>(expr =>
+                    expr.Compile().Invoke(new Staff { Id = removerId })),
+                It.IsAny<Func<IQueryable<Staff>, IOrderedQueryable<Staff>>>(),
+                It.IsAny<Func<IQueryable<Staff>, IIncludableQueryable<Staff, object>>>()))
                 .ReturnsAsync(remover);
 
+            // Setup project staff validation
             _mockProjectStaffRepository.Setup(r => r.SingleOrDefaultAsync(
-                It.Is<Expression<Func<ProjectStaff, bool>>>(expr => expr.ToString().Contains("StaffId")),
+                It.Is<Expression<Func<ProjectStaff, bool>>>(expr =>
+                    expr.Compile().Invoke(new ProjectStaff { StaffId = staffId, ProjectId = projectId })),
                 It.IsAny<Func<IQueryable<ProjectStaff>, IOrderedQueryable<ProjectStaff>>>(),
                 It.IsAny<Func<IQueryable<ProjectStaff>, IIncludableQueryable<ProjectStaff, object>>>()))
                 .ReturnsAsync(projectStaff);
@@ -493,35 +496,50 @@ namespace ClaimRequest.Tests.Services
 
             var staff = new Staff { Id = staffId, IsActive = true };
             var project = new Project { Id = projectId };
-            var projectStaff = new ProjectStaff { StaffId = staffId, ProjectId = projectId };
+            var remover = new Staff { Id = removerId, SystemRole = SystemRole.Staff }; // Not an admin
+            var projectStaff = new ProjectStaff
+            {
+                StaffId = staffId,
+                ProjectId = projectId,
+                ProjectRole = ProjectRole.Developer
+            };
 
+            // Setup staff validation
             _mockStaffRepository.Setup(r => r.SingleOrDefaultAsync(
-                It.IsAny<Expression<Func<Staff, bool>>>(),
+                It.Is<Expression<Func<Staff, bool>>>(expr =>
+                    expr.Compile().Invoke(new Staff { Id = staffId, IsActive = true })),
                 It.IsAny<Func<IQueryable<Staff>, IOrderedQueryable<Staff>>>(),
                 It.IsAny<Func<IQueryable<Staff>, IIncludableQueryable<Staff, object>>>()))
                 .ReturnsAsync(staff);
 
+            // Setup project validation
             _mockProjectRepository.Setup(r => r.SingleOrDefaultAsync(
-                It.IsAny<Expression<Func<Project, bool>>>(),
+                It.Is<Expression<Func<Project, bool>>>(expr =>
+                    expr.Compile().Invoke(new Project { Id = projectId })),
                 It.IsAny<Func<IQueryable<Project>, IOrderedQueryable<Project>>>(),
                 It.IsAny<Func<IQueryable<Project>, IIncludableQueryable<Project, object>>>()))
                 .ReturnsAsync(project);
 
-            // Setup for remover check - should return null to indicate not a project manager
+            // Setup remover validation
+            _mockStaffRepository.Setup(r => r.SingleOrDefaultAsync(
+                It.Is<Expression<Func<Staff, bool>>>(expr =>
+                    expr.Compile().Invoke(new Staff { Id = removerId })),
+                It.IsAny<Func<IQueryable<Staff>, IOrderedQueryable<Staff>>>(),
+                It.IsAny<Func<IQueryable<Staff>, IIncludableQueryable<Staff, object>>>()))
+                .ReturnsAsync(remover);
+
+            // Setup project staff validation - remover is not in project
             _mockProjectStaffRepository.Setup(r => r.SingleOrDefaultAsync(
                 It.Is<Expression<Func<ProjectStaff, bool>>>(expr =>
-                    expr.ToString().Contains($"ps.StaffId == {removerId}") &&
-                    expr.ToString().Contains($"ps.ProjectId == {request.projectId}") &&
-                    expr.ToString().Contains("ProjectManager")),
+                    expr.Compile().Invoke(new ProjectStaff { StaffId = removerId, ProjectId = projectId })),
                 It.IsAny<Func<IQueryable<ProjectStaff>, IOrderedQueryable<ProjectStaff>>>(),
                 It.IsAny<Func<IQueryable<ProjectStaff>, IIncludableQueryable<ProjectStaff, object>>>()))
                 .ReturnsAsync((ProjectStaff)null);
 
-            // Setup for staff-in-project check
+            // Setup staff-in-project check
             _mockProjectStaffRepository.Setup(r => r.SingleOrDefaultAsync(
                 It.Is<Expression<Func<ProjectStaff, bool>>>(expr =>
-                    expr.ToString().Contains($"s.StaffId == {staffId}") &&
-                    expr.ToString().Contains($"s.ProjectId == {request.projectId}")),
+                    expr.Compile().Invoke(new ProjectStaff { StaffId = staffId, ProjectId = projectId })),
                 It.IsAny<Func<IQueryable<ProjectStaff>, IOrderedQueryable<ProjectStaff>>>(),
                 It.IsAny<Func<IQueryable<ProjectStaff>, IIncludableQueryable<ProjectStaff, object>>>()))
                 .ReturnsAsync(projectStaff);
@@ -529,7 +547,7 @@ namespace ClaimRequest.Tests.Services
             // Act & Assert
             var exception = await Assert.ThrowsAsync<BadRequestException>(() =>
                 _staffService.RemoveStaff(staffId, request));
-            Assert.Equal("You are not a member of this project or not project manager.", exception.Message);
+            Assert.Equal("You are not a member of this project.", exception.Message);
         }
 
         [Fact]
@@ -546,21 +564,11 @@ namespace ClaimRequest.Tests.Services
                 RemoverId = removerId
             };
 
-            // Setup existing staff to be removed
             var staff = new Staff { Id = staffId, IsActive = true };
-
-            // Setup existing project
             var project = new Project { Id = projectId };
+            var remover = new Staff { Id = removerId, SystemRole = SystemRole.Admin }; // Admin can remove staff
 
-            // Setup remover as project manager
-            var remover = new ProjectStaff
-            {
-                StaffId = removerId,
-                ProjectId = projectId,
-                ProjectRole = ProjectRole.ProjectManager
-            };
-
-            // Setup for "Validate if staff to be removed exists"
+            // Setup staff validation
             _mockStaffRepository.Setup(r => r.SingleOrDefaultAsync(
                 It.Is<Expression<Func<Staff, bool>>>(expr =>
                     expr.Compile().Invoke(new Staff { Id = staffId, IsActive = true })),
@@ -568,7 +576,7 @@ namespace ClaimRequest.Tests.Services
                 It.IsAny<Func<IQueryable<Staff>, IIncludableQueryable<Staff, object>>>()))
                 .ReturnsAsync(staff);
 
-            // Setup for "Validate project if exists"
+            // Setup project validation
             _mockProjectRepository.Setup(r => r.SingleOrDefaultAsync(
                 It.Is<Expression<Func<Project, bool>>>(expr =>
                     expr.Compile().Invoke(new Project { Id = projectId })),
@@ -576,30 +584,21 @@ namespace ClaimRequest.Tests.Services
                 It.IsAny<Func<IQueryable<Project>, IIncludableQueryable<Project, object>>>()))
                 .ReturnsAsync(project);
 
-            // Setup for "Remover must be project manager"
-            _mockProjectStaffRepository.Setup(r => r.SingleOrDefaultAsync(
-                It.Is<Expression<Func<ProjectStaff, bool>>>(expr =>
-                    expr.Compile().Invoke(new ProjectStaff
-                    {
-                        StaffId = removerId,
-                        ProjectId = projectId,
-                        ProjectRole = ProjectRole.ProjectManager
-                    })),
-                It.IsAny<Func<IQueryable<ProjectStaff>, IOrderedQueryable<ProjectStaff>>>(),
-                It.IsAny<Func<IQueryable<ProjectStaff>, IIncludableQueryable<ProjectStaff, object>>>()))
+            // Setup remover validation
+            _mockStaffRepository.Setup(r => r.SingleOrDefaultAsync(
+                It.Is<Expression<Func<Staff, bool>>>(expr =>
+                    expr.Compile().Invoke(new Staff { Id = removerId })),
+                It.IsAny<Func<IQueryable<Staff>, IOrderedQueryable<Staff>>>(),
+                It.IsAny<Func<IQueryable<Staff>, IIncludableQueryable<Staff, object>>>()))
                 .ReturnsAsync(remover);
 
-            // Setup for "Check if staff to be removed is assigned to the project"
+            // Setup staff-in-project check - staff is not in project
             _mockProjectStaffRepository.Setup(r => r.SingleOrDefaultAsync(
                 It.Is<Expression<Func<ProjectStaff, bool>>>(expr =>
-                    expr.Compile().Invoke(new ProjectStaff
-                    {
-                        StaffId = staffId,
-                        ProjectId = projectId
-                    })),
+                    expr.Compile().Invoke(new ProjectStaff { StaffId = staffId, ProjectId = projectId })),
                 It.IsAny<Func<IQueryable<ProjectStaff>, IOrderedQueryable<ProjectStaff>>>(),
                 It.IsAny<Func<IQueryable<ProjectStaff>, IIncludableQueryable<ProjectStaff, object>>>()))
-                .ReturnsAsync((ProjectStaff)null);  // Staff is not in project
+                .ReturnsAsync((ProjectStaff)null);
 
             // Act & Assert
             var exception = await Assert.ThrowsAsync<BadRequestException>(() =>

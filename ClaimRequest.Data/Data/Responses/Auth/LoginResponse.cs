@@ -12,6 +12,7 @@ namespace ClaimRequest.DAL.Data.Responses.Auth
         public Department Department { get; set; }
         public string? avatarUrl { get; set; }
         public bool IsPasswordExpired { get; set; }
+        public string RefreshToken { get; set; }
 
         public LoginResponse(Entities.Staff staff)
         {

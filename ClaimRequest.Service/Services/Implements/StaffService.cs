@@ -151,7 +151,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             orderBy: q => q.OrderBy(s => s.Name),
                             include: q => q.Include(s => s.ProjectStaffs)
                         )).ValidateExists(id, "Can't update because this staff");
-                    string currentAvatar = existingStaff.Avatar ?? DefaultProfilePicture;
+                    string currentAvatar = existingStaff.Avatar;
                     _mapper.Map(updateStaffRequest, existingStaff);
                     var user = _httpContextAccessor.HttpContext?.User;
                     if (updateStaffRequest.Avatar != null && user != null)
@@ -223,7 +223,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             predicate: p => p.Id == assignStaffRequest.projectId
                             );
 
-                        if (existingProject == null) 
+                        if (existingProject == null)
                         {
                             throw new NotFoundException("Project not found.");
                         }
@@ -234,20 +234,37 @@ namespace ClaimRequest.BLL.Services.Implements
                             throw new BadRequestException("Invalid project role.");
                         }
 
-                        // Validate if assigner is in project
-                        var assignerInProject = await _unitOfWork.GetRepository<ProjectStaff>()
-                            .SingleOrDefaultAsync(predicate: ps => ps.StaffId == assignStaffRequest.AssignerId
-                                                 && ps.ProjectId == assignStaffRequest.projectId);
+                        // Get assigner
+                        var assigner = await _unitOfWork.GetRepository<Staff>()
+                            .SingleOrDefaultAsync(
+                            predicate: s => s.Id == assignStaffRequest.AssignerId
+                            );
 
-                        if (assignerInProject == null)
+                        if (assigner == null)
                         {
-                            throw new BadRequestException("You are not a member of this project.");
+                            throw new NotFoundException("Assigner not found.");
                         }
 
-                        // Ensure assigner is project manager
-                        if (assignerInProject.ProjectRole != ProjectRole.ProjectManager)
+                        // If assigner is admin ignore project role check
+                        if (assigner.SystemRole != SystemRole.Admin)
                         {
-                            throw new UnauthorizedException("You do not have permission to assign staff to this project.");
+                            // Validate if assigner is in project
+                            var assignerInProject = await _unitOfWork.GetRepository<ProjectStaff>()
+                                .SingleOrDefaultAsync(
+                                predicate: ps => ps.StaffId == assignStaffRequest.AssignerId
+                                && ps.ProjectId == assignStaffRequest.projectId
+                                );
+
+                            if (assignerInProject == null)
+                            {
+                                throw new BadRequestException("You are not a member of this project.");
+                            }
+
+                            // Ensure assigner is project manager
+                            if (assignerInProject.ProjectRole != ProjectRole.ProjectManager)
+                            {
+                                throw new UnauthorizedException("You do not have permission to assign staff to this project.");
+                            }
                         }
 
                         // Check if staff is assigned to the project
@@ -307,15 +324,36 @@ namespace ClaimRequest.BLL.Services.Implements
                             throw new NotFoundException("Project not found.");
                         }
 
-                        // Remover must be project manager
-                        var removerInProject = await _unitOfWork.GetRepository<ProjectStaff>()
-                            .SingleOrDefaultAsync(predicate: ps => ps.StaffId == removeStaffRequest.RemoverId
-                                                 && ps.ProjectId == removeStaffRequest.projectId
-                                                 && ps.ProjectRole == ProjectRole.ProjectManager);
+                        // Get remover information
+                        var remover = await _unitOfWork.GetRepository<Staff>()
+                            .SingleOrDefaultAsync(
+                            predicate: s => s.Id == removeStaffRequest.RemoverId
+                            );
 
-                        if (removerInProject == null)
+                        if (remover == null)
                         {
-                            throw new BadRequestException("You are not a member of this project or not project manager.");
+                            throw new NotFoundException("Remover not found.");
+                        }
+
+                        // If remover is Admin, allow them to remove staff immediately
+                        if (remover.SystemRole != SystemRole.Admin)
+                        {
+                            // Check if remover is in the project and is a Project Manager
+                            var removerInProject = await _unitOfWork.GetRepository<ProjectStaff>()
+                                .SingleOrDefaultAsync(
+                                predicate: ps => ps.StaffId == removeStaffRequest.RemoverId
+                                && ps.ProjectId == removeStaffRequest.projectId
+                                                         );
+
+                            if (removerInProject == null)
+                            {
+                                throw new BadRequestException("You are not a member of this project.");
+                            }
+
+                            if (removerInProject.ProjectRole != ProjectRole.ProjectManager)
+                            {
+                                throw new UnauthorizedException("You do not have permission to remove staff from this project.");
+                            }
                         }
 
                         // Check if staff to be removed is assigned to the project
