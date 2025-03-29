@@ -1,15 +1,15 @@
-﻿using System.Security.Claims;
-using System.Text;
-using System.Text.RegularExpressions;
-using AutoMapper;
-using ClaimRequest.BLL.Services.Interfaces;
-using ClaimRequest.DAL.Data.Entities;
-using ClaimRequest.DAL.Repositories.Interfaces;
-using CloudinaryDotNet;
+﻿using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Security.Claims;
+using ClaimRequest.DAL.Repositories.Interfaces;
+using ClaimRequest.DAL.Data.Entities;
+using AutoMapper;
+using ClaimRequest.BLL.Services.Interfaces;
+using System.Text.RegularExpressions;
+using System.Text;
 
 namespace ClaimRequest.BLL.Services.Implements
 {

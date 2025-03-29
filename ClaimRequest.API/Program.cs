@@ -50,6 +50,7 @@ void ConfigureServices()
 
     // Register utility services
     builder.Services.AddSingleton<JwtUtil>();
+    builder.Services.AddSingleton<OtpUtil>();
 
     // Register application services
     RegisterApplicationServices();
@@ -89,6 +90,7 @@ void RegisterApplicationServices()
     builder.Services.AddHostedService<PasswordReminderService>();
     builder.Services.AddHostedService<PendingReminderService>();
     builder.Services.AddScoped<IVnPayService, VnPayService>();
+    builder.Services.AddScoped<IWebNavigatorService, WebNavigatorService>(); // Register WebNavigatorService
     builder.Services.AddScoped<IGenericRepository<Claim>, GenericRepository<Claim>>();
     builder.Services.AddScoped<IGenericRepository<Payment>, GenericRepository<Payment>>();
     builder.Services.AddScoped<IRefreshTokensService, RefreshTokensService>();
@@ -236,11 +238,13 @@ void ConfigureMiddleware()
     // FOR DOCKER COMPOSE => OFF THIS
     app.UseHttpsRedirection();
 
-    // Configure CORS to allow requests from localhost
+    // Configure CORS to allow requests from localhost and vercel.app
     app.UseCors(options =>
     {
         options.SetIsOriginAllowed(origin =>
-           origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:"))
+           origin.StartsWith("http://localhost:") ||
+           origin.StartsWith("https://localhost:") ||
+           origin.EndsWith(".vercel.app"))
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();

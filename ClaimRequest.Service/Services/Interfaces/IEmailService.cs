@@ -6,12 +6,12 @@ namespace ClaimRequest.BLL.Services.Interfaces
 {
     public interface IEmailService
     {
-        Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request);
-        Task SendClaimApprovedEmail(Guid claimId);
-        Task SendClaimReturnedEmail(Guid claimId);
-        Task SendClaimSubmittedEmail(Guid claimId);
-        Task SendManagerApprovedEmail(Guid approverId, Guid claimId);
+        Task SendClaimApprovedEmail(Guid Id);
+        Task SendClaimReturnedEmail(Guid Id);
+        Task SendClaimSubmittedEmail(Guid Id);
+        Task SendManagerApprovedEmail(Guid Id);
         Task SendEmailAsync(string recipientEmail, string subject, string body);
-        //Task<bool> SendEmailAsync(SendMailRequest request);
+        Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request);
+
     }
 }

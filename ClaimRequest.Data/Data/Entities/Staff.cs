@@ -55,7 +55,7 @@ namespace ClaimRequest.DAL.Data.Entities
         public bool IsActive { get; set; } = true;
 
         [Column("avatar")]
-        public string Avatar { get; set; }
+        public string? Avatar { get; set; }
 
         [Column("last_change_password")]
         public DateTime? LastChangePassword { get; set; }

@@ -10,6 +10,7 @@ namespace ClaimRequest.DAL.Data.Responses.Auth
         public string Email { get; set; }
         public SystemRole Role { get; set; }
         public Department Department { get; set; }
+        public string? avatarUrl { get; set; }
         public bool IsPasswordExpired { get; set; }
         public string RefreshToken { get; set; }
 
@@ -20,6 +21,7 @@ namespace ClaimRequest.DAL.Data.Responses.Auth
             FullName = staff.Name;
             Role = staff.SystemRole;
             Department = staff.Department;
+            avatarUrl = staff.Avatar;
         }
     }
 }

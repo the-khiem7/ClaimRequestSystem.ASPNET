@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ClaimRequest.BLL.Services.Implements.VNPayService.Library;
+﻿using ClaimRequest.BLL.Services.Implements.VNPayService.Library;
 using ClaimRequest.BLL.Services.Implements.VNPayService.Models;
 using ClaimRequest.BLL.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using System.Text.Json;
 
 namespace ClaimRequest.BLL.Services.Implements.VNPayService.Services
 {
@@ -26,7 +22,7 @@ namespace ClaimRequest.BLL.Services.Implements.VNPayService.Services
             var timeNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZoneById);
             var pay = new VnPayLibrary();
 
-            var uniqueTxnRef = $"{model.ClaimId.ToString().Replace("-", "").Substring(0, 8)}{timeNow.ToString("yyyyMMddHHmmss")}";
+            var uniqueTxnRef = $"{model.FinanceId.ToString().Replace("-", "")}{timeNow:yyyyMMddHHmmss}";
 
             pay.AddRequestData("vnp_Version", _configuration["Vnpay:Version"]!);
             pay.AddRequestData("vnp_Command", _configuration["Vnpay:Command"]!);
@@ -36,15 +32,22 @@ namespace ClaimRequest.BLL.Services.Implements.VNPayService.Services
             pay.AddRequestData("vnp_CurrCode", _configuration["Vnpay:CurrCode"]!);
             pay.AddRequestData("vnp_IpAddr", pay.GetIpAddress(context));
             pay.AddRequestData("vnp_Locale", _configuration["Vnpay:Locale"]!);
-            pay.AddRequestData("vnp_OrderInfo", $"Claim{model.ClaimType}{model.Amount}".Replace(" ", ""));
+
+            // Chuyển danh sách ClaimIds thành chuỗi JSON để truyền vào OrderInfo
+            var orderInfoJson = JsonSerializer.Serialize(new
+            {
+                ClaimIds = model.ClaimIds,
+                FinanceId = model.FinanceId,
+                Amount = model.Amount
+            });
+
+            pay.AddRequestData("vnp_OrderInfo", orderInfoJson);
             pay.AddRequestData("vnp_OrderType", _configuration["Vnpay:OrderType"]!);
             pay.AddRequestData("vnp_TxnRef", uniqueTxnRef);
 
-            // Generate a return URL based on the current request for testing
             var scheme = context.Request.Scheme;
             var host = context.Request.Host.Value;
-            var returnUrl = $"{scheme}://{host}/api/Payment/payment-callback";
-
+            var returnUrl = $"{scheme}://{host}/api/v1/payment/payment-callback";
             pay.AddRequestData("vnp_ReturnUrl", returnUrl);
 
             var paymentUrl = pay.CreateRequestUrl(_configuration["Vnpay:BaseUrl"]!, _configuration["Vnpay:HashSecret"]!);

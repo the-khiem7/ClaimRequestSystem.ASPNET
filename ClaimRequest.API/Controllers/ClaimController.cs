@@ -9,6 +9,8 @@ using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
+
 
 namespace ClaimRequest.API.Controllers
 {
@@ -46,15 +48,27 @@ namespace ClaimRequest.API.Controllers
         [Authorize(Policy = "CanViewClaims")]
         [HttpGet(ApiEndPointConstant.Claim.ClaimsEndpoint)]
         [ProducesResponseType(typeof(IEnumerable<ViewClaimResponse>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetClaims([FromQuery] ClaimStatus? status, [FromQuery] ClaimService.ViewMode? viewMode, [FromQuery] string? search, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> GetClaims(
+            [FromQuery] ClaimStatus? status,
+            [FromQuery] string? search,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] ClaimService.ViewMode viewMode = ClaimService.ViewMode.ClaimerMode,
+            [FromQuery] string sortBy = "id",
+            [FromQuery] bool descending = false
+            )
         {
-            viewMode ??= Enum.Parse<ClaimService.ViewMode>("ClaimerMode");
-            var response = await _claimService.GetClaims(pageNumber, pageSize, status, viewMode.ToString(), search);
+
+            var response = await _claimService.GetClaims(pageNumber, pageSize, status, viewMode.ToString(), search, sortBy, descending, fromDate, toDate);
+
             return Ok(ApiResponseBuilder.BuildResponse(
                 message: "Get claims successfully!",
                 data: response,
                 statusCode: StatusCodes.Status200OK));
         }
+
 
         [Authorize(Policy = "CanViewClaims")]
         [HttpGet(ApiEndPointConstant.Claim.ClaimEndpointById)]
@@ -82,7 +96,7 @@ namespace ClaimRequest.API.Controllers
                 if (updatedClaim == null)
                 {
                     var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
-                        null,
+                        new object(), // Provide a non-null object
                         StatusCodes.Status404NotFound,
                         "Claim not found",
                         "The claim ID provided does not exist or could not be updated"
@@ -97,12 +111,33 @@ namespace ClaimRequest.API.Controllers
                 );
                 return Ok(successResponse);
             }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogError(ex, "Claim with ID {ClaimId} not found", id);
+                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                    new object(), // Provide a non-null object
+                    StatusCodes.Status404NotFound,
+                    "Claim not found",
+                    ex.Message
+                );
+                return NotFound(errorResponse);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Invalid operation for claim with ID {ClaimId}", id);
+                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                    new object(), // Provide a non-null object
+                    StatusCodes.Status400BadRequest,
+                    "Invalid operation",
+                    ex.Message
+                );
+                return BadRequest(errorResponse);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating claim with ID {ClaimId}", id);
-
                 var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
-                    null,
+                    new object(), // Provide a non-null object
                     StatusCodes.Status500InternalServerError,
                     "An error occurred while updating the claim",
                     "Internal server error"
@@ -110,7 +145,6 @@ namespace ClaimRequest.API.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
             }
         }
-
 
 
         [Authorize(Policy = "CanRejectClaim")]
@@ -180,18 +214,63 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ApproveClaim([FromRoute] Guid id)
         {
-            var result = await _claimService.ApproveClaim(User, id);
-            if (result == null)
+            // var result = await _claimService.ApproveClaim(User, id);
+            // if (result == null)
+            // {
+            //     _logger.LogError("Approve claim failed");
+            //     return Problem("Approve claim failed");
+            // }
+            // await _emailService.SendClaimApprovedEmail(id);
+            // var successRespose = ApiResponseBuilder.BuildResponse(
+            //     message: "Claim approved successfully!",
+            //     data: result,
+            //     statusCode: StatusCodes.Status200OK);
+            // return Ok(successRespose);
+             try
             {
-                _logger.LogError("Approve claim failed");
-                return Problem("Approve claim failed");
+                var result = await _claimService.ApproveClaim(User, id);
+                if (result == null)
+                {
+                    _logger.LogError("Approve claim failed");
+                    return Problem("Approve claim failed");
+                }
+
+                // Kiểm tra role của user để quyết định gửi email cho ai
+                var userRoles = User.Claims.Where(c => c.Type == "role").Select(c => c.Value).ToList();
+                
+                if (userRoles.Contains("Approver"))
+                {
+                    // Nếu user là Approver, gửi email cho Manager
+                    await _emailService.SendManagerApprovedEmail(id);
+                }
+                else if (userRoles.Contains("Manager"))
+                {
+                    // Nếu user là Manager, gửi email cho Finance
+                    await _emailService.SendClaimApprovedEmail(id);
+                }
+                else
+                {
+                    _logger.LogWarning("User with roles {Roles} approved claim {ClaimId} but no email was sent", 
+                        string.Join(",", userRoles), id);
+                }
+
+                var successRespose = ApiResponseBuilder.BuildResponse(
+                    message: "Claim approved successfully!",
+                    data: result,
+                    statusCode: StatusCodes.Status200OK);
+                return Ok(successRespose);
             }
-            await _emailService.SendClaimApprovedEmail(id);
-            var successRespose = ApiResponseBuilder.BuildResponse(
-                message: "Claim approved successfully!",
-                data: result,
-                statusCode: StatusCodes.Status200OK);
-            return Ok(successRespose);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error approving claim with ID {ClaimId}", id);
+                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status500InternalServerError,
+                    "An error occurred while approving the claim",
+                    "Internal server error"
+                );
+                return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+            }
         }
 
         [Authorize(Policy = "CanReturnClaim")]
@@ -215,6 +294,7 @@ namespace ClaimRequest.API.Controllers
                     return NotFound(errorResponse);
                 }
 
+                await _emailService.SendClaimReturnedEmail(id);
                 var successResponse = ApiResponseBuilder.BuildResponse(
                     StatusCodes.Status200OK,
                     "Claim returned successfully",
@@ -252,6 +332,7 @@ namespace ClaimRequest.API.Controllers
                     return NotFound(new { message = "Submit claim failed" });
                 }
 
+                await _emailService.SendClaimSubmittedEmail(id);
                 var successResponse = ApiResponseBuilder.BuildResponse(
                     StatusCodes.Status200OK,
                     "Claim submitted successfully",

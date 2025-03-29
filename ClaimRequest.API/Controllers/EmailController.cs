@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using ClaimRequest.API.Constants;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Email;
+using ClaimRequest.DAL.Data.Exceptions;
 
 namespace ClaimRequest.API.Controllers
 {
@@ -19,16 +20,20 @@ namespace ClaimRequest.API.Controllers
             _emailService = emailService;
         }
 
-        [HttpPost("test/send-claim-returned/{claimId}")]
+        [HttpPost("test/send-claim-returned/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> SendClaimReturnedEmail(Guid claimId)
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> SendClaimReturnedEmail(Guid id)
         {
             try
             {
-                await _emailService.SendClaimReturnedEmail(claimId);
+                await _emailService.SendClaimReturnedEmail(id);
                 return Ok(new { message = "Email sent successfully." });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
             }
             catch (Exception ex)
             {
@@ -36,16 +41,20 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
-        [HttpPost("test/send-claim-submitted/{claimerId}")]
+        [HttpPost("test/send-claim-submitted/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> SendClaimSubmittedEmail(Guid claimerId)
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> SendClaimSubmittedEmail(Guid id)
         {
             try
             {
-                await _emailService.SendClaimSubmittedEmail(claimerId);
+                await _emailService.SendClaimSubmittedEmail(id);
                 return Ok(new { message = "Email sent successfully." });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
             }
             catch (Exception ex)
             {
@@ -53,16 +62,20 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
-        [HttpPost("test/send-manager-approved/{approverId}/{claimId}")]
+        [HttpPost("test/send-manager-approved/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> SendManagerApprovedEmail(Guid approverId, Guid claimId)
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> SendManagerApprovedEmail(Guid id)
         {
             try
             {
-                await _emailService.SendManagerApprovedEmail(approverId, claimId);
+                await _emailService.SendManagerApprovedEmail(id);
                 return Ok(new { message = "Email sent successfully." });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
             }
             catch (Exception ex)
             {
@@ -70,16 +83,20 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
-        [HttpPost("test/send-claim-approved/{claimId}")]
+        [HttpPost("test/send-claim-approved/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> SendClaimApprovedEmail(Guid claimId)
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> SendClaimApprovedEmail(Guid id)
         {
             try
             {
-                await _emailService.SendClaimApprovedEmail(claimId);
+                await _emailService.SendClaimApprovedEmail(id);
                 return Ok(new { message = "Email sent successfully." });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
             }
             catch (Exception ex)
             {
@@ -90,22 +107,36 @@ namespace ClaimRequest.API.Controllers
         [HttpPost(ApiEndPointConstant.Email.SendOtp)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> SendOtp([FromBody] SendOtpEmailRequest request)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new { error = "Invalid request", details = "The request data is invalid." });
-            }
-
             try
             {
-                await _emailService.SendOtpEmailAsync(request);
-                return Ok(new { message = "OTP sent successfully." });
+                var response = await _emailService.SendOtpEmailAsync(request);
+                return Ok(ApiResponseBuilder.BuildResponse(
+                    StatusCodes.Status200OK,
+                    "OTP sent successfully.",
+                    response
+                ));
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status404NotFound,
+                    $"Staff with email {request.Email} not found.",
+                    ex.Message
+                ));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Failed to send OTP email.", details = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseBuilder.BuildErrorResponse<object>(
+                    null,
+                    StatusCodes.Status500InternalServerError,
+                    "Failed to send OTP email.",
+                    ex.Message
+                ));
             }
         }
     }

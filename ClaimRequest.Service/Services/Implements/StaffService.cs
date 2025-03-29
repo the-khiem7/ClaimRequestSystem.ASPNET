@@ -12,11 +12,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System.Linq.Expressions;
-using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Paging;
-using ClaimRequest.DAL.Data.Requests.Staff;
-using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.DAL.Data.Responses.Paging;
 
 namespace ClaimRequest.BLL.Services.Implements
@@ -34,9 +30,6 @@ namespace ClaimRequest.BLL.Services.Implements
             _httpContextAccessor = httpContextAccessor;
         }
 
-        // B3: Implement method CRUD cho Staff
-        // nhớ tạo request và response DTO cho staff
-        // method cho endpoint create staff
         public async Task<CreateStaffResponse> CreateStaff(CreateStaffRequest createStaffRequest)
         {
             try
@@ -45,44 +38,16 @@ namespace ClaimRequest.BLL.Services.Implements
                 {
                     throw new ArgumentNullException(nameof(createStaffRequest), "Request data cannot be null.");
                 }
-                //// Sử dụng ExecutionStrategy để retry nếu có lỗi tạm thời trong DB
-                //var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
 
-                //return await executionStrategy.ExecuteAsync(async () =>
-                //{
-                //    // Bắt đầu transaction
-                //    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
-                //    try
-                //    {
-                //        Expression<Func<Staff, bool>> predicate = s => s.Email == createStaffRequest.Email;
-                //        var existingStaff = await _unitOfWork.GetRepository<Staff>()
-                //            .SingleOrDefaultAsync(predicate: s => s.Email == createStaffRequest.Email);
+                if (createStaffRequest.Email.Length > 256)
+                {
+                    throw new BadRequestException("Email cannot exceed 256 characters.");
+                }
 
-                //        if (existingStaff != null)
-                //        {
-                //            throw new BusinessException("Email is already in use. Please use a different email.");
-                //        }
-
-                //        // Ánh xạ từ Request sang Entity
-                //        var newStaff = _mapper.Map<Staff>(createStaffRequest);
-                //        newStaff.Id = Guid.NewGuid(); // Tạo ID mới
-                //        newStaff.Password = BCrypt.Net.BCrypt.HashPassword(createStaffRequest.Password); // Hash mật khẩu
-
-                //        // Thêm vào DB
-                //        await _unitOfWork.GetRepository<Staff>().InsertAsync(newStaff);
-                //        await _unitOfWork.CommitAsync();
-
-                //        // Commit transaction trước khi trả về response
-                //        await transaction.CommitAsync();
-                //        return _mapper.Map<CreateStaffResponse>(newStaff);
-                //    }
-                //    catch (Exception ex)
-                //    {
-                //        await transaction.RollbackAsync();
-                //        Console.WriteLine($"Error creating staff: {ex.Message}");
-                //        throw;
-                //    }
-                //});
+                if (createStaffRequest.Password.Length < 6)
+                {
+                    throw new BadRequestException("Password must be at least 6 characters long.");
+                }
 
                 return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
@@ -121,7 +86,6 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        // method cho endpoint get staff by id
         public async Task<CreateStaffResponse> GetStaffById(Guid id)
         {
             try
@@ -141,7 +105,6 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        // method cho endpoint get all staffs
         public async Task<IEnumerable<CreateStaffResponse>> GetStaffs()
         {
             try
@@ -161,20 +124,32 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        // method cho endpoint update staff
-        // co the xay ra loi trong create, update, delete nen dung transaction
-        // tao update request DTO cho staff (neu can)
         public async Task<UpdateStaffResponse> UpdateStaff(Guid id, UpdateStaffRequest updateStaffRequest)
         {
             try
             {
+                if (updateStaffRequest == null)
+                {
+                    throw new ArgumentNullException(nameof(updateStaffRequest), "Request data cannot be null.");
+                }
+
+                if (updateStaffRequest.Email.Length > 256)
+                {
+                    throw new BadRequestException("Email cannot exceed 256 characters.");
+                }
+
+                if (string.IsNullOrWhiteSpace(updateStaffRequest.Email))
+                {
+                    throw new BadRequestException("Email cannot be empty.");
+                }
+
                 return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
                     var existingStaff = (await _unitOfWork.GetRepository<Staff>()
                         .SingleOrDefaultAsync(
                             predicate: s => s.Id == id && s.IsActive,
-                            orderBy: null,
-                            include: null
+                            orderBy: q => q.OrderBy(s => s.Name),
+                            include: q => q.Include(s => s.ProjectStaffs)
                         )).ValidateExists(id, "Can't update because this staff");
                     string currentAvatar = existingStaff.Avatar;
                     _mapper.Map(updateStaffRequest, existingStaff);
@@ -232,11 +207,8 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-
-                return await executionStrategy.ExecuteAsync(async () =>
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
-                    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
                     try
                     {
                         // Validate staff if exists
@@ -249,7 +221,12 @@ namespace ClaimRequest.BLL.Services.Implements
                         var existingProject = await _unitOfWork.GetRepository<Project>()
                             .SingleOrDefaultAsync(
                             predicate: p => p.Id == assignStaffRequest.projectId
-                            ).ValidateExists(assignStaffRequest.projectId);
+                            );
+
+                        if (existingProject == null) 
+                        {
+                            throw new NotFoundException("Project not found.");
+                        }
 
                         // Check valid inputted role
                         if (!Enum.IsDefined(typeof(ProjectRole), assignStaffRequest.ProjectRole))
@@ -290,14 +267,10 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         await _unitOfWork.GetRepository<ProjectStaff>().InsertAsync(newProjectStaff);
 
-                        await _unitOfWork.CommitAsync();
-                        await transaction.CommitAsync();
-
                         return _mapper.Map<AssignStaffResponse>(newProjectStaff);
                     }
                     catch (Exception)
                     {
-                        await transaction.RollbackAsync();
                         throw;
                     }
                 });
@@ -313,11 +286,8 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-
-                return await executionStrategy.ExecuteAsync(async () =>
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
-                    await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
                     try
                     {
                         // Validate staff if exists
@@ -330,7 +300,12 @@ namespace ClaimRequest.BLL.Services.Implements
                         var existingProject = await _unitOfWork.GetRepository<Project>()
                             .SingleOrDefaultAsync(
                             predicate: p => p.Id == removeStaffRequest.projectId
-                            ).ValidateExists(removeStaffRequest.projectId);
+                            );
+
+                        if (existingProject == null)
+                        {
+                            throw new NotFoundException("Project not found.");
+                        }
 
                         // Remover must be project manager
                         var removerInProject = await _unitOfWork.GetRepository<ProjectStaff>()
@@ -343,7 +318,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             throw new BadRequestException("You are not a member of this project or not project manager.");
                         }
 
-                        // Check if staff is assigned to the project
+                        // Check if staff to be removed is assigned to the project
                         var projectStaff = await _unitOfWork.GetRepository<ProjectStaff>()
                             .SingleOrDefaultAsync(predicate: s => s.StaffId == id
                             && s.ProjectId == removeStaffRequest.projectId);
@@ -361,14 +336,10 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         _unitOfWork.GetRepository<ProjectStaff>().DeleteAsync(projectStaff);
 
-                        await _unitOfWork.CommitAsync();
-                        await transaction.CommitAsync();
-
                         return _mapper.Map<RemoveStaffResponse>(projectStaff);
                     }
                     catch (Exception)
                     {
-                        await transaction.RollbackAsync();
                         throw;
                     }
                 });

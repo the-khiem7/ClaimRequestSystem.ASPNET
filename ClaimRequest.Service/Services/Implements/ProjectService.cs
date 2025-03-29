@@ -2,12 +2,15 @@
 using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
+using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Project;
+using ClaimRequest.DAL.Data.Requests.Staff;
 using ClaimRequest.DAL.Data.Responses.Project;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Linq.Expressions;
 
 
 namespace ClaimRequest.BLL.Services.Implements
@@ -41,9 +44,9 @@ namespace ClaimRequest.BLL.Services.Implements
                                 include: null
                             )).ValidateExists(createProjectRequest.ProjectManagerId, "Can't create project because of invalid project manager");
 
-                        if (projectManager.SystemRole != SystemRole.Approver)
+                        if (projectManager.SystemRole != SystemRole.Admin)
                         {
-                            throw new InvalidOperationException("The specified staff member is not a Project Manager");
+                            throw new InvalidOperationException("The specified staff member can't be project mananger");
                         }
 
                         if (!projectManager.IsActive)
@@ -55,6 +58,18 @@ namespace ClaimRequest.BLL.Services.Implements
                         newProject.Status = createProjectRequest.Status;  // Set status here
 
                         await _unitOfWork.GetRepository<Project>().InsertAsync(newProject);
+                        await _unitOfWork.CommitAsync();
+
+                        var newProjectStaff = new ProjectStaff
+                        {
+                            Id = Guid.NewGuid(),
+                            ProjectId = newProject.Id,
+                            StaffId = createProjectRequest.ProjectManagerId,
+                            ProjectRole = ProjectRole.ProjectManager
+                        };
+
+                        await _unitOfWork.GetRepository<ProjectStaff>().InsertAsync(newProjectStaff);
+
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();
 
@@ -139,24 +154,148 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task<IEnumerable<CreateProjectResponse>> GetProjects()
+        public async Task<PagingResponse<CreateProjectResponse>> GetProjects(
+    int page,
+    int pageSize,
+    string sortBy = "Name",
+    bool isDescending = false,
+    string? name = null,
+    string? description = null,
+    string? projectManagerName = null,
+    ProjectStatus? status = null,
+    Guid? projectManagerId = null,
+    ProjectRole? role = null,
+    decimal? minBudget = null,
+    decimal? maxBudget = null,
+    DateOnly? startDateFrom = null,
+    DateOnly? endDateTo = null,
+    bool? isActive = true
+)
         {
             try
             {
-                var projects = await _unitOfWork.GetRepository<Project>()
-                    .GetListAsync(
-                        predicate: p => p.IsActive,
-                        include: q => q
-                            .Include(p => p.ProjectManager)
-                            .Include(p => p.ProjectStaffs)
-                                .ThenInclude(ps => ps.Staff) // Load Staff, including Department
-                    );
+                // First, build the predicate for the initial filtering
+                // We'll use a combination of the available methods in your repository
 
-                return _mapper.Map<IEnumerable<CreateProjectResponse>>(projects);
+                // Get the repository
+                var repository = _unitOfWork.GetRepository<Project>();
+
+                // Create a query expression for the initial filter
+                Expression<Func<Project, bool>> predicate = p => isActive == null || p.IsActive == isActive.Value;
+
+                // Get the initial dataset with includes
+                var initialDataset = await repository.GetListAsync(
+                    predicate: predicate,
+                    include: q => q
+                        .Include(p => p.ProjectManager)
+                        .Include(p => p.ProjectStaffs)
+                            .ThenInclude(ps => ps.Staff)
+                );
+
+                // Now we have the initial dataset, apply additional filters in memory
+                var filteredProjects = initialDataset.AsQueryable();
+
+                // Apply Partial Match Filtering
+                if (!string.IsNullOrEmpty(name))
+                {
+                    filteredProjects = filteredProjects.Where(p => p.Name.Contains(name, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (!string.IsNullOrEmpty(description))
+                {
+                    filteredProjects = filteredProjects.Where(p => p.Description.Contains(description, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (!string.IsNullOrEmpty(projectManagerName))
+                {
+                    filteredProjects = filteredProjects.Where(p => p.ProjectManager != null &&
+                        p.ProjectManager.Name.Contains(projectManagerName, StringComparison.OrdinalIgnoreCase));
+                }
+
+                // Apply Filtering for Other Fields
+                if (status.HasValue)
+                {
+                    filteredProjects = filteredProjects.Where(p => p.Status == status.Value);
+                }
+
+                if (projectManagerId.HasValue)
+                {
+                    filteredProjects = filteredProjects.Where(p => p.ProjectManagerId == projectManagerId.Value);
+                }
+
+                if (role.HasValue)
+                {
+                    filteredProjects = filteredProjects.Where(p => p.ProjectStaffs.Any(ps => ps.ProjectRole == role.Value));
+                }
+
+                if (minBudget.HasValue)
+                {
+                    filteredProjects = filteredProjects.Where(p => p.Budget >= minBudget.Value);
+                }
+
+                if (maxBudget.HasValue)
+                {
+                    filteredProjects = filteredProjects.Where(p => p.Budget <= maxBudget.Value);
+                }
+
+                if (startDateFrom.HasValue)
+                {
+                    filteredProjects = filteredProjects.Where(p => p.StartDate >= startDateFrom.Value);
+                }
+
+                if (endDateTo.HasValue)
+                {
+                    filteredProjects = filteredProjects.Where(p => p.EndDate <= endDateTo.Value);
+                }
+
+                // Apply Sorting
+                filteredProjects = sortBy switch
+                {
+                    "Id" => isDescending ? filteredProjects.OrderByDescending(p => p.Id) : filteredProjects.OrderBy(p => p.Id),
+                    "Name" => isDescending ? filteredProjects.OrderByDescending(p => p.Name) : filteredProjects.OrderBy(p => p.Name),
+                    "Description" => isDescending ? filteredProjects.OrderByDescending(p => p.Description) : filteredProjects.OrderBy(p => p.Description),
+                    "StartDate" => isDescending ? filteredProjects.OrderByDescending(p => p.StartDate) : filteredProjects.OrderBy(p => p.StartDate),
+                    "EndDate" => isDescending ? filteredProjects.OrderByDescending(p => p.EndDate) : filteredProjects.OrderBy(p => p.EndDate),
+                    "Budget" => isDescending ? filteredProjects.OrderByDescending(p => p.Budget) : filteredProjects.OrderBy(p => p.Budget),
+                    "Status" => isDescending ? filteredProjects.OrderByDescending(p => p.Status) : filteredProjects.OrderBy(p => p.Status),
+                    "ProjectManager" => isDescending
+                        ? filteredProjects.OrderByDescending(p => p.ProjectManager != null ? p.ProjectManager.Name : string.Empty)
+                        : filteredProjects.OrderBy(p => p.ProjectManager != null ? p.ProjectManager.Name : string.Empty),
+                    _ => filteredProjects.OrderBy(p => p.Name) // Default sorting by name
+                };
+
+                // Manual pagination
+                var totalItems = filteredProjects.Count();
+                var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+                // Apply pagination
+                var paginatedProjects = filteredProjects
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                // Map to DTOs
+                var mappedItems = _mapper.Map<IEnumerable<CreateProjectResponse>>(paginatedProjects);
+
+                // Create pagination metadata
+                var paginationMeta = new PaginationMeta
+                {
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    TotalItems = totalItems,
+                    TotalPages = totalPages
+                };
+
+                // Create and return the final response
+                return new PagingResponse<CreateProjectResponse>
+                {
+                    Items = mappedItems,
+                    Meta = paginationMeta
+                };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving project list: {Message}", ex.Message);
+                _logger.LogError(ex, "Error retrieving paginated project list: {Message}", ex.Message);
                 throw;
             }
         }
@@ -193,10 +332,11 @@ namespace ClaimRequest.BLL.Services.Implements
                                     include: null
                                 ).ValidateExists(updateProjectRequest.ProjectManagerId, "Can't update this project because your ProjectManager doesn't exist ");
 
-                            if (newProjectManager.SystemRole != SystemRole.Approver)
+                            if (newProjectManager.SystemRole != SystemRole.Admin && newProjectManager.SystemRole != SystemRole.Staff)
                             {
-                                throw new InvalidOperationException("The specified staff member is not a Project Manager");
+                                throw new UnauthorizedAccessException("Only Admin or Staff can be a Project Manager.");
                             }
+
 
                             if (!newProjectManager.IsActive)
                             {

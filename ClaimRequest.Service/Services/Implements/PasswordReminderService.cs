@@ -1,13 +1,10 @@
 ﻿using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
-using ClaimRequest.DAL.Data.Requests.Email;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.Threading.Tasks;
-using System.Threading;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
@@ -15,11 +12,13 @@ namespace ClaimRequest.BLL.Services.Implements
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<PasswordReminderService> _logger;
+        private readonly OtpUtil _otpUtil;
 
-        public PasswordReminderService(IServiceScopeFactory serviceScopeFactory, ILogger<PasswordReminderService> logger)
+        public PasswordReminderService(IServiceScopeFactory serviceScopeFactory, ILogger<PasswordReminderService> logger, OtpUtil otpUtil)
         {
             _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
+            _otpUtil = otpUtil;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -62,7 +61,7 @@ namespace ClaimRequest.BLL.Services.Implements
                                 await semaphore.WaitAsync();
                                 try
                                 {
-                                    using (var scope = _serviceScopeFactory.CreateScope()) 
+                                    using (var scope = _serviceScopeFactory.CreateScope())
                                     {
                                         var scopedUnitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork<ClaimRequestDbContext>>();
                                         var scopedOtpService = scope.ServiceProvider.GetRequiredService<IOtpService>();
@@ -70,8 +69,8 @@ namespace ClaimRequest.BLL.Services.Implements
 
                                         _logger.LogInformation($"Sending email and OTP to: {staff.Email}");
 
-                                        var otp = OtpUtil.GenerateOtp(staff.Email);
-                                        await scopedOtpService.CreateOtpEntity(staff.Email, otp); 
+                                        var otp = _otpUtil.GenerateOtp(staff.Email);
+                                        await scopedOtpService.CreateOtpEntity(staff.Email, otp);
 
                                         await scopedEmailService.SendEmailAsync(
                                             staff.Email,
