@@ -14,53 +14,41 @@ using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Email;
 using ClaimRequest.DAL.Data.Responses.Email;
 using ClaimRequest.DAL.Data.Responses.Staff;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Xunit;
 using ClaimRequest.BLL.Utils;
-using ClaimRequest.DAL.Data.Responses.Project;
+using ClaimRequest.DAL.Repositories.Interfaces;
 
 namespace ClaimRequest.UnitTest.Services
 {
     public class EmailServiceTest
     {
         private readonly Mock<IUnitOfWork<ClaimRequestDbContext>> _mockUnitOfWork;
+        private readonly Mock<IConfiguration> _mockConfiguration;
         private readonly Mock<IClaimService> _mockClaimService;
         private readonly Mock<IProjectService> _mockProjectService;
         private readonly Mock<IStaffService> _mockStaffService;
-        private readonly Mock<ILogger<EmailService>> _mockLogger;
-        private readonly Mock<IConfiguration> _mockConfiguration;
         private readonly Mock<IOtpService> _mockOtpService;
+        private readonly Mock<ILogger<EmailService>> _mockLogger;
         private readonly OtpUtil _otpUtil;
-        private readonly IEmailService _emailService;
+        private readonly EmailService _emailService;
 
         public EmailServiceTest()
         {
-            // Initialize all mocks
             _mockUnitOfWork = new Mock<IUnitOfWork<ClaimRequestDbContext>>();
+            _mockConfiguration = new Mock<IConfiguration>();
             _mockClaimService = new Mock<IClaimService>();
             _mockProjectService = new Mock<IProjectService>();
             _mockStaffService = new Mock<IStaffService>();
+            _mockOtpService = new Mock<IOtpService>();
             _mockLogger = new Mock<ILogger<EmailService>>();
             _mockConfiguration = new Mock<IConfiguration>();
             _mockOtpService = new Mock<IOtpService>();
 
-            // Setup SMTP settings
-            var smtpSection = new Mock<IConfigurationSection>();
-            smtpSection.Setup(x => x["Host"]).Returns("smtp.test.com");
-            smtpSection.Setup(x => x["Port"]).Returns("587");
-            smtpSection.Setup(x => x["Username"]).Returns("test@test.com");
-            smtpSection.Setup(x => x["Password"]).Returns("test-password");
-            smtpSection.Setup(x => x["EnableSsl"]).Returns("true");
-            _mockConfiguration.Setup(x => x.GetSection("SmtpSettings")).Returns(smtpSection.Object);
-
-            // Setup Email settings
-            _mockConfiguration.Setup(c => c["EmailSettings:SenderEmailSMTP"]).Returns("test@example.com");
-            _mockConfiguration.Setup(c => c["EmailSettings:Host"]).Returns("smtp.example.com");
-            _mockConfiguration.Setup(c => c["EmailSettings:SmtpPort"]).Returns("587");
-            _mockConfiguration.Setup(c => c["EmailSettings:SenderPassword"]).Returns("password");
-
-            // Create OtpUtil instance
+            // Initialize OtpUtil if necessary
             _otpUtil = new OtpUtil(_mockConfiguration.Object);
 
-            // Create EmailService instance
             _emailService = new EmailService(
                 _mockUnitOfWork.Object,
                 _mockConfiguration.Object,

@@ -23,7 +23,7 @@ namespace ClaimRequest.BLL.Utils
             }
         }
 
-        public string GenerateOtp(string email)
+        public virtual string GenerateOtp(string email)
         {
             var secretKey = GenerateSecretKey(email);
             var totp = new Totp(Base32Encoding.ToBytes(secretKey));
