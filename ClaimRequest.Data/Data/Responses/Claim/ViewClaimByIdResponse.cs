@@ -15,8 +15,8 @@ namespace ClaimRequest.DAL.Data.Responses.Claim
         public DateOnly EndDate { get; set; }
         public decimal TotalWorkingHours { get; set; }
         public decimal Amount { get; set; }
- public ClaimType ClaimType { get; set; }
- public string Remark { get; set; }
+        public ClaimType ClaimType { get; set; } 
+        public string Remark { get; set; }
         public ClaimStatus Status { get; set; }
         public DateTime CreateAt { get; set; }
         public DateTime UpdateAt { get; set; }
