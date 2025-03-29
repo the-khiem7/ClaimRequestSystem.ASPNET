@@ -18,7 +18,23 @@ namespace ClaimRequest.BLL.Services.Implements.VNPayService.Services
 
         public string CreatePaymentUrl(PaymentInformationModel model, HttpContext context)
         {
-            var timeZoneById = TimeZoneInfo.FindSystemTimeZoneById(_configuration["TimeZoneId"]!);
+            var timeZoneId = _configuration["TimeZoneId"];
+            if (string.IsNullOrEmpty(timeZoneId))
+            {
+                throw new ArgumentNullException("TimeZoneId is not configured in appsettings.json");
+            }
+
+            // Kiểm tra TimeZone có hợp lệ không
+            TimeZoneInfo timeZoneById;
+            try
+            {
+                timeZoneById = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                throw new Exception($"TimeZoneId '{timeZoneId}' is invalid. Check available time zones on the server.");
+            }
+
             var timeNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZoneById);
             var pay = new VnPayLibrary();
 
