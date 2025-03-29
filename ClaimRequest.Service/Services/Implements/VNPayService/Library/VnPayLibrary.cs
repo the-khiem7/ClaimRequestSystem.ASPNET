@@ -132,6 +132,12 @@ namespace ClaimRequest.BLL.Services.Implements.VNPayService.Library
 
         private string HmacSha512(string key, string inputData)
         {
+            // Validate key và inputData
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key), "HashSecret cannot be null or empty");
+            if (string.IsNullOrEmpty(inputData))
+                throw new ArgumentNullException(nameof(inputData), "Input data cannot be null or empty");
+
             var hash = new StringBuilder();
             var keyBytes = Encoding.UTF8.GetBytes(key);
             var inputBytes = Encoding.UTF8.GetBytes(inputData);
