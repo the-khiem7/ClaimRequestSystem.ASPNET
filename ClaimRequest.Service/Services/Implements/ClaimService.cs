@@ -595,26 +595,25 @@ namespace ClaimRequest.BLL.Services.Implements
             }
 
             var approverId = Guid.Parse(approverIdClaim);
-            var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-
             var claimRepo = _unitOfWork.GetRepository<Claim>();
 
             var pendingClaim = (await claimRepo.SingleOrDefaultAsync(
                     predicate: s => s.Id == id,
                     include: s => s.Include(c => c.ClaimApprovers)
-                )).ValidateExists(id);
+                ));
 
+            if (pendingClaim == null)
+            {
+                throw new NotFoundException($"Claim with ID {id} not found.");
+            }
             if (pendingClaim.Status != ClaimStatus.Pending)
             {
                 throw new BadRequestException($"Claim with ID {id} is not in pending state.");
             }
 
-            var isApproverAllowed = pendingClaim.ClaimApprovers
-                    .Any(ca => ca.ApproverId == approverId);
-
-            if (!isApproverAllowed)
+            if (pendingClaim.ClaimApprovers == null || !pendingClaim.ClaimApprovers.Any(ca => ca.ApproverId == approverId))
             {
-                throw new UnauthorizedAccessException($"You don't have permission to perform this action");
+                throw new UnauthorizedAccessException("You don't have permission to perform this action");
             }
             return await _unitOfWork.ProcessInTransactionAsync(async () =>
             {
@@ -624,8 +623,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 return true;
             });
         }
-
-
 
         public async Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest)
         {

@@ -151,7 +151,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             orderBy: q => q.OrderBy(s => s.Name),
                             include: q => q.Include(s => s.ProjectStaffs)
                         )).ValidateExists(id, "Can't update because this staff");
-                    string currentAvatar = existingStaff.Avatar ?? DefaultProfilePicture;
+                    string currentAvatar = existingStaff.Avatar;
                     _mapper.Map(updateStaffRequest, existingStaff);
                     var user = _httpContextAccessor.HttpContext?.User;
                     if (updateStaffRequest.Avatar != null && user != null)
