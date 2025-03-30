@@ -1,5 +1,4 @@
-﻿using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ClaimRequest.DAL.Data.Entities
@@ -61,6 +60,8 @@ namespace ClaimRequest.DAL.Data.Entities
         public DateTime? LastChangePassword { get; set; }
 
         public virtual ICollection<ProjectStaff> ProjectStaffs { get; set; } = [];
+
+        public virtual ICollection<RefreshTokens> RefreshTokens { get; set; }
 
         //public string PasswordHash { get; set; }
     }

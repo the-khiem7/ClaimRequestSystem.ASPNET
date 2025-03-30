@@ -1,6 +1,4 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Linq.Expressions;
-using System.Security.Claims;
+﻿using System.Linq.Expressions;
 using AutoMapper;
 using ClaimRequest.BLL.Extension;
 using ClaimRequest.BLL.Services.Interfaces;
@@ -19,6 +17,7 @@ namespace ClaimRequest.BLL.Services.Implements
     {
         private readonly JwtUtil _jwtUtil;
         private readonly IOtpService _otpService;
+        private readonly IRefreshTokensService _refreshTokensService;
 
         public AuthService(
              IUnitOfWork<ClaimRequestDbContext> unitOfWork,
@@ -26,11 +25,13 @@ namespace ClaimRequest.BLL.Services.Implements
              IMapper mapper,
              IHttpContextAccessor httpContextAccessor,
              JwtUtil jwtUtil,
-            IOtpService otpService)
+            IOtpService otpService,
+            IRefreshTokensService refreshTokensService)
              : base(unitOfWork, logger, mapper, httpContextAccessor)
         {
             _jwtUtil = jwtUtil;
             _otpService = otpService;
+            _refreshTokensService = refreshTokensService;
         }
 
         public async Task<LoginResponse> Login(LoginRequest loginRequest)
@@ -48,7 +49,7 @@ namespace ClaimRequest.BLL.Services.Implements
             bool isPasswordExpired = lastChangePassword == null || lastChangePassword <= DateTime.UtcNow.AddMonths(-3);
 
             LoginResponse loginResponse = new LoginResponse(staff);
-            loginResponse.IsPasswordExpired = isPasswordExpired; 
+            loginResponse.IsPasswordExpired = isPasswordExpired;
 
             Tuple<string, Guid> guidSecurityClaim = new Tuple<string, Guid>("StaffId", staff.Id);
 
@@ -63,7 +64,10 @@ namespace ClaimRequest.BLL.Services.Implements
 
             // Token bình thường nếu mật khẩu không hết hạn
             var token = _jwtUtil.GenerateJwtToken(staff, guidSecurityClaim, false);
+            var refreshToken = await _refreshTokensService.GenerateAndStoreRefreshToken(staff.Id);
+
             loginResponse.AccessToken = token;
+            loginResponse.RefreshToken = refreshToken; // Thêm refresh token vào response
             return loginResponse;
         }
 
@@ -142,7 +146,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
 
             staff.Password = await PasswordUtil.HashPassword(changePasswordRequest.NewPassword);
-                staff.LastChangePassword = DateTime.UtcNow; 
+            staff.LastChangePassword = DateTime.UtcNow;
 
             staffRepository.UpdateAsync(staff);
 

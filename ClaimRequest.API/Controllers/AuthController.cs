@@ -1,11 +1,8 @@
-﻿using System.Text.RegularExpressions;
-using ClaimRequest.API.Constants;
+﻿using ClaimRequest.API.Constants;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
-using ClaimRequest.DAL.Data.Requests;
 using ClaimRequest.DAL.Data.Requests.Auth;
-using ClaimRequest.DAL.Data.Responses;
 using ClaimRequest.DAL.Data.Responses.Auth;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,9 +12,11 @@ namespace ClaimRequest.API.Controllers
     public class AuthController : BaseController<AuthController>
     {
         private readonly IAuthService _authService;
-        public AuthController(ILogger<AuthController> logger, IAuthService authService) : base(logger)
+        private readonly IRefreshTokensService _refreshTokensService;
+        public AuthController(ILogger<AuthController> logger, IAuthService authService, IRefreshTokensService refreshTokensService) : base(logger)
         {
             _authService = authService;
+            _refreshTokensService = refreshTokensService;
         }
 
         [HttpPost(ApiEndPointConstant.Auth.LoginEndpoint)]
@@ -164,6 +163,27 @@ namespace ClaimRequest.API.Controllers
                     )
                 );
             }
+        }
+
+        [HttpPost(ApiEndPointConstant.Auth.RefreshTokenEndpoint)]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+        {
+            try
+            {
+                var newAccessToken = await _refreshTokensService.RefreshAccessToken(request.RefreshToken);
+                return Ok(new { accessToken = newAccessToken });
+            }
+            catch (Exception ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+        }
+
+        [HttpDelete(ApiEndPointConstant.Auth.DeleteRefreshTokenEndpoint)]
+        public async Task<IActionResult> DeleteRefreshToken([FromRoute]Guid userId)
+        {
+            await _refreshTokensService.DeleteRefreshTokensByUserId(userId);
+            return NoContent();
         }
     }
 }

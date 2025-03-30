@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ClaimRequest.DAL.Data.Requests.Paging
+﻿namespace ClaimRequest.DAL.Data.Requests.Paging
 {
     public class PagingRequest
     {
