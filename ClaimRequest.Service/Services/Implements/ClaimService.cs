@@ -11,12 +11,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
-using MimeKit.Encodings;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System.Drawing;
 using System.Linq.Expressions;
-using System.Net.NetworkInformation;
 using System.Security.Claims;
 using Claim = ClaimRequest.DAL.Data.Entities.Claim;
 
@@ -335,6 +333,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
 
         #region Get Claims
+
         public async Task<PagingResponse<ViewClaimResponse>> GetClaims(
             int pageNumber = 1,
             int pageSize = 20,
@@ -350,7 +349,7 @@ namespace ClaimRequest.BLL.Services.Implements
             {
                 var loggedUserId = Guid.Parse(_httpContextAccessor.HttpContext?.User?.FindFirst("StaffId")?.Value);
                 var loggedUserRole = Enum.Parse<SystemRole>(_httpContextAccessor.HttpContext?.User?
-                .FindFirst("http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value);
+                    .FindFirst("http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value);
                 var selectedView = Enum.Parse<ViewMode>(viewMode);
                 ValidateUserAccess(selectedView, loggedUserRole);
 
@@ -373,6 +372,7 @@ namespace ClaimRequest.BLL.Services.Implements
         }
 
         #region GetClaims Helper
+
         private Expression<Func<Claim, bool>> Predicate(
             ViewMode viewMode,
             Guid loggedUserId,
@@ -387,32 +387,38 @@ namespace ClaimRequest.BLL.Services.Implements
             {
                 ViewMode.AdminMode => c =>
                     (!status.HasValue || c.Status == status.Value) &&
-                    (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)) &&
+                    (search == null || c.Claimer.Name.ToLower().Contains(search) ||
+                     c.Project.Name.ToLower().Contains(search)) &&
                     (!fromDate.HasValue || c.UpdateAt >= fromDate.Value) &&
                     (!toDate.HasValue || c.UpdateAt <= toDate.Value),
 
                 ViewMode.ClaimerMode => c =>
                     c.ClaimerId == loggedUserId &&
                     (!status.HasValue || c.Status == status.Value) &&
-                    (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)) &&
+                    (search == null || c.Claimer.Name.ToLower().Contains(search) ||
+                     c.Project.Name.ToLower().Contains(search)) &&
                     (!fromDate.HasValue || c.UpdateAt >= fromDate.Value) &&
                     (!toDate.HasValue || c.UpdateAt <= toDate.Value),
 
                 ViewMode.ApproverMode => c =>
                     c.ClaimApprovers.Any(a => a.ApproverId == loggedUserId) &&
-                    (status.HasValue ?
-                        (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Pending) ? c.Status == status.Value : false
+                    (status.HasValue
+                        ? (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Pending) &&
+                          c.Status == status.Value
                         : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Pending) &&
-                    (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)) &&
-                    (!fromDate.HasValue || (c.UpdateAt == default(DateTime) ? c.CreateAt : c.UpdateAt) >= fromDate.Value) &&
-                    (!toDate.HasValue || (c.UpdateAt == default(DateTime) ? c.CreateAt : c.UpdateAt) <= toDate.Value),
+                    (search == null || c.Claimer.Name.ToLower().Contains(search) ||
+                     c.Project.Name.ToLower().Contains(search)) &&
+                    (!fromDate.HasValue || (c.UpdateAt == default ? c.CreateAt : c.UpdateAt) >= fromDate.Value) &&
+                    (!toDate.HasValue || (c.UpdateAt == default ? c.CreateAt : c.UpdateAt) <= toDate.Value),
 
                 ViewMode.FinanceMode => c =>
                     c.FinanceId == loggedUserId &&
-                    (status.HasValue ?
-                        (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid) ? c.Status == status.Value : false
+                    (status.HasValue
+                        ? (status.Value == ClaimStatus.Approved || status.Value == ClaimStatus.Paid) &&
+                          c.Status == status.Value
                         : c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Paid) &&
-                    (search == null || c.Claimer.Name.ToLower().Contains(search) || c.Project.Name.ToLower().Contains(search)) &&
+                    (search == null || c.Claimer.Name.ToLower().Contains(search) ||
+                     c.Project.Name.ToLower().Contains(search)) &&
                     (!fromDate.HasValue || c.UpdateAt >= fromDate.Value) &&
                     (!toDate.HasValue || c.UpdateAt <= toDate.Value),
 
@@ -426,12 +432,12 @@ namespace ClaimRequest.BLL.Services.Implements
             return query => viewMode switch
             {
                 ViewMode.AdminMode or ViewMode.ApproverMode => query.AsNoTracking()
-                                                                    .Include(c => c.Project)
-                                                                    .Include(c => c.Claimer)
-                                                                    .Include(c => c.ClaimApprovers),
+                    .Include(c => c.Project)
+                    .Include(c => c.Claimer)
+                    .Include(c => c.ClaimApprovers),
                 _ => query.AsNoTracking()
-                          .Include(c => c.Project)
-                          .Include(c => c.Claimer)
+                    .Include(c => c.Project)
+                    .Include(c => c.Claimer)
             };
         }
 
@@ -467,14 +473,14 @@ namespace ClaimRequest.BLL.Services.Implements
             };
 
             if (requiredRoles.TryGetValue(selectedView, out var requiredRole) && role != requiredRole)
-            {
                 throw new UnauthorizedAccessException($"Only {requiredRole} users can access {selectedView}.");
-            }
         }
-        #endregion GetClaims Helper 
+
+        #endregion GetClaims Helper
+
         #endregion Get Claims
 
-        public async Task<ViewClaimResponse> GetClaimById(Guid id)
+        public async Task<ViewClaimByIdResponse> GetClaimById(Guid id)
         {
             try
             {
@@ -485,7 +491,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     include: q => q.Include(c => c.Claimer).Include(c => c.Project)
                 )).ValidateExists(id);
 
-                return _mapper.Map<ViewClaimResponse>(claim.c);
+                return _mapper.Map<ViewClaimByIdResponse>(claim.c);
             }
             catch (NotFoundException)
             {
@@ -530,7 +536,8 @@ namespace ClaimRequest.BLL.Services.Implements
                 {
                     var pendingClaim = await _unitOfWork.GetRepository<Claim>()
                         .SingleOrDefaultAsync(
-                            predicate: s => s.Id == id
+                            predicate: s => s.Id == id,
+                            include: q => q.Include(c => c.ClaimApprovers)
                         ) ?? throw new KeyNotFoundException($"Claim with ID {id} not found.");
 
                     if (pendingClaim.Status != ClaimStatus.Pending)
@@ -556,7 +563,6 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw new UnauthorizedAccessException($"User with ID {rejectClaimRequest.ApproverId} does not have permission to reject this claim.");
                     }
                     var approverName = approver.Name ?? "Unknown Approver";
-
 
                     _mapper.Map(rejectClaimRequest, pendingClaim);
                     _unitOfWork.GetRepository<Claim>().UpdateAsync(pendingClaim);
@@ -587,26 +593,25 @@ namespace ClaimRequest.BLL.Services.Implements
             }
 
             var approverId = Guid.Parse(approverIdClaim);
-            var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-
             var claimRepo = _unitOfWork.GetRepository<Claim>();
 
             var pendingClaim = (await claimRepo.SingleOrDefaultAsync(
                     predicate: s => s.Id == id,
                     include: s => s.Include(c => c.ClaimApprovers)
-                )).ValidateExists(id);
+                ));
 
+            if (pendingClaim == null)
+            {
+                throw new NotFoundException($"Claim with ID {id} not found.");
+            }
             if (pendingClaim.Status != ClaimStatus.Pending)
             {
                 throw new BadRequestException($"Claim with ID {id} is not in pending state.");
             }
 
-            var isApproverAllowed = pendingClaim.ClaimApprovers
-                    .Any(ca => ca.ApproverId == approverId);
-
-            if (!isApproverAllowed)
+            if (pendingClaim.ClaimApprovers == null || !pendingClaim.ClaimApprovers.Any(ca => ca.ApproverId == approverId))
             {
-                throw new UnauthorizedAccessException($"You don't have permission to perform this action");
+                throw new UnauthorizedAccessException("You don't have permission to perform this action");
             }
             return await _unitOfWork.ProcessInTransactionAsync(async () =>
             {
@@ -616,8 +621,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 return true;
             });
         }
-
-
 
         public async Task<ReturnClaimResponse> ReturnClaim(Guid id, ReturnClaimRequest returnClaimRequest)
         {
@@ -630,7 +633,10 @@ namespace ClaimRequest.BLL.Services.Implements
                             predicate: s => s.Id == id,
                             include: q => q.Include(c => c.ClaimApprovers));
 
-                    pendingClaim.ValidateExists(id);
+                   if(pendingClaim==null)
+                    {
+                        throw new KeyNotFoundException($"Claim with ID {id} not found.");
+                    }
 
                     if (pendingClaim.Status != ClaimStatus.Pending)
                     {
@@ -776,6 +782,10 @@ namespace ClaimRequest.BLL.Services.Implements
                 {
                     throw new BadRequestException($"Finance staff with ID {financeId} not found or does not have the Finance role.");
                 }
+                if (finance.SystemRole != SystemRole.Finance)
+                {
+                    throw new UnauthorizedAccessException("The user does not have permission to paid this claim.");
+                }
 
                 // 🔹 Cập nhật trạng thái của claim thành "Paid"
                 var oldStatus = existingClaim.Status;
@@ -793,13 +803,13 @@ namespace ClaimRequest.BLL.Services.Implements
                     OldValue = oldStatus.ToString() ?? "Unknown",
                     NewValue = ClaimStatus.Paid.ToString(),
                     ChangedAt = DateTime.UtcNow,
-                    ChangedBy = finance.Name ?? "System"
+                    ChangedBy = finance?.Name ?? "System"
                 };
-                Console.WriteLine($"Hell this suck & bugging me: HistoryId: {claimLog.HistoryId}, ClaimId: {claimLog.ClaimId}, FieldChanged: {claimLog.FieldChanged}, OldValue: {claimLog.OldValue}, NewValue: {claimLog.NewValue}, ChangedAt: {claimLog.ChangedAt}, ChangedBy: {claimLog.ChangedBy}");
+                Console.WriteLine($"HistoryId: {claimLog.HistoryId}, ClaimId: {claimLog.ClaimId}, FieldChanged: {claimLog.FieldChanged}, OldValue: {claimLog.OldValue}, NewValue: {claimLog.NewValue}, ChangedAt: {claimLog.ChangedAt}, ChangedBy: {claimLog.ChangedBy}");
 
                 await _unitOfWork.GetRepository<ClaimChangeLog>().InsertAsync(claimLog);
 
-                await _unitOfWork.CommitAsync(); // Lưu thay đổi vào DB
+                await _unitOfWork.CommitAsync(); 
 
                 return true;
             }
