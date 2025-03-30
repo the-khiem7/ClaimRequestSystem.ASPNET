@@ -24,7 +24,8 @@ namespace ClaimRequest.BLL.Services.Interfaces
            decimal? maxBudget = null,
            DateOnly? startDateFrom = null,
            DateOnly? endDateTo = null,
-           bool? isActive = true
+           bool? isActive = true,
+           Guid? staffId = null
        );
         Task<CreateProjectResponse> UpdateProject(Guid id, UpdateProjectRequest updateProjectRequest);
     Task<bool> DeleteProject(Guid id);
