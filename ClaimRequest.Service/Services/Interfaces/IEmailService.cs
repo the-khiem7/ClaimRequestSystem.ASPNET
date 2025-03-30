@@ -1,5 +1,4 @@
-﻿using ClaimRequest.DAL.Data.Requests;
-using ClaimRequest.DAL.Data.Requests.Email;
+﻿using ClaimRequest.DAL.Data.Requests.Email;
 using ClaimRequest.DAL.Data.Responses.Email;
 
 namespace ClaimRequest.BLL.Services.Interfaces

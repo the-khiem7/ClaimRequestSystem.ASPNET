@@ -1,7 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Threading.Tasks;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using Xunit;
 using Moq;
 using Microsoft.Extensions.Logging;
@@ -12,7 +9,6 @@ using ClaimRequest.DAL.Repositories.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Email;
-using ClaimRequest.DAL.Data.Responses.Email;
 using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Responses.Project;

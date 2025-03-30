@@ -1,5 +1,4 @@
 ﻿using ClaimRequest.DAL.Data.Entities;
-using System;
 
 namespace ClaimRequest.DAL.Data.Responses.Project
 {

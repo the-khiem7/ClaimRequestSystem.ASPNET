@@ -4,14 +4,11 @@ using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Email;
-using ClaimRequest.DAL.Data.Responses.Email;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
-using System;
 using System.Linq.Expressions;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace ClaimRequest.UnitTest.Services
