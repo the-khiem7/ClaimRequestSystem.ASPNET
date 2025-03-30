@@ -39,7 +39,8 @@ namespace ClaimRequest.API.Controllers
         [FromQuery] decimal? maxBudget = null,
         [FromQuery] DateOnly? startDateFrom = null,
         [FromQuery] DateOnly? endDateTo = null,
-        [FromQuery] bool? isActive = true
+        [FromQuery] bool? isActive = true,
+        [FromQuery] Guid? staffId = null
     )
         {
             var paginatedProjects = await _projectService.GetProjects(
@@ -57,7 +58,8 @@ namespace ClaimRequest.API.Controllers
                 maxBudget,
                 startDateFrom,
                 endDateTo,
-                isActive
+                isActive,
+                staffId
             );
 
             return Ok(ApiResponseBuilder.BuildResponse(
@@ -87,7 +89,8 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<CreateProjectResponse>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> CreateProject([FromBody] CreateProjectRequest request)
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> CreateProject([FromForm] CreateProjectRequest request)
         {
             var response = await _projectService.CreateProject(request);
 
@@ -119,7 +122,8 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<CreateProjectResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> UpdateProject(Guid id, [FromBody] UpdateProjectRequest request)
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UpdateProject(Guid id, [FromForm] UpdateProjectRequest request)
         {
             var updatedProject = await _projectService.UpdateProject(id, request);
             return Ok(ApiResponseBuilder.BuildResponse(

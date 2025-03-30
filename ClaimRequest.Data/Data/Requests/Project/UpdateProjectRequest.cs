@@ -6,10 +6,10 @@ namespace ClaimRequest.DAL.Data.Requests.Project
     public class UpdateProjectRequest
     {
         [Required(ErrorMessage = "Project Name is required")]
-        [MaxLength(100, ErrorMessage = "Project Name must not exceed 100 characters")]
+        [MaxLength(256, ErrorMessage = "Project Name must not exceed 256 characters")]
         public string Name { get; set; }
 
-        [MaxLength(1000, ErrorMessage = "Description must not exceed 1000 characters")]
+        [MaxLength(256, ErrorMessage = "Description must not exceed 256 characters")]
         [Required(ErrorMessage = "Description is required")]
         public string Description { get; set; }
 
@@ -19,7 +19,7 @@ namespace ClaimRequest.DAL.Data.Requests.Project
         public DateOnly? EndDate { get; set; }
 
         [Required(ErrorMessage = "Budget is required")]
-        [Range(0, double.MaxValue, ErrorMessage = "Budget must be greater than 0")]
+        [Range(0, double.MaxValue, ErrorMessage = "Budget must be equal or greater than 0")]
         public decimal Budget { get; set; }
 
         [Required(ErrorMessage = "Project Manager is required")]
@@ -27,5 +27,15 @@ namespace ClaimRequest.DAL.Data.Requests.Project
 
         [Required(ErrorMessage = "Project Status is required")]
         public ProjectStatus? Status { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (EndDate.HasValue && StartDate > EndDate.Value)
+            {
+                yield return new ValidationResult(
+                    "StartDate must be earlier than or equal to EndDate.",
+                    new[] { nameof(StartDate), nameof(EndDate) });
+            }
+        }
     }
 }
