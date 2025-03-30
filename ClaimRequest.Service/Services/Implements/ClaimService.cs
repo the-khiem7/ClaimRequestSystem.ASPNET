@@ -687,34 +687,22 @@ namespace ClaimRequest.BLL.Services.Implements
                         throw new BusinessException("Claim cannot be submitted as it is not in Draft status.");
                     }
 
-                    var approver = await AssignApproverForClaim(id);
-                    if (approver == null)
-                    {
-                        throw new BusinessException("No eligible approver found for this claim.");
-                    }
+                    var existingApprover = await _unitOfWork.GetRepository<ClaimApprover>()
+                        .SingleOrDefaultAsync(predicate: ca => ca.ClaimId == id);
 
-                    try
+                    if (existingApprover == null)
                     {
-                        claim.Status = ClaimStatus.Pending;
-                        claim.UpdateAt = DateTime.UtcNow;
-
-                        _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
+                        var approver = await AssignApproverForClaim(id);
                         await _unitOfWork.GetRepository<ClaimApprover>().InsertAsync(approver);
-
-
-                        _logger.LogInformation(
-                            "Submitted claim {ClaimId} by {ClaimerId} on {Time}. Approver: {ApproverId}",
-                            id, claim.ClaimerId, claim.UpdateAt, approver.ApproverId);
-
-                        await LogChangeAsync(id, "Claim Status", "Draft", "Pending", "Claimer");
-
-                        return true;
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error occurred during claim submission.");
-                        throw;
-                    }
+
+                    claim.Status = ClaimStatus.Pending;
+                    claim.UpdateAt = DateTime.UtcNow;
+                    _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
+
+                    await LogChangeAsync(id, "Claim Status", "Draft", "Pending", "Claimer");
+
+                    return true;
                 });
             }
             catch (Exception ex)
@@ -748,21 +736,9 @@ namespace ClaimRequest.BLL.Services.Implements
                 .Where(staff => staff.SystemRole == SystemRole.Approver && staff.Id != claim.ClaimerId)
                 .ToList();
 
-            var existingApprovers = (await _unitOfWork.GetRepository<ClaimApprover>()
-                    .GetListAsync(predicate: ca => ca.ClaimId == claimId) ?? new List<ClaimApprover>())
-                .Select(ca => ca.ApproverId)
-                .ToHashSet();
-
             var approver = potentialApprovers
-                .Where(s => s.Department == Department.ProjectManagement && !existingApprovers.Contains(s.Id))
-                .FirstOrDefault();
-
-            if (approver == null)
-            {
-                approver = potentialApprovers
-                    .Where(s => s.Department == Department.BusinessOperations && !existingApprovers.Contains(s.Id))
-                    .FirstOrDefault();
-            }
+                .FirstOrDefault(s => s.Department == Department.ProjectManagement)
+                ?? potentialApprovers.FirstOrDefault(s => s.Department == Department.BusinessOperations);
 
             if (approver == null)
             {
