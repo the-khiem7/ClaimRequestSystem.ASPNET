@@ -1,4 +1,4 @@
-﻿﻿using ClaimRequest.API.Constants;
+﻿using ClaimRequest.API.Constants;
 using ClaimRequest.API.Extensions;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.BLL.Services.Interfaces;
@@ -212,63 +212,31 @@ namespace ClaimRequest.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ApproveClaim([FromRoute] Guid id)
         {
-            // var result = await _claimService.ApproveClaim(User, id);
-            // if (result == null)
-            // {
-            //     _logger.LogError("Approve claim failed");
-            //     return Problem("Approve claim failed");
-            // }
-            // await _emailService.SendClaimApprovedEmail(id);
-            // var successRespose = ApiResponseBuilder.BuildResponse(
-            //     message: "Claim approved successfully!",
-            //     data: result,
-            //     statusCode: StatusCodes.Status200OK);
-            // return Ok(successRespose);
-             try
+            var result = await _claimService.ApproveClaim(User, id);
+            if (result == null)
             {
-                var result = await _claimService.ApproveClaim(User, id);
-                if (result == null)
-                {
-                    _logger.LogError("Approve claim failed");
-                    return Problem("Approve claim failed");
-                }
-
-                // Kiểm tra role của user để quyết định gửi email cho ai
-                var userRoles = User.Claims.Where(c => c.Type == "role").Select(c => c.Value).ToList();
-                
-                if (userRoles.Contains("Approver"))
-                {
-                    // Nếu user là Approver, gửi email cho Manager
-                    await _emailService.SendManagerApprovedEmail(id);
-                }
-                else if (userRoles.Contains("Manager"))
-                {
-                    // Nếu user là Manager, gửi email cho Finance
-                    await _emailService.SendClaimApprovedEmail(id);
-                }
-                else
-                {
-                    _logger.LogWarning("User with roles {Roles} approved claim {ClaimId} but no email was sent", 
-                        string.Join(",", userRoles), id);
-                }
-
-                var successRespose = ApiResponseBuilder.BuildResponse(
-                    message: "Claim approved successfully!",
-                    data: result,
-                    statusCode: StatusCodes.Status200OK);
-                return Ok(successRespose);
+                _logger.LogError("Approve claim failed");
+                return Problem("Approve claim failed");
             }
-            catch (Exception ex)
+            try
             {
-                _logger.LogError(ex, "Error approving claim with ID {ClaimId}", id);
-                var errorResponse = ApiResponseBuilder.BuildErrorResponse<object>(
-                    null,
-                    StatusCodes.Status500InternalServerError,
-                    "An error occurred while approving the claim",
-                    "Internal server error"
-                );
-                return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+                await _emailService.SendManagerApprovedEmail(id);
+                await _emailService.SendClaimApprovedEmail(id);
             }
+            catch (Exception emailEx)
+            {
+                _logger.LogError(emailEx, "Failed to send approval email for Claim ID: {ClaimId}", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    message = "Claim approved but email failed",
+                    error = emailEx.Message
+                });
+            }
+            var successRespose = ApiResponseBuilder.BuildResponse(
+                message: "Claim approved successfully!",
+                data: result,
+                statusCode: StatusCodes.Status200OK);
+            return Ok(successRespose);
         }
 
         [Authorize(Policy = "CanReturnClaim")]
