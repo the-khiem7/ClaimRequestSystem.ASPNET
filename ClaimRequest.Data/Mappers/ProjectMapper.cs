@@ -2,7 +2,6 @@
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Requests.Project;
 using ClaimRequest.DAL.Data.Responses.Project;
-using ClaimRequest.DAL.Data.Responses.Staff;
 
 namespace ClaimRequest.DAL.Mappers
 {

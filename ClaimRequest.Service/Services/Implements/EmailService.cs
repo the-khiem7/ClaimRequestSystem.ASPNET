@@ -1,34 +1,17 @@
-﻿//#define SMTP
-#define OAUTH
+﻿#define SMTP
+//#define OAUTH
 using ClaimRequest.BLL.Services.Interfaces;
-using MailKit.Security;
 using ClaimRequest.DAL.Data.Entities;
-using MailKit.Security;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Mail;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Responses.Project;
 using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.DAL.Data.Exceptions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using ClaimRequest.DAL.Data.Responses.Email;
 using ClaimRequest.DAL.Data.Requests.Email;
-using MimeKit;
-using static System.Formats.Asn1.AsnWriter;
-using Google.Apis.Auth.OAuth2;
-using Google.Apis.Util.Store;
-using Auth0.ManagementApi.Models;
 using Google.Apis.Gmail.v1;
-using Google.Apis.Services;
-using Google.Apis.Gmail.v1.Data;
-using Google;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Repositories.Interfaces;
 

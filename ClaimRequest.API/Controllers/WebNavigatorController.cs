@@ -2,7 +2,6 @@
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.MetaDatas;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClaimRequest.API.Controllers

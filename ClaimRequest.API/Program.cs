@@ -11,11 +11,9 @@ using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Repositories.Implements;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using static System.Net.WebRequestMethods;
 
 var builder = WebApplication.CreateBuilder(args);
 
