@@ -76,5 +76,11 @@ namespace ClaimRequest.API.Constants
             public const string CreatePaymentUrl = PaymentControllerBase + "/create-payment-url";
             public const string PaymentCallback = PaymentControllerBase + "/payment-callback";
         }
+
+        public static class Remnider
+        {
+            public const string ReminderEndpoint = ApiEndpoint + "/send-reminder";
+        }
+
     }
 }
