@@ -222,7 +222,6 @@ namespace ClaimRequest.API.Controllers
             }
             try
             {
-                await _emailService.SendManagerApprovedEmail(id);
                 await _emailService.SendClaimApprovedEmail(id);
             }
             catch (Exception emailEx)
