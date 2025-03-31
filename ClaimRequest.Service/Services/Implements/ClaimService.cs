@@ -69,7 +69,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 var claim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(claimId)
                             ?? throw new KeyNotFoundException("Claim not found.");
-                    // Get claim by ID first before starting the transaction
+                // Get claim by ID first before starting the transaction
 
                 if (claim.Status != ClaimStatus.Draft)
                 {
@@ -613,10 +613,18 @@ namespace ClaimRequest.BLL.Services.Implements
             {
                 throw new UnauthorizedAccessException("You don't have permission to perform this action");
             }
+            var projectId = pendingClaim.ProjectId;
+
+            var projectRepo = _unitOfWork.GetRepository<ClaimRequest.DAL.Data.Entities.Project>();
+            var project = await projectRepo.GetByIdAsync(projectId);
+
+            var financeStaffId = project?.FinanceStaffId;
+
             return await _unitOfWork.ProcessInTransactionAsync(async () =>
             {
                 _logger.LogInformation("Approving claim {ClaimId} by approver {ApproverId}", id, approverId);
                 pendingClaim.Status = ClaimStatus.Approved;
+                pendingClaim.FinanceId = financeStaffId;
                 claimRepo.UpdateAsync(pendingClaim);
                 return true;
             });
@@ -633,7 +641,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             predicate: s => s.Id == id,
                             include: q => q.Include(c => c.ClaimApprovers));
 
-                   if(pendingClaim==null)
+                    if (pendingClaim == null)
                     {
                         throw new KeyNotFoundException($"Claim with ID {id} not found.");
                     }
@@ -798,12 +806,11 @@ namespace ClaimRequest.BLL.Services.Implements
 
                     // Log the change using LogChangeAsync
                     await LogChangeAsync(existingClaim.Id, "Status", oldStatus.ToString() ?? "Unknown", ClaimStatus.Paid.ToString(), finance?.Name ?? "System");
-
                     _logger.LogInformation("Successfully marked claim {ClaimId} as Paid by {FinanceName}",
                         existingClaim.Id, finance?.Name);
-
                     return true;
                 });
+
             }
             catch (Exception ex)
             {
