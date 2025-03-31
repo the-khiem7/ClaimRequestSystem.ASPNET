@@ -57,17 +57,20 @@ namespace ClaimRequest.BLL.Services.Implements
         });
         }
 
-        public async Task DeleteRefreshTokensByUserId(Guid userId)
+        public async Task<bool> DeleteRefreshToken(string refreshToken)
         {
-            await _unitOfWork.ProcessInTransactionAsync(async () =>
+            return await _unitOfWork.ProcessInTransactionAsync(async () =>
             {
                 var refreshTokenRepo = _unitOfWork.GetRepository<RefreshTokens>();
-                var tokens = await refreshTokenRepo.GetListAsync(predicate: t => t.UserId == userId);
-
-                if (tokens.Any())
+                var tokenToDelete = await refreshTokenRepo.SingleOrDefaultAsync(
+                    predicate: t => t.Token == refreshToken);
+                
+                if (tokenToDelete != null)
                 {
-                    refreshTokenRepo.DeleteRangeAsync(tokens);
+                    refreshTokenRepo.DeleteAsync(tokenToDelete);
+                    return true;
                 }
+                return false;
             });
         }
     }
