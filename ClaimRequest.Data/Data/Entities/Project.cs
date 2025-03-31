@@ -21,7 +21,7 @@ namespace ClaimRequest.DAL.Data.Entities
 
         [Required]
         [Column("name")]
-        [StringLength(100)]
+        [StringLength(256)]
         public string Name { get; set; }
 
         [Column("description")]

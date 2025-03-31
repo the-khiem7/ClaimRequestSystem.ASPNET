@@ -304,6 +304,7 @@ namespace ClaimRequest.API.Controllers
                     "Claim submitted successfully",
                     result
                 );
+
                 return Ok(successResponse);
             }
             catch (Exception ex)
