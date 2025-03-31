@@ -21,6 +21,8 @@ namespace ClaimRequest.DAL.Data.Responses.Project
 
         public CreateStaffResponse ProjectManager { get; set; }
 
+        public CreateStaffResponse FinanceStaff { get; set; }
+
         public List<ProjectStaffResponse> ProjectStaffs { get; set; }
     }
 }
