@@ -613,10 +613,18 @@ namespace ClaimRequest.BLL.Services.Implements
             {
                 throw new UnauthorizedAccessException("You don't have permission to perform this action");
             }
+            var projectId = pendingClaim.ProjectId;
+
+            var projectRepo = _unitOfWork.GetRepository<ClaimRequest.DAL.Data.Entities.Project>();
+            var project = await projectRepo.GetByIdAsync(projectId);
+
+            var financeStaffId = project?.FinanceStaffId;
+
             return await _unitOfWork.ProcessInTransactionAsync(async () =>
             {
                 _logger.LogInformation("Approving claim {ClaimId} by approver {ApproverId}", id, approverId);
                 pendingClaim.Status = ClaimStatus.Approved;
+                pendingClaim.FinanceId = financeStaffId;
                 claimRepo.UpdateAsync(pendingClaim);
                 return true;
             });
@@ -764,50 +772,64 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             try
             {
-                return await _unitOfWork.ProcessInTransactionAsync(async () =>
+                var existingClaim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(id).ValidateExists(id)
+                            ?? throw new KeyNotFoundException("Claim not found.");
+
+
+                // 🔹 Kiểm tra trạng thái của claim (chỉ được thanh toán khi Approved)
+                if (existingClaim.Status != ClaimStatus.Approved)
                 {
-                    // Validate claim existence and status
-                    var existingClaim = await _unitOfWork.GetRepository<Claim>()
-                        .GetByIdAsync(id)
-                        .ValidateExists(id)
-                        ?? throw new KeyNotFoundException("Claim not found.");
+                    throw new BusinessException($"Cannot mark as Paid when the status is not Approved. Current Status: {existingClaim.Status}");
+                }
 
-                    if (existingClaim.Status != ClaimStatus.Approved)
-                    {
-                        throw new BusinessException($"Cannot mark as Paid when the status is not Approved. Current Status: {existingClaim.Status}");
-                    }
+                // 🔹 Kiểm tra Finance Staff có hợp lệ không
+                var finance = await _unitOfWork.GetRepository<Staff>().GetByIdAsync(financeId).ValidateExists(financeId)
+                     ?? throw new KeyNotFoundException("Finance not found.");
 
-                    // Validate finance staff
-                    var finance = await _unitOfWork.GetRepository<Staff>()
-                        .GetByIdAsync(financeId)
-                        .ValidateExists(financeId)
-                        ?? throw new KeyNotFoundException("Finance not found.");
+                if (finance == null)
+                {
+                    throw new BadRequestException($"Finance staff with ID {financeId} not found or does not have the Finance role.");
+                }
+                if (finance.SystemRole != SystemRole.Finance)
+                {
+                    throw new UnauthorizedAccessException("The user does not have permission to paid this claim.");
+                }
 
-                    if (finance.SystemRole != SystemRole.Finance)
-                    {
-                        throw new UnauthorizedAccessException("The user does not have permission to paid this claim.");
-                    }
+                // 🔹 Cập nhật trạng thái của claim thành "Paid"
+                var oldStatus = existingClaim.Status;
+                Console.WriteLine("Old Status: " + oldStatus);
+                existingClaim.Status = ClaimStatus.Paid;
+                existingClaim.FinanceId = financeId;
+                _logger.LogInformation("Updating claim status to 'Paid' for ClaimId: {0}", existingClaim.Id);
+                _unitOfWork.GetRepository<Claim>().UpdateAsync(existingClaim);
+                var oldValue = existingClaim.Status.ToString();
+                var claimLog = new ClaimChangeLog
+                {
+                    HistoryId = Guid.NewGuid(),
+                    ClaimId = existingClaim.Id,
+                    FieldChanged = "Status",
+                    OldValue = oldStatus.ToString() ?? "Unknown",
+                    NewValue = ClaimStatus.Paid.ToString(),
+                    ChangedAt = DateTime.UtcNow,
+                    ChangedBy = finance?.Name ?? "System"
+                };
+                Console.WriteLine($"HistoryId: {claimLog.HistoryId}, ClaimId: {claimLog.ClaimId}, FieldChanged: {claimLog.FieldChanged}, OldValue: {claimLog.OldValue}, NewValue: {claimLog.NewValue}, ChangedAt: {claimLog.ChangedAt}, ChangedBy: {claimLog.ChangedBy}");
 
-                    // Update claim status
-                    var oldStatus = existingClaim.Status;
-                    existingClaim.Status = ClaimStatus.Paid;
-                    existingClaim.FinanceId = financeId;
-                    existingClaim.UpdateAt = DateTime.UtcNow;
+                await _unitOfWork.GetRepository<ClaimChangeLog>().InsertAsync(claimLog);
 
-                    _unitOfWork.GetRepository<Claim>().UpdateAsync(existingClaim);
+                await _unitOfWork.CommitAsync(); 
 
-                    // Log the change using LogChangeAsync
-                    await LogChangeAsync(existingClaim.Id, "Status", oldStatus.ToString() ?? "Unknown", ClaimStatus.Paid.ToString(), finance?.Name ?? "System");
-
-                    _logger.LogInformation("Successfully marked claim {ClaimId} as Paid by {FinanceName}",
-                        existingClaim.Id, finance?.Name);
-
-                    return true;
-                });
+                return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error marking claim as paid: {Message}", ex.Message);
+                _logger.LogError(ex, "Error Paid Claim: {Message}", ex.Message);
+
+                if (ex.InnerException != null)
+                {
+                    _logger.LogError("Inner Exception: {InnerMessage}", ex.InnerException.Message);
+                }
+
                 throw;
             }
         }
