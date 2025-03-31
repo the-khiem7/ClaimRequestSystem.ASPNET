@@ -1,6 +1,4 @@
 ﻿using ClaimRequest.BLL.Services.Interfaces;
-using Microsoft.AspNetCore.Http;
-using ClaimRequest.DAL.Data.Responses.Email;
 using Microsoft.AspNetCore.Mvc;
 using ClaimRequest.API.Constants;
 using ClaimRequest.DAL.Data.MetaDatas;

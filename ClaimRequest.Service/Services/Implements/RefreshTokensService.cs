@@ -3,7 +3,6 @@ using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace ClaimRequest.BLL.Services.Implements
 {

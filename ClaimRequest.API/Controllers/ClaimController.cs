@@ -3,13 +3,11 @@ using ClaimRequest.API.Extensions;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
-using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 
 
 namespace ClaimRequest.API.Controllers
@@ -305,6 +303,7 @@ namespace ClaimRequest.API.Controllers
                     "Claim submitted successfully",
                     result
                 );
+
                 return Ok(successResponse);
             }
             catch (Exception ex)
