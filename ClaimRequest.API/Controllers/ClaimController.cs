@@ -1,15 +1,13 @@
-﻿﻿using ClaimRequest.API.Constants;
+﻿using ClaimRequest.API.Constants;
 using ClaimRequest.API.Extensions;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
-using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 
 
 namespace ClaimRequest.API.Controllers
@@ -220,7 +218,20 @@ namespace ClaimRequest.API.Controllers
                 _logger.LogError("Approve claim failed");
                 return Problem("Approve claim failed");
             }
-            await _emailService.SendClaimApprovedEmail(id);
+            try
+            {
+                await _emailService.SendManagerApprovedEmail(id);
+                await _emailService.SendClaimApprovedEmail(id);
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogError(emailEx, "Failed to send approval email for Claim ID: {ClaimId}", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    message = "Claim approved but email failed",
+                    error = emailEx.Message
+                });
+            }
             var successRespose = ApiResponseBuilder.BuildResponse(
                 message: "Claim approved successfully!",
                 data: result,
@@ -249,6 +260,7 @@ namespace ClaimRequest.API.Controllers
                     return NotFound(errorResponse);
                 }
 
+                await _emailService.SendClaimReturnedEmail(id);
                 var successResponse = ApiResponseBuilder.BuildResponse(
                     StatusCodes.Status200OK,
                     "Claim returned successfully",
@@ -286,11 +298,13 @@ namespace ClaimRequest.API.Controllers
                     return NotFound(new { message = "Submit claim failed" });
                 }
 
+                await _emailService.SendClaimSubmittedEmail(id);
                 var successResponse = ApiResponseBuilder.BuildResponse(
                     StatusCodes.Status200OK,
                     "Claim submitted successfully",
                     result
                 );
+
                 return Ok(successResponse);
             }
             catch (Exception ex)

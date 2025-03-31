@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Threading.Tasks;
 using AutoMapper;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.BLL.Services.Interfaces;

@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace ClaimRequest.DAL.Data.Requests.Otp
+﻿namespace ClaimRequest.DAL.Data.Requests.Otp
 {
     public class ValidateOtpRequest
     {

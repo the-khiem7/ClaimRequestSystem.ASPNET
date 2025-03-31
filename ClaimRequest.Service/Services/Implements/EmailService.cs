@@ -1,32 +1,17 @@
-﻿using ClaimRequest.BLL.Services.Interfaces;
-using MailKit.Security;
+﻿#define SMTP
+//#define OAUTH
+using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
-using MailKit.Security;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Mail;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Responses.Project;
 using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.DAL.Data.Exceptions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using ClaimRequest.DAL.Data.Responses.Email;
 using ClaimRequest.DAL.Data.Requests.Email;
-using MimeKit;
-using static System.Formats.Asn1.AsnWriter;
-using Google.Apis.Auth.OAuth2;
-using Google.Apis.Util.Store;
-using Auth0.ManagementApi.Models;
 using Google.Apis.Gmail.v1;
-using Google.Apis.Services;
-using Google.Apis.Gmail.v1.Data;
-using Google;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Repositories.Interfaces;
 
@@ -35,7 +20,6 @@ namespace ClaimRequest.BLL.Services.Implements
 {
     public class EmailService : IEmailService
     {
-
         private static readonly string[] Scopes = { GmailService.Scope.GmailSend };
         private readonly string _applicationName;
         private readonly string _senderEmail;
@@ -46,9 +30,23 @@ namespace ClaimRequest.BLL.Services.Implements
         public readonly IUnitOfWork _unitOfWork;
         public readonly OtpUtil _otpUtil;
         public readonly IOtpService _otpService;
-        public EmailService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService, IOtpService otpService,OtpUtil otpUtil )
+
+        public readonly string _smtpServer;
+        public readonly int _port;
+        public readonly string _password;
+
+        public EmailService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, IConfiguration configuration, IClaimService claimService, ILogger<EmailService> logger, IProjectService projectService, IStaffService staffService, IOtpService otpService, OtpUtil otpUtil)
         {
-            _senderEmail = configuration["EmailSettings:SenderEmail"];
+#if OAUTH
+            _senderEmail = configuration["EmailSettings:SenderEmailOauth"];
+#endif
+#if SMTP
+            _senderEmail = configuration["EmailSettings:SenderEmailSMTP"];
+#endif
+            _smtpServer = configuration["EmailSettings:Host"];
+            _port = int.Parse(configuration["EmailSettings:SmtpPort"]);
+            _password = configuration["EmailSettings:SenderPassword"];
+
             _claimService = claimService;
             _projectService = projectService;
             _staffService = staffService;
@@ -95,11 +93,11 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task SendManagerApprovedEmail(Guid approverId, Guid claimId)
+        public async Task SendManagerApprovedEmail( Guid Id)
         {
             try
             {
-                Claim claim = await _claimService.AddEmailInfo(claimId);
+                Claim claim = await _claimService.AddEmailInfo(Id);
                 if (claim == null)
                     throw new Exception("Claim not found.");
 
@@ -132,16 +130,16 @@ namespace ClaimRequest.BLL.Services.Implements
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending claim returned email with claimId: {claimId}", claimId);
+                _logger.LogError(ex, "Error sending claim returned email with claimId: {claimId}", Id);
                 throw;
             }
         }
 
-        public async Task SendClaimSubmittedEmail(Guid claimerId)
+        public async Task SendClaimSubmittedEmail(Guid Id)
         {
             try
             {
-                Claim claim = await _claimService.AddEmailInfo(claimerId);
+                Claim claim = await _claimService.AddEmailInfo(Id);
                 if (claim == null)
                     throw new Exception("Claim not found.");
 
@@ -182,13 +180,13 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task SendClaimApprovedEmail(Guid claimId)
+        public async Task SendClaimApprovedEmail(Guid Id)
         {
             try
             {
-                Claim claim = await _claimService.AddEmailInfo(claimId);
+                Claim claim = await _claimService.AddEmailInfo(Id);
                 if (claim == null)
-                    throw new NotFoundException($"Claim with {claimId} not found.");
+                    throw new NotFoundException($"Claim with {Id} not found.");
 
                 string projectName = claim.Project.Name;
 
@@ -216,8 +214,9 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-        public async Task SendEmailAsync(string recipientEmail, string subject, string body)
+        public virtual async Task SendEmailAsync(string recipientEmail, string subject, string body)
         {
+#if OAUTH
             try
             {
                 // Validate email format
@@ -287,12 +286,40 @@ namespace ClaimRequest.BLL.Services.Implements
                     }
                 }
             }
-            
+
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error in SendEmailAsync: {ex.Message}");
                 throw;
             }
+#endif
+#if SMTP
+            try
+            {
+                using (var smtpClient = new SmtpClient(_smtpServer, _port))
+                {
+                    smtpClient.Credentials = new NetworkCredential(_senderEmail, _password);
+                    smtpClient.EnableSsl = true;
+
+                    var mailMessage = new MailMessage
+                    {
+                        From = new MailAddress(_senderEmail, "noreply@emailservice.com"),
+                        Subject = subject,
+                        Body = body,
+                        IsBodyHtml = true,
+                    };
+                    mailMessage.To.Add(recipientEmail);
+
+                    await smtpClient.SendMailAsync(mailMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending email to {recipientEmail}", recipientEmail);
+                throw;
+            }
+
+#endif
         }
         public async Task<SendOtpEmailResponse> SendOtpEmailAsync(SendOtpEmailRequest request)
         {
