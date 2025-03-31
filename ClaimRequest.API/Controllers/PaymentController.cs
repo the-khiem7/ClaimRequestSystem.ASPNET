@@ -5,7 +5,6 @@ using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 
 namespace ClaimRequest.API.Controllers

@@ -1,6 +1,4 @@
 ﻿
-using ClaimRequest.DAL.Data.Responses.Auth;
-
 namespace ClaimRequest.BLL.Services.Interfaces
 {
     public interface IRefreshTokensService

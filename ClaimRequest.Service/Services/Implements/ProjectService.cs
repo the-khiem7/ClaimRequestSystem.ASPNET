@@ -4,7 +4,6 @@ using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.MetaDatas;
 using ClaimRequest.DAL.Data.Requests.Project;
-using ClaimRequest.DAL.Data.Requests.Staff;
 using ClaimRequest.DAL.Data.Responses.Project;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
@@ -36,6 +35,11 @@ namespace ClaimRequest.BLL.Services.Implements
                     await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
                     try
                     {
+                        if (createProjectRequest.EndDate.HasValue && createProjectRequest.StartDate > createProjectRequest.EndDate.Value)
+                        {
+                            throw new ArgumentException("StartDate must be earlier than or equal to EndDate.");
+                        }
+
                         // Verify Project Manager exists and is valid
                         var projectManager = (await _unitOfWork.GetRepository<Staff>()
                             .SingleOrDefaultAsync(
@@ -44,7 +48,7 @@ namespace ClaimRequest.BLL.Services.Implements
                                 include: null
                             )).ValidateExists(createProjectRequest.ProjectManagerId, "Can't create project because of invalid project manager");
 
-                        if (projectManager.SystemRole != SystemRole.Admin)
+                        if (projectManager.SystemRole != SystemRole.Admin && projectManager.SystemRole != SystemRole.Approver)
                         {
                             throw new InvalidOperationException("The specified staff member can't be project mananger");
                         }
@@ -155,28 +159,27 @@ namespace ClaimRequest.BLL.Services.Implements
         }
 
         public async Task<PagingResponse<CreateProjectResponse>> GetProjects(
-    int page,
-    int pageSize,
-    string sortBy = "Name",
-    bool isDescending = false,
-    string? name = null,
-    string? description = null,
-    string? projectManagerName = null,
-    ProjectStatus? status = null,
-    Guid? projectManagerId = null,
-    ProjectRole? role = null,
-    decimal? minBudget = null,
-    decimal? maxBudget = null,
-    DateOnly? startDateFrom = null,
-    DateOnly? endDateTo = null,
-    bool? isActive = true
-)
+                    int page,
+                    int pageSize,
+                    string sortBy = "Name",
+                    bool isDescending = false,
+                    string? name = null,
+                    string? description = null,
+                    string? projectManagerName = null,
+                    ProjectStatus? status = null,
+                    Guid? projectManagerId = null,
+                    ProjectRole? role = null,
+                    decimal? minBudget = null,
+                    decimal? maxBudget = null,
+                    DateOnly? startDateFrom = null,
+                    DateOnly? endDateTo = null,
+                    bool? isActive = true,
+                    Guid? staffId = null
+                )
         {
             try
             {
                 // First, build the predicate for the initial filtering
-                // We'll use a combination of the available methods in your repository
-
                 // Get the repository
                 var repository = _unitOfWork.GetRepository<Project>();
 
@@ -246,6 +249,12 @@ namespace ClaimRequest.BLL.Services.Implements
                 if (endDateTo.HasValue)
                 {
                     filteredProjects = filteredProjects.Where(p => p.EndDate <= endDateTo.Value);
+                }
+
+                if (staffId.HasValue)
+                {
+                    filteredProjects = filteredProjects.Where(p =>
+                        p.ProjectStaffs.Any(ps => ps.StaffId == staffId.Value));
                 }
 
                 // Apply Sorting
@@ -321,6 +330,10 @@ namespace ClaimRequest.BLL.Services.Implements
 
                         _mapper.Map(updateProjectRequest, existingProject);
 
+                        if (updateProjectRequest.EndDate.HasValue && updateProjectRequest.StartDate > updateProjectRequest.EndDate.Value)
+                        {
+                            throw new ArgumentException("StartDate must be earlier than or equal to EndDate.");
+                        }
 
                         // If a new Project Manager is provided, update it
                         if (updateProjectRequest.ProjectManagerId != Guid.Empty)
