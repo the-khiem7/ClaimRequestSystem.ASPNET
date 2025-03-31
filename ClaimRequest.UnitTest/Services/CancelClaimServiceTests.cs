@@ -5,15 +5,11 @@ using ClaimRequest.DAL.Data.Requests.Claim;
 using ClaimRequest.DAL.Data.Responses.Claim;
 using ClaimRequest.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
-using System;
 using System.Security.Claims;
-using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
-using Xunit.Sdk;
 using ClaimEntity = ClaimRequest.DAL.Data.Entities.Claim;
 
 namespace ClaimRequest.UnitTest.Services

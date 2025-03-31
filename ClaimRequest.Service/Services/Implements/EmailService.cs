@@ -1,34 +1,17 @@
-﻿//#define SMTP
-#define OAUTH
+﻿#define SMTP
+//#define OAUTH
 using ClaimRequest.BLL.Services.Interfaces;
-using MailKit.Security;
 using ClaimRequest.DAL.Data.Entities;
-using MailKit.Security;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Mail;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-using ClaimRequest.BLL.Services.Interfaces;
 using ClaimRequest.DAL.Data.Responses.Project;
 using ClaimRequest.DAL.Data.Responses.Staff;
 using ClaimRequest.DAL.Data.Exceptions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using ClaimRequest.DAL.Data.Responses.Email;
 using ClaimRequest.DAL.Data.Requests.Email;
-using MimeKit;
-using static System.Formats.Asn1.AsnWriter;
-using Google.Apis.Auth.OAuth2;
-using Google.Apis.Util.Store;
-using Auth0.ManagementApi.Models;
 using Google.Apis.Gmail.v1;
-using Google.Apis.Services;
-using Google.Apis.Gmail.v1.Data;
-using Google;
 using ClaimRequest.BLL.Utils;
 using ClaimRequest.DAL.Repositories.Interfaces;
 
@@ -110,11 +93,11 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task SendManagerApprovedEmail(Guid approverId, Guid claimId)
+        public async Task SendManagerApprovedEmail( Guid Id)
         {
             try
             {
-                Claim claim = await _claimService.AddEmailInfo(claimId);
+                Claim claim = await _claimService.AddEmailInfo(Id);
                 if (claim == null)
                     throw new Exception("Claim not found.");
 
@@ -147,16 +130,16 @@ namespace ClaimRequest.BLL.Services.Implements
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending claim returned email with claimId: {claimId}", claimId);
+                _logger.LogError(ex, "Error sending claim returned email with claimId: {claimId}", Id);
                 throw;
             }
         }
 
-        public async Task SendClaimSubmittedEmail(Guid claimerId)
+        public async Task SendClaimSubmittedEmail(Guid Id)
         {
             try
             {
-                Claim claim = await _claimService.AddEmailInfo(claimerId);
+                Claim claim = await _claimService.AddEmailInfo(Id);
                 if (claim == null)
                     throw new Exception("Claim not found.");
 
@@ -197,13 +180,13 @@ namespace ClaimRequest.BLL.Services.Implements
             }
         }
 
-        public async Task SendClaimApprovedEmail(Guid claimId)
+        public async Task SendClaimApprovedEmail(Guid Id)
         {
             try
             {
-                Claim claim = await _claimService.AddEmailInfo(claimId);
+                Claim claim = await _claimService.AddEmailInfo(Id);
                 if (claim == null)
-                    throw new NotFoundException($"Claim with {claimId} not found.");
+                    throw new NotFoundException($"Claim with {Id} not found.");
 
                 string projectName = claim.Project.Name;
 

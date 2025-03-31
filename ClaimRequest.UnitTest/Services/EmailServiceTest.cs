@@ -1,7 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Threading.Tasks;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using Xunit;
 using Moq;
 using Microsoft.Extensions.Logging;
@@ -12,7 +9,6 @@ using ClaimRequest.DAL.Repositories.Interfaces;
 using ClaimRequest.DAL.Data.Entities;
 using ClaimRequest.DAL.Data.Exceptions;
 using ClaimRequest.DAL.Data.Requests.Email;
-using ClaimRequest.DAL.Data.Responses.Email;
 using ClaimRequest.DAL.Data.Responses.Staff;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -59,6 +55,26 @@ namespace ClaimRequest.UnitTest.Services
                 _mockOtpService.Object,
                 _otpUtil
             );
+
+            // Mock SendEmailAsync method
+            var emailServiceMock = new Mock<EmailService>(
+                _mockUnitOfWork.Object,
+                _mockConfiguration.Object,
+                _mockClaimService.Object,
+                _mockLogger.Object,
+                _mockProjectService.Object,
+                _mockStaffService.Object,
+                _mockOtpService.Object,
+                _otpUtil
+            ) { CallBase = true };
+
+            emailServiceMock.Setup(x => x.SendEmailAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()))
+                .Returns(Task.CompletedTask);
+
+            _emailService = emailServiceMock.Object;
         }
 
         [Fact]
@@ -108,6 +124,164 @@ namespace ClaimRequest.UnitTest.Services
 
             // Act & Assert
             await Assert.ThrowsAsync<NotFoundException>(() => _emailService.SendOtpEmailAsync(request));
+        }
+
+        [Fact]
+        public async Task SendClaimSubmittedEmail_ValidClaim_SendsEmail()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var claim = new Claim
+            {
+                Id = claimId,
+                ProjectId = Guid.NewGuid(),
+                ClaimerId = Guid.NewGuid(),
+                UpdateAt = DateTime.UtcNow,
+                Project = new Project { Name = "Test Project" },
+                Claimer = new Staff { Name = "Test User", Email = "test@example.com" }
+            };
+
+            var project = new CreateProjectResponse
+            {
+                ProjectManager = new CreateStaffResponse
+                {
+                    ResponseName = "Project Manager",
+                    Email = "manager@example.com"
+                }
+            };
+
+            _mockClaimService.Setup(x => x.AddEmailInfo(claimId)).ReturnsAsync(claim);
+            _mockProjectService.Setup(x => x.GetProjectById(claim.ProjectId)).ReturnsAsync(project);
+            _mockStaffService.Setup(x => x.GetStaffById(claim.ClaimerId)).ReturnsAsync(new CreateStaffResponse 
+            { 
+                ResponseName = "Test User",
+                Email = "test@example.com"
+            });
+
+            // Act
+            await _emailService.SendClaimSubmittedEmail(claimId);
+
+            // Assert
+            _mockClaimService.Verify(x => x.AddEmailInfo(claimId), Times.Once);
+            _mockProjectService.Verify(x => x.GetProjectById(claim.ProjectId), Times.Once);
+            _mockStaffService.Verify(x => x.GetStaffById(claim.ClaimerId), Times.Once);
+        }
+
+        [Fact]
+        public async Task SendManagerApprovedEmail_ValidClaim_SendsEmail()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var claim = new Claim
+            {
+                Id = claimId,
+                ProjectId = Guid.NewGuid(),
+                ClaimerId = Guid.NewGuid(),
+                FinanceId = Guid.NewGuid(),
+                UpdateAt = DateTime.UtcNow,
+                Project = new Project { Name = "Test Project" }
+            };
+
+            _mockClaimService.Setup(x => x.AddEmailInfo(claimId)).ReturnsAsync(claim);
+            _mockStaffService.Setup(x => x.GetStaffById(claim.ClaimerId)).ReturnsAsync(new CreateStaffResponse 
+            { 
+                ResponseName = "Test User",
+                Id = claim.ClaimerId
+            });
+            _mockStaffService.Setup(x => x.GetStaffById(claim.FinanceId.Value)).ReturnsAsync(new CreateStaffResponse 
+            { 
+                Email = "finance@example.com"
+            });
+
+            // Act
+            await _emailService.SendManagerApprovedEmail(claimId);
+
+            // Assert
+            _mockClaimService.Verify(x => x.AddEmailInfo(claimId), Times.Once);
+            _mockStaffService.Verify(x => x.GetStaffById(claim.ClaimerId), Times.Once);
+            _mockStaffService.Verify(x => x.GetStaffById(claim.FinanceId.Value), Times.Once);
+        }
+
+        [Fact]
+        public async Task SendClaimReturnedEmail_ValidClaim_SendsEmail()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var claim = new Claim
+            {
+                Id = claimId,
+                ProjectId = Guid.NewGuid(),
+                ClaimerId = Guid.NewGuid(),
+                UpdateAt = DateTime.UtcNow,
+                Project = new Project { Name = "Test Project" },
+                Claimer = new Staff { Name = "Test User", Email = "test@example.com" }
+            };
+
+            _mockClaimService.Setup(x => x.AddEmailInfo(claimId)).ReturnsAsync(claim);
+
+            // Act
+            await _emailService.SendClaimReturnedEmail(claimId);
+
+            // Assert
+            _mockClaimService.Verify(x => x.AddEmailInfo(claimId), Times.Once);
+        }
+
+        [Fact]
+        public async Task SendClaimSubmittedEmail_InvalidClaim_ThrowsException()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            _mockClaimService.Setup(x => x.AddEmailInfo(claimId)).ReturnsAsync((Claim)null);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<Exception>(() => _emailService.SendClaimSubmittedEmail(claimId));
+        }
+
+        [Fact]
+        public async Task SendManagerApprovedEmail_InvalidClaim_ThrowsException()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            _mockClaimService.Setup(x => x.AddEmailInfo(claimId)).ReturnsAsync((Claim)null);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<Exception>(() => _emailService.SendManagerApprovedEmail(claimId));
+        }
+
+        [Fact]
+        public async Task SendClaimReturnedEmail_InvalidClaim_ThrowsException()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            _mockClaimService.Setup(x => x.AddEmailInfo(claimId)).ReturnsAsync((Claim)null);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<NotFoundException>(() => _emailService.SendClaimReturnedEmail(claimId));
+        }
+
+        [Fact]
+        public async Task SendManagerApprovedEmail_NoFinanceStaff_ThrowsException()
+        {
+            // Arrange
+            var claimId = Guid.NewGuid();
+            var claim = new Claim
+            {
+                Id = claimId,
+                ProjectId = Guid.NewGuid(),
+                ClaimerId = Guid.NewGuid(),
+                UpdateAt = DateTime.UtcNow,
+                Project = new Project { Name = "Test Project" }
+            };
+
+            _mockClaimService.Setup(x => x.AddEmailInfo(claimId)).ReturnsAsync(claim);
+            _mockStaffService.Setup(x => x.GetStaffById(claim.ClaimerId)).ReturnsAsync(new CreateStaffResponse 
+            { 
+                ResponseName = "Test User",
+                Id = claim.ClaimerId
+            });
+
+            // Act & Assert
+            await Assert.ThrowsAsync<Exception>(() => _emailService.SendManagerApprovedEmail(claimId));
         }
     }
 }
