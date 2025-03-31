@@ -372,14 +372,19 @@ namespace ClaimRequest.BLL.Services.Implements
                                     .Include(p => p.ProjectStaffs)
                             )).ValidateExists(id, "Can't update because this project doesn't exist");
 
-                        _mapper.Map(updateProjectRequest, existingProject);
-
                         if (updateProjectRequest.EndDate.HasValue && updateProjectRequest.StartDate > updateProjectRequest.EndDate.Value)
                         {
                             throw new ArgumentException("StartDate must be earlier than or equal to EndDate.");
                         }
 
-                        // Update Project Manager if provided
+                        // Update basic properties
+                        existingProject.Name = updateProjectRequest.Name;
+                        existingProject.Description = updateProjectRequest.Description;
+                        existingProject.StartDate = updateProjectRequest.StartDate;
+                        existingProject.EndDate = updateProjectRequest.EndDate;
+                        existingProject.Budget = updateProjectRequest.Budget;
+
+                        // Update Project Manager if changed
                         if (updateProjectRequest.ProjectManagerId != Guid.Empty &&
                             updateProjectRequest.ProjectManagerId != existingProject.ProjectManagerId)
                         {
@@ -403,7 +408,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             existingProject.ProjectManager = newProjectManager;
                         }
 
-                        // Update Finance Staff if provided
+                        
                         if (updateProjectRequest.FinanceStaffId != Guid.Empty &&
                             updateProjectRequest.FinanceStaffId != existingProject.FinanceStaffId)
                         {
@@ -427,13 +432,15 @@ namespace ClaimRequest.BLL.Services.Implements
                             existingProject.FinanceStaff = newFinanceStaff;
                         }
 
-                        // Only update status if explicitly set
+                        // Update Status if present
                         if (updateProjectRequest.Status.HasValue)
                         {
                             existingProject.Status = updateProjectRequest.Status.Value;
                         }
 
+                       
                         _unitOfWork.Context.Entry(existingProject).State = EntityState.Modified;
+
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();
 
@@ -452,6 +459,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
+
 
     }
 }
