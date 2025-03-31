@@ -11,6 +11,7 @@ namespace ClaimRequest.DAL.Data.Entities
         BusinessAnalyst,
         QualityAssurance,
         Manager,
+        Finance
     }
 
     [Table("ProjectStaffs")]
