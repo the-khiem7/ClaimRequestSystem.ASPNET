@@ -180,9 +180,9 @@ namespace ClaimRequest.API.Controllers
         }
 
         [HttpDelete(ApiEndPointConstant.Auth.DeleteRefreshTokenEndpoint)]
-        public async Task<IActionResult> DeleteRefreshToken([FromRoute]Guid userId)
+        public async Task<IActionResult> DeleteRefreshToken([FromQuery]string refreshToken)
         {
-            await _refreshTokensService.DeleteRefreshTokensByUserId(userId);
+            await _refreshTokensService.DeleteRefreshToken(refreshToken);
             return NoContent();
         }
     }
