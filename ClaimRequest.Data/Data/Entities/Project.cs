@@ -53,6 +53,14 @@ namespace ClaimRequest.DAL.Data.Entities
         public Guid ProjectManagerId { get; set; }
         public virtual Staff ProjectManager { get; set; }
 
+        [Required]
+        [ForeignKey("FinanceStaff")]
+        [Column("finance_id")]
+        public Guid FinanceStaffId { get; set; }
+
+        public virtual Staff FinanceStaff { get; set; }
+
+
         public virtual ICollection<Claim>? Claims { get; set; } = new List<Claim>();
 
         public virtual ICollection<ProjectStaff>? ProjectStaffs { get; set; } = new List<ProjectStaff>();
