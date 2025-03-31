@@ -9,7 +9,7 @@ namespace ClaimRequest.DAL.Data.Requests.Project
         [MaxLength(256, ErrorMessage = "Project Name must not exceed 256 characters")]
         public string Name { get; set; }
 
-        [MaxLength(256, ErrorMessage = "Description must not exceed 256 characters")]
+        [MaxLength(1000, ErrorMessage = "Description must not exceed 1000 characters")]
         [Required(ErrorMessage = "Description is required")]
         public string Description { get; set; }
 
