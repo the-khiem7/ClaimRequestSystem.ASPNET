@@ -60,26 +60,26 @@ namespace ClaimRequest.API.Controllers
             }
         }
 
-        [HttpPost("test/send-manager-approved/{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> SendManagerApprovedEmail(Guid id)
-        {
-            try
-            {
-                await _emailService.SendManagerApprovedEmail(id);
-                return Ok(new { message = "Email sent successfully." });
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { error = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = "Failed to send email.", details = ex.Message });
-            }
-        }
+        //[HttpPost("test/send-manager-approved/{id}")]
+        //[ProducesResponseType(StatusCodes.Status200OK)]
+        //[ProducesResponseType(StatusCodes.Status404NotFound)]
+        //[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        //public async Task<IActionResult> SendManagerApprovedEmail(Guid id)
+        //{
+        //    try
+        //    {
+        //        await _emailService.SendManagerApprovedEmail(id);
+        //        return Ok(new { message = "Email sent successfully." });
+        //    }
+        //    catch (NotFoundException ex)
+        //    {
+        //        return NotFound(new { error = ex.Message });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { error = "Failed to send email.", details = ex.Message });
+        //    }
+        //}
 
         [HttpPost("test/send-claim-approved/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]

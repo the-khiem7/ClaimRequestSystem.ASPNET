@@ -613,10 +613,26 @@ namespace ClaimRequest.BLL.Services.Implements
             {
                 throw new UnauthorizedAccessException("You don't have permission to perform this action");
             }
+            var projectId = pendingClaim.ProjectId;
+
+
+            var projectStaffRepo = _unitOfWork.GetRepository<ProjectStaff>();
+            var projectStaffs = await projectStaffRepo.GetListAsync(
+                predicate: ps => ps.ProjectId == projectId
+            );
+
+            var staffIds = projectStaffs.Select(ps => ps.StaffId).ToList();
+            var staffRepo = _unitOfWork.GetRepository<Staff>();
+            var financeStaff = await staffRepo.SingleOrDefaultAsync(
+                predicate: s => staffIds.Contains(s.Id) && s.SystemRole == SystemRole.Finance
+            );
+
+
             return await _unitOfWork.ProcessInTransactionAsync(async () =>
             {
                 _logger.LogInformation("Approving claim {ClaimId} by approver {ApproverId}", id, approverId);
                 pendingClaim.Status = ClaimStatus.Approved;
+                pendingClaim.FinanceId = financeStaff.Id;
                 claimRepo.UpdateAsync(pendingClaim);
                 return true;
             });
