@@ -84,5 +84,6 @@ namespace ClaimRequest.API.Constants
         {
             public const string ReminderEndpoint = ApiEndpoint + "/send-reminder";
         }
+
     }
 }

@@ -84,7 +84,7 @@ namespace ClaimRequest.BLL.Services.Implements
                                         );
                                     }
                                 }
-                                    catch (Exception ex)
+                                catch (Exception ex)
                                 {
                                     _logger.LogError(ex, $"Error sending email to {staff.Email}");
                                 }
