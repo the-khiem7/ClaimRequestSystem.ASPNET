@@ -615,24 +615,16 @@ namespace ClaimRequest.BLL.Services.Implements
             }
             var projectId = pendingClaim.ProjectId;
 
+            var projectRepo = _unitOfWork.GetRepository<ClaimRequest.DAL.Data.Entities.Project>();
+            var project = await projectRepo.GetByIdAsync(projectId);
 
-            var projectStaffRepo = _unitOfWork.GetRepository<ProjectStaff>();
-            var projectStaffs = await projectStaffRepo.GetListAsync(
-                predicate: ps => ps.ProjectId == projectId
-            );
-
-            var staffIds = projectStaffs.Select(ps => ps.StaffId).ToList();
-            var staffRepo = _unitOfWork.GetRepository<Staff>();
-            var financeStaff = await staffRepo.SingleOrDefaultAsync(
-                predicate: s => staffIds.Contains(s.Id) && s.SystemRole == SystemRole.Finance
-            );
-
+            var financeStaffId = project?.FinanceStaffId;
 
             return await _unitOfWork.ProcessInTransactionAsync(async () =>
             {
                 _logger.LogInformation("Approving claim {ClaimId} by approver {ApproverId}", id, approverId);
                 pendingClaim.Status = ClaimStatus.Approved;
-                pendingClaim.FinanceId = financeStaff.Id;
+                pendingClaim.FinanceId = financeStaffId;
                 claimRepo.UpdateAsync(pendingClaim);
                 return true;
             });
