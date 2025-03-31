@@ -19,6 +19,7 @@ namespace ClaimRequest.DAL.Mappers
             // Project -> CreateProjectResponse
             CreateMap<Project, CreateProjectResponse>()
                 .ForMember(dest => dest.ProjectManager, opt => opt.MapFrom(src => src.ProjectManager))
+                .ForMember(dest => dest.FinanceStaff, opt => opt.MapFrom(src => src.FinanceStaff))
                 .ForMember(dest => dest.ProjectStaffs, opt => opt.MapFrom(src => src.ProjectStaffs)); // Include project staff
 
             // UpdateProjectRequest -> Project

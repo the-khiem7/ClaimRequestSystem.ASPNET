@@ -19,6 +19,8 @@ namespace ClaimRequest.BLL.Services.Interfaces
            string? projectManagerName = null,
            ProjectStatus? status = null,
            Guid? projectManagerId = null,
+           Guid? financeStaffId = null,              
+           string? financeStaffName = null,           
            ProjectRole? role = null,
            decimal? minBudget = null,
            decimal? maxBudget = null,
