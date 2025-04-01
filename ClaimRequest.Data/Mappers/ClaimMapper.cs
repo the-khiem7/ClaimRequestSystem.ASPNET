@@ -67,11 +67,49 @@ namespace ClaimRequest.DAL.Mappers
                 .ForMember(dest => dest.ProjectStartDate, opt => opt.MapFrom(src => src.Project.StartDate))
                 .ForMember(dest => dest.ProjectEndDate, opt => opt.MapFrom(src => src.Project.EndDate));
 
+            // Add this mapping to the ClaimMapper class
             CreateMap<Claim, ViewClaimByIdResponse>()
-                .ForMember(dest => dest.StaffName, opt => opt.MapFrom(src => src.Claimer.Name))
-                .ForMember(dest => dest.ProjectName, opt => opt.MapFrom(src => src.Project.Name))
-                .ForMember(dest => dest.ProjectStartDate, opt => opt.MapFrom(src => src.Project.StartDate))
-                .ForMember(dest => dest.ProjectEndDate, opt => opt.MapFrom(src => src.Project.EndDate));
+                // Claim details
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
+                .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
+                .ForMember(dest => dest.TotalWorkingHours, opt => opt.MapFrom(src => src.TotalWorkingHours))
+                .ForMember(dest => dest.Amount, opt => opt.MapFrom(src => src.Amount))
+                .ForMember(dest => dest.ClaimType, opt => opt.MapFrom(src => src.ClaimType))
+                .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
+                .ForMember(dest => dest.Remark, opt => opt.MapFrom(src => src.Remark))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
+                .ForMember(dest => dest.CreateAt, opt => opt.MapFrom(src => src.CreateAt))
+                .ForMember(dest => dest.UpdateAt, opt => opt.MapFrom(src => src.UpdateAt))
+
+                // Nested objects
+                .ForMember(dest => dest.Claimer, opt => opt.MapFrom(src => src.Claimer))
+                .ForMember(dest => dest.Project, opt => opt.MapFrom(src => src.Project))
+                .ForMember(dest => dest.ProjectManager, opt => opt.MapFrom(src => src.Project.ProjectManager))
+                .ForMember(dest => dest.Finance, opt => opt.MapFrom(src => src.Finance));
+
+            // Add mappings for the nested classes
+            CreateMap<Staff, ViewClaimByIdResponse.StaffDetails>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
+                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
+                .ForMember(dest => dest.SystemRole, opt => opt.MapFrom(src => src.SystemRole))
+                .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.Department))
+                .ForMember(dest => dest.Salary, opt => opt.MapFrom(src => src.Salary))
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive))
+                .ForMember(dest => dest.Avatar, opt => opt.MapFrom(src => src.Avatar))
+                .ForMember(dest => dest.LastChangePassword, opt => opt.MapFrom(src => src.LastChangePassword));
+
+            CreateMap<Project, ViewClaimByIdResponse.ProjectDetails>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
+                .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
+                .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
+                .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
+                .ForMember(dest => dest.Budget, opt => opt.MapFrom(src => src.Budget))
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive));
+
 
             // Add missing mappings
             CreateMap<ReturnClaimRequest, Claim>()
