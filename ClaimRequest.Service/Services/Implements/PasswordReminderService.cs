@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
-    public class PasswordReminderService : BackgroundService
+    public class PasswordReminderService : BackgroundService, IPasswordReminderService
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<PasswordReminderService> _logger;
@@ -19,6 +19,11 @@ namespace ClaimRequest.BLL.Services.Implements
             _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
             _otpUtil = otpUtil;
+        }
+
+        public async Task SendRemindersAsync()
+        {
+            await ExecuteAsync(CancellationToken.None);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
