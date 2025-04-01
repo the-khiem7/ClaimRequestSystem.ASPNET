@@ -69,7 +69,7 @@ namespace ClaimRequest.BLL.Services.Implements
 
                 var claim = await _unitOfWork.GetRepository<Claim>().GetByIdAsync(claimId)
                             ?? throw new KeyNotFoundException("Claim not found.");
-                    // Get claim by ID first before starting the transaction
+                // Get claim by ID first before starting the transaction
 
                 if (claim.Status != ClaimStatus.Draft)
                 {
@@ -333,7 +333,6 @@ namespace ClaimRequest.BLL.Services.Implements
 
 
         #region Get Claims
-
         public async Task<PagingResponse<ViewClaimResponse>> GetClaims(
             int pageNumber = 1,
             int pageSize = 20,
@@ -370,9 +369,9 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
+        #endregion
 
         #region GetClaims Helper
-
         private Expression<Func<Claim, bool>> Predicate(
             ViewMode viewMode,
             Guid loggedUserId,
@@ -425,7 +424,7 @@ namespace ClaimRequest.BLL.Services.Implements
                 _ => throw new BadRequestException("Invalid view mode.")
             };
         }
-
+        #endregion
 
         private Func<IQueryable<Claim>, IIncludableQueryable<Claim, object>> Include(ViewMode viewMode)
         {
@@ -476,22 +475,28 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw new UnauthorizedAccessException($"Only {requiredRole} users can access {selectedView}.");
         }
 
-        #endregion GetClaims Helper
-
-        #endregion Get Claims
-
         public async Task<ViewClaimByIdResponse> GetClaimById(Guid id)
         {
             try
             {
                 var claimRepository = _unitOfWork.GetRepository<Claim>();
                 var claim = (await claimRepository.SingleOrDefaultAsync(
-                    c => new { c, c.Claimer, c.Project },
+                    c => new { c },
                     c => c.Id == id,
-                    include: q => q.Include(c => c.Claimer).Include(c => c.Project)
+                    include: q => q
+                        .Include(c => c.Claimer)
+                        .Include(c => c.Project)
+                            .ThenInclude(p => p.ProjectManager)
+                        .Include(c => c.Project)
+                            .ThenInclude(p => p.FinanceStaff)
+                        .Include(c => c.Finance)
                 )).ValidateExists(id);
 
-                return _mapper.Map<ViewClaimByIdResponse>(claim.c);
+                // Update the Finance ID if needed
+                await PasteClaimFinanceIfNull(claim.c);
+
+                var result = _mapper.Map<ViewClaimByIdResponse>(claim.c);
+                return result;
             }
             catch (NotFoundException)
             {
@@ -499,7 +504,7 @@ namespace ClaimRequest.BLL.Services.Implements
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occurred while retrieving the claim.");
+                _logger.LogError(ex, "An error occurred while retrieving the claim: {Message}", ex.Message);
                 throw;
             }
         }
@@ -613,10 +618,18 @@ namespace ClaimRequest.BLL.Services.Implements
             {
                 throw new UnauthorizedAccessException("You don't have permission to perform this action");
             }
+            var projectId = pendingClaim.ProjectId;
+
+            var projectRepo = _unitOfWork.GetRepository<ClaimRequest.DAL.Data.Entities.Project>();
+            var project = await projectRepo.GetByIdAsync(projectId);
+
+            var financeStaffId = project?.FinanceStaffId;
+
             return await _unitOfWork.ProcessInTransactionAsync(async () =>
             {
                 _logger.LogInformation("Approving claim {ClaimId} by approver {ApproverId}", id, approverId);
                 pendingClaim.Status = ClaimStatus.Approved;
+                pendingClaim.FinanceId = financeStaffId;
                 claimRepo.UpdateAsync(pendingClaim);
                 return true;
             });
@@ -633,7 +646,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             predicate: s => s.Id == id,
                             include: q => q.Include(c => c.ClaimApprovers));
 
-                   if(pendingClaim==null)
+                    if (pendingClaim == null)
                     {
                         throw new KeyNotFoundException($"Claim with ID {id} not found.");
                     }
@@ -798,12 +811,11 @@ namespace ClaimRequest.BLL.Services.Implements
 
                     // Log the change using LogChangeAsync
                     await LogChangeAsync(existingClaim.Id, "Status", oldStatus.ToString() ?? "Unknown", ClaimStatus.Paid.ToString(), finance?.Name ?? "System");
-
                     _logger.LogInformation("Successfully marked claim {ClaimId} as Paid by {FinanceName}",
                         existingClaim.Id, finance?.Name);
-
                     return true;
                 });
+
             }
             catch (Exception ex)
             {
@@ -845,5 +857,61 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
+
+        /// <summary>
+        /// Updates a claim's Finance ID with the Project's Finance Staff ID if it's null
+        /// </summary>
+        /// <param name="claim">The claim to update</param>
+        /// <returns>True if an update was made, false otherwise</returns>
+        private async Task<bool> PasteClaimFinanceIfNull(Claim claim)
+        {
+            if (claim == null)
+            {
+                _logger.LogWarning("Cannot update Finance ID for null claim");
+                return false;
+            }
+
+            // Check if we need to update the finance ID
+            if (claim.FinanceId != null || claim.Project == null || claim.Project.FinanceStaffId == Guid.Empty)
+            {
+                return false;
+            }
+
+            try
+            {
+                return await _unitOfWork.ProcessInTransactionAsync(async () =>
+                {
+                    var oldValue = claim.FinanceId.HasValue ? claim.FinanceId.ToString() : "null";
+
+                    // Update the Finance ID with the Project's Finance Staff ID
+                    claim.FinanceId = claim.Project.FinanceStaffId;
+                    claim.UpdateAt = DateTime.UtcNow;
+
+                    _unitOfWork.GetRepository<Claim>().UpdateAsync(claim);
+
+                    // Log this change
+                    await LogChangeAsync(
+                        claim.Id,
+                        "FinanceId",
+                        oldValue,
+                        claim.Project.FinanceStaffId.ToString(),
+                        "System (Auto-assigned from Project)"
+                    );
+
+                    _logger.LogInformation(
+                        "Updated claim {ClaimId} with FinanceId {FinanceId} from Project {ProjectId}",
+                        claim.Id, claim.Project.FinanceStaffId, claim.ProjectId
+                    );
+
+                    return true;
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating Finance ID for claim {ClaimId}", claim.Id);
+                return false;
+            }
+        }
+
     }
 }

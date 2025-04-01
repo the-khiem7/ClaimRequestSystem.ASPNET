@@ -92,6 +92,8 @@ void RegisterApplicationServices()
     builder.Services.AddScoped<IGenericRepository<Claim>, GenericRepository<Claim>>();
     builder.Services.AddScoped<IGenericRepository<Payment>, GenericRepository<Payment>>();
     builder.Services.AddScoped<IRefreshTokensService, RefreshTokensService>();
+    builder.Services.AddScoped<IPasswordReminderService, PasswordReminderService>();
+    builder.Services.AddScoped<IPendingReminderService, PendingReminderService>();
 }
 
 // Method to configure the database
