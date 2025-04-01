@@ -372,21 +372,15 @@ namespace ClaimRequest.BLL.Services.Implements
                                     .Include(p => p.ProjectStaffs)
                             )).ValidateExists(id, "Can't update because this project doesn't exist");
 
+                        _mapper.Map(updateProjectRequest, existingProject);
+
                         if (updateProjectRequest.EndDate.HasValue && updateProjectRequest.StartDate > updateProjectRequest.EndDate.Value)
                         {
                             throw new ArgumentException("StartDate must be earlier than or equal to EndDate.");
                         }
 
-                        // Update basic properties
-                        existingProject.Name = updateProjectRequest.Name;
-                        existingProject.Description = updateProjectRequest.Description;
-                        existingProject.StartDate = updateProjectRequest.StartDate;
-                        existingProject.EndDate = updateProjectRequest.EndDate;
-                        existingProject.Budget = updateProjectRequest.Budget;
-
-                        // Update Project Manager if changed
-                        if (updateProjectRequest.ProjectManagerId != Guid.Empty &&
-                            updateProjectRequest.ProjectManagerId != existingProject.ProjectManagerId)
+                        // If a new Project Manager is provided, update it
+                        if (updateProjectRequest.ProjectManagerId != Guid.Empty)
                         {
                             var newProjectManager = await _unitOfWork.GetRepository<Staff>()
                                 .SingleOrDefaultAsync(
@@ -406,11 +400,18 @@ namespace ClaimRequest.BLL.Services.Implements
 
                             existingProject.ProjectManagerId = updateProjectRequest.ProjectManagerId;
                             existingProject.ProjectManager = newProjectManager;
+
+                            var projectManagerStaff = existingProject.ProjectStaffs
+                                .FirstOrDefault(ps => ps.ProjectRole == ProjectRole.ProjectManager);
+                            if (projectManagerStaff != null)
+                            {
+                                projectManagerStaff.StaffId = updateProjectRequest.ProjectManagerId;
+                                _unitOfWork.GetRepository<ProjectStaff>().UpdateAsync(projectManagerStaff);
+                            }
                         }
 
-                        
-                        if (updateProjectRequest.FinanceStaffId != Guid.Empty &&
-                            updateProjectRequest.FinanceStaffId != existingProject.FinanceStaffId)
+                        // If a new Finance Staff is provided, update it
+                        if (updateProjectRequest.FinanceStaffId != Guid.Empty)
                         {
                             var newFinanceStaff = await _unitOfWork.GetRepository<Staff>()
                                 .SingleOrDefaultAsync(
@@ -430,16 +431,34 @@ namespace ClaimRequest.BLL.Services.Implements
 
                             existingProject.FinanceStaffId = updateProjectRequest.FinanceStaffId;
                             existingProject.FinanceStaff = newFinanceStaff;
+
+                            var financeStaffEntry = existingProject.ProjectStaffs
+                                .FirstOrDefault(ps => ps.ProjectRole == ProjectRole.Finance);
+                            if (financeStaffEntry != null)
+                            {
+                                financeStaffEntry.StaffId = updateProjectRequest.FinanceStaffId;
+                                _unitOfWork.GetRepository<ProjectStaff>().UpdateAsync(financeStaffEntry);
+                            }
+                            else
+                            {
+                                var newFinanceStaffEntry = new ProjectStaff
+                                {
+                                    Id = Guid.NewGuid(),
+                                    ProjectId = existingProject.Id,
+                                    StaffId = updateProjectRequest.FinanceStaffId,
+                                    ProjectRole = ProjectRole.Finance
+                                };
+                                _unitOfWork.GetRepository<ProjectStaff>().InsertAsync(newFinanceStaffEntry);
+                            }
                         }
 
-                        // Update Status if present
+                        // Only update the status if provided
                         if (updateProjectRequest.Status.HasValue)
                         {
                             existingProject.Status = updateProjectRequest.Status.Value;
                         }
 
-                       
-                        _unitOfWork.Context.Entry(existingProject).State = EntityState.Modified;
+                        _unitOfWork.GetRepository<Project>().UpdateAsync(existingProject);
 
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();
