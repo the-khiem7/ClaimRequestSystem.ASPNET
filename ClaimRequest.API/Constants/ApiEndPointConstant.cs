@@ -82,5 +82,10 @@ namespace ClaimRequest.API.Constants
             public const string ReminderEndpoint = ApiEndpoint + "/send-reminder";
         }
 
+        public static class PendingReminder
+        {
+            public const string PendingReminderEndpoint = ApiEndpoint + "/pending-reminder";
+        }
+
     }
 }
