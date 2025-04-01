@@ -5,6 +5,6 @@ namespace ClaimRequest.BLL.Services.Interfaces
     {
         Task<string> GenerateAndStoreRefreshToken(Guid userId);
         Task<string> RefreshAccessToken(string refreshToken);
-        Task DeleteRefreshTokensByUserId(Guid userId);
+        Task<bool> DeleteRefreshToken(string refreshToken);
     }
 }
