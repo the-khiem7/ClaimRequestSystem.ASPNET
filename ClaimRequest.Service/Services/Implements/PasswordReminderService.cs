@@ -46,7 +46,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     {
                         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork<ClaimRequestDbContext>>();
                         var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-                        var otpService = scope.ServiceProvider.GetRequiredService<IOtpService>();
+                        //var otpService = scope.ServiceProvider.GetRequiredService<IOtpService>();
 
                         DateTime timePasswordExpired = DateTime.UtcNow.AddMonths(-3);
 
@@ -59,7 +59,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             _logger.LogInformation("No staff members require password reminders.");
                         }
                         else
-                        {
+                        {                            
                             var semaphore = new SemaphoreSlim(10);
                             var tasks = staffToRemind.Select(async staff =>
                             {
@@ -72,16 +72,16 @@ namespace ClaimRequest.BLL.Services.Implements
                                         var scopedOtpService = scope.ServiceProvider.GetRequiredService<IOtpService>();
                                         var scopedEmailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
 
-                                        _logger.LogInformation($"Sending email and OTP to: {staff.Email}");
+                                        _logger.LogInformation($"Sending email to: {staff.Email}");
 
-                                        var otp = _otpUtil.GenerateOtp(staff.Email);
-                                        await scopedOtpService.CreateOtpEntity(staff.Email, otp);
+                                        //var otp = _otpUtil.GenerateOtp(staff.Email);
+                                        //await scopedOtpService.CreateOtpEntity(staff.Email, otp);
 
-                                        await scopedEmailService.SendEmailAsync(
-                                            staff.Email,
-                                            "Reminder: Change Your Password",
-                                            $"Hi {staff.Name}, please update your password. Your OTP is: {otp}"
-                                        );
+                                        string subject = "Reminder: Change Your Password";
+                                        string templatePath = Path.Combine(AppContext.BaseDirectory, "Services", "Templates", "PasswordReminder.html");
+                                        string body = await File.ReadAllTextAsync(templatePath);
+
+                                        await scopedEmailService.SendEmailAsync(staff.Email, subject, body);
                                     }
                                 }
                                 catch (Exception ex)
@@ -95,7 +95,7 @@ namespace ClaimRequest.BLL.Services.Implements
                             }).ToList();
 
                             await Task.WhenAll(tasks);
-                            _logger.LogInformation("All password reminder emails and OTPs sent successfully.");
+                            _logger.LogInformation("All password reminder emails sent successfully.");
                         }
                     }
                 }
