@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace ClaimRequest.BLL.Services.Implements
 {
-    public class PendingReminderService : BackgroundService
+    public class PendingReminderService : BackgroundService, IPendingReminderService
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<PendingReminderService> _logger;
@@ -14,6 +14,11 @@ namespace ClaimRequest.BLL.Services.Implements
         {
             _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
+        }
+
+        public async Task SendReminderAsync()
+        {
+            await ExecuteAsync(CancellationToken.None);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
