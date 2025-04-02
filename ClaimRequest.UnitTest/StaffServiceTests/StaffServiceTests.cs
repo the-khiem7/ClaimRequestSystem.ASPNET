@@ -1,7 +1,10 @@
-﻿using System;
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
+﻿using System.Linq.Expressions;
 using AutoMapper;
 using ClaimRequest.BLL.Services.Implements;
 using ClaimRequest.BLL.Services.Interfaces;
@@ -82,7 +85,7 @@ namespace ClaimRequest.Tests.Services
         {
             // Arrange
             var id = Guid.NewGuid();
-            var staffEntity = new Staff { Id = id, Email = "test@fpt.edu.vn", IsActive = true };
+            var staffEntity = new Staff { Id = id, Email = "test@gmail.com", IsActive = true };
             var response = new CreateStaffResponse { Id = id, Email = staffEntity.Email };
 
             _mockStaffRepository.Setup(r => r.SingleOrDefaultAsync(
@@ -107,8 +110,8 @@ namespace ClaimRequest.Tests.Services
             // Arrange
             var staffs = new List<Staff>
             {
-                new Staff { Id = Guid.NewGuid(), Email = "staff1@fpt.edu.vn", IsActive = true },
-                new Staff { Id = Guid.NewGuid(), Email = "staff2@fpt.edu.vn", IsActive = true }
+                new Staff { Id = Guid.NewGuid(), Email = "staff1@gmail.com", IsActive = true },
+                new Staff { Id = Guid.NewGuid(), Email = "staff2@gmail.com", IsActive = true }
             };
             _mockStaffRepository.Setup(r => r.GetListAsync(It.IsAny<Expression<Func<Staff, bool>>>(), It.IsAny<Func<IQueryable<Staff>, IOrderedQueryable<Staff>>>(), It.IsAny<Func<IQueryable<Staff>, IIncludableQueryable<Staff, object>>>()))
                 .ReturnsAsync(staffs);
@@ -129,8 +132,8 @@ namespace ClaimRequest.Tests.Services
         {
             // Arrange
             var id = Guid.NewGuid();
-            var updateRequest = new UpdateStaffRequest { Email = "updated@fpt.edu.vn" };
-            var existingStaff = new Staff { Id = id, Email = "old@fpt.edu.vn", IsActive = true };
+            var updateRequest = new UpdateStaffRequest { Email = "updated@gmail.com" };
+            var existingStaff = new Staff { Id = id, Email = "old@gmail.com", IsActive = true };
             var updateResponse = new UpdateStaffResponse { Id = id, Email = updateRequest.Email };
 
             _mockStaffRepository.Setup(r => r.SingleOrDefaultAsync(It.IsAny<Expression<Func<Staff, bool>>>(), It.IsAny<Func<IQueryable<Staff>, IOrderedQueryable<Staff>>>(), It.IsAny<Func<IQueryable<Staff>, IIncludableQueryable<Staff, object>>>()))
