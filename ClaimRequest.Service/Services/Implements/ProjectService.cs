@@ -35,22 +35,22 @@ namespace ClaimRequest.BLL.Services.Implements
                     await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
                     try
                     {
-                        if (createProjectRequest.EndDate.HasValue && createProjectRequest.StartDate > createProjectRequest.EndDate.Value)
+                        if (createProjectRequest.EndDate.HasValue &&
+                            createProjectRequest.StartDate > createProjectRequest.EndDate.Value)
                         {
                             throw new ArgumentException("StartDate must be earlier than or equal to EndDate.");
                         }
 
-                        // Verify Project Manager exists and is valid
+                        // Validate Project Manager
                         var projectManager = (await _unitOfWork.GetRepository<Staff>()
                             .SingleOrDefaultAsync(
-                                predicate: s => s.Id == createProjectRequest.ProjectManagerId,
-                                orderBy: null,
-                                include: null
+                                predicate: s => s.Id == createProjectRequest.ProjectManagerId
                             )).ValidateExists(createProjectRequest.ProjectManagerId, "Can't create project because of invalid project manager");
 
-                        if (projectManager.SystemRole != SystemRole.Admin && projectManager.SystemRole != SystemRole.Approver)
+                        if (projectManager.SystemRole != SystemRole.Admin &&
+                            projectManager.SystemRole != SystemRole.Approver)
                         {
-                            throw new InvalidOperationException("The specified staff member can't be project mananger");
+                            throw new InvalidOperationException("The specified staff member can't be Project Manager");
                         }
 
                         if (!projectManager.IsActive)
@@ -58,21 +58,49 @@ namespace ClaimRequest.BLL.Services.Implements
                             throw new InvalidOperationException("The specified Project Manager is not active");
                         }
 
+                        // Validate Finance Staff
+                        var financeStaff = (await _unitOfWork.GetRepository<Staff>()
+                            .SingleOrDefaultAsync(
+                                predicate: s => s.Id == createProjectRequest.FinanceStaffId
+                            )).ValidateExists(createProjectRequest.FinanceStaffId, "Can't create project because of invalid finance staff");
+
+                        if (financeStaff.SystemRole != SystemRole.Finance ||
+                            financeStaff.Department != Department.FinancialDivision)
+                        {
+                            throw new InvalidOperationException("The specified staff member can't be Finance staff");
+                        }
+
+                        if (!financeStaff.IsActive)
+                        {
+                            throw new InvalidOperationException("The specified Finance Staff is not active");
+                        }
+
+                        // Create new Project entity
                         var newProject = _mapper.Map<Project>(createProjectRequest);
-                        newProject.Status = createProjectRequest.Status;  // Set status here
+                        newProject.Status = createProjectRequest.Status;
 
                         await _unitOfWork.GetRepository<Project>().InsertAsync(newProject);
                         await _unitOfWork.CommitAsync();
 
-                        var newProjectStaff = new ProjectStaff
+                        // Add Project Manager to ProjectStaffs
+                        var projectManagerStaff = new ProjectStaff
                         {
                             Id = Guid.NewGuid(),
                             ProjectId = newProject.Id,
                             StaffId = createProjectRequest.ProjectManagerId,
                             ProjectRole = ProjectRole.ProjectManager
                         };
+                        await _unitOfWork.GetRepository<ProjectStaff>().InsertAsync(projectManagerStaff);
 
-                        await _unitOfWork.GetRepository<ProjectStaff>().InsertAsync(newProjectStaff);
+                        // Add Finance Staff to ProjectStaffs
+                        var financeProjectStaff = new ProjectStaff
+                        {
+                            Id = Guid.NewGuid(),
+                            ProjectId = newProject.Id,
+                            StaffId = createProjectRequest.FinanceStaffId,
+                            ProjectRole = ProjectRole.Finance
+                        };
+                        await _unitOfWork.GetRepository<ProjectStaff>().InsertAsync(financeProjectStaff);
 
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();
@@ -145,6 +173,7 @@ namespace ClaimRequest.BLL.Services.Implements
                         predicate: p => p.Id == id && p.IsActive,
                         include: q => q
                             .Include(p => p.ProjectManager)
+                            .Include(p => p.FinanceStaff)
                             .Include(p => p.ProjectStaffs)
                                 .ThenInclude(ps => ps.Staff) // Load Staff, including Department
                     )).ValidateExists(id);
@@ -168,6 +197,8 @@ namespace ClaimRequest.BLL.Services.Implements
                     string? projectManagerName = null,
                     ProjectStatus? status = null,
                     Guid? projectManagerId = null,
+                    Guid? financeStaffId = null,
+                    string? financeStaffName = null,
                     ProjectRole? role = null,
                     decimal? minBudget = null,
                     decimal? maxBudget = null,
@@ -191,6 +222,7 @@ namespace ClaimRequest.BLL.Services.Implements
                     predicate: predicate,
                     include: q => q
                         .Include(p => p.ProjectManager)
+                        .Include(p => p.FinanceStaff)
                         .Include(p => p.ProjectStaffs)
                             .ThenInclude(ps => ps.Staff)
                 );
@@ -257,6 +289,17 @@ namespace ClaimRequest.BLL.Services.Implements
                         p.ProjectStaffs.Any(ps => ps.StaffId == staffId.Value));
                 }
 
+                if (financeStaffId.HasValue)
+                {
+                    filteredProjects = filteredProjects.Where(p => p.FinanceStaffId == financeStaffId.Value);
+                }
+
+                if (!string.IsNullOrEmpty(financeStaffName))
+                {
+                    filteredProjects = filteredProjects.Where(p => p.FinanceStaff != null &&
+                        p.FinanceStaff.Name.Contains(financeStaffName, StringComparison.OrdinalIgnoreCase));
+                }
+
                 // Apply Sorting
                 filteredProjects = sortBy switch
                 {
@@ -320,60 +363,111 @@ namespace ClaimRequest.BLL.Services.Implements
                     await using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync();
                     try
                     {
-                        var existingProject = (await _unitOfWork.GetRepository<Project>()
-                            .SingleOrDefaultAsync(
-                                predicate: p => p.Id == id,
-                                include: q => q
-                                    .Include(p => p.ProjectManager)
-                                    .Include(p => p.ProjectStaffs)
-                            )).ValidateExists(id, "Can't update because this project doesn't exist ");
+                        var projectRepo = _unitOfWork.GetRepository<Project>();
+                        var staffRepo = _unitOfWork.GetRepository<Staff>();
+                        var projectStaffRepo = _unitOfWork.GetRepository<ProjectStaff>();
 
-                        _mapper.Map(updateProjectRequest, existingProject);
+                        // Load existing project with related data
+                        var existingProject = await projectRepo.SingleOrDefaultAsync(
+                            predicate: p => p.Id == id,
+                            include: q => q.Include(p => p.ProjectStaffs)
+                        );
 
+                        existingProject.ValidateExists(id, "Project not found.");
+
+                        // Validate date
                         if (updateProjectRequest.EndDate.HasValue && updateProjectRequest.StartDate > updateProjectRequest.EndDate.Value)
-                        {
                             throw new ArgumentException("StartDate must be earlier than or equal to EndDate.");
-                        }
 
-                        // If a new Project Manager is provided, update it
-                        if (updateProjectRequest.ProjectManagerId != Guid.Empty)
+                        // Update basic project fields
+                        existingProject.Name = updateProjectRequest.Name;
+                        existingProject.Description = updateProjectRequest.Description;
+                        existingProject.StartDate = updateProjectRequest.StartDate;
+                        existingProject.EndDate = updateProjectRequest.EndDate;
+                        existingProject.Budget = updateProjectRequest.Budget;
+                        existingProject.Status = updateProjectRequest.Status.Value;
+
+                        // Update Project Manager
+                        if (updateProjectRequest.ProjectManagerId != existingProject.ProjectManagerId)
                         {
-                            var newProjectManager = await _unitOfWork.GetRepository<Staff>()
-                                .SingleOrDefaultAsync(
-                                    predicate: s => s.Id == updateProjectRequest.ProjectManagerId,
-                                    orderBy: null,
-                                    include: null
-                                ).ValidateExists(updateProjectRequest.ProjectManagerId, "Can't update this project because your ProjectManager doesn't exist ");
+                            var newPM = await staffRepo.SingleOrDefaultAsync(
+                                predicate: s => s.Id == updateProjectRequest.ProjectManagerId
+                            );
 
-                            if (newProjectManager.SystemRole != SystemRole.Admin && newProjectManager.SystemRole != SystemRole.Staff)
-                            {
-                                throw new UnauthorizedAccessException("Only Admin or Staff can be a Project Manager.");
-                            }
+                            if ((newPM.SystemRole != SystemRole.Admin && newPM.SystemRole != SystemRole.Approver && newPM.SystemRole != SystemRole.Staff) || !newPM.IsActive)
+                                throw new InvalidOperationException("Invalid or inactive Project Manager.");
 
-
-                            if (!newProjectManager.IsActive)
-                            {
-                                throw new InvalidOperationException("The specified Project Manager is not active");
-                            }
-
-                            // Assign the new Project Manager
                             existingProject.ProjectManagerId = updateProjectRequest.ProjectManagerId;
-                            existingProject.ProjectManager = newProjectManager;
+
+                            // Update or add ProjectStaff record for ProjectManager
+                            var existingPMStaff = existingProject.ProjectStaffs.FirstOrDefault(ps => ps.ProjectRole == ProjectRole.ProjectManager);
+                            if (existingPMStaff != null)
+                            {
+                                existingPMStaff.StaffId = updateProjectRequest.ProjectManagerId;
+                                projectStaffRepo.UpdateAsync(existingPMStaff);
+                            }
+                            else
+                            {
+                                var pmStaff = new ProjectStaff
+                                {
+                                    Id = Guid.NewGuid(),
+                                    ProjectId = existingProject.Id,
+                                    StaffId = updateProjectRequest.ProjectManagerId,
+                                    ProjectRole = ProjectRole.ProjectManager
+                                };
+                                await projectStaffRepo.InsertAsync(pmStaff);
+                            }
                         }
 
-                        // Only update the status if provided
-                        if (updateProjectRequest.Status.HasValue)
+                        // Update Finance Staff
+                        if (updateProjectRequest.FinanceStaffId != existingProject.FinanceStaffId)
                         {
-                            existingProject.Status = updateProjectRequest.Status.Value;
+                            var newFinanceStaff = await staffRepo.SingleOrDefaultAsync(
+                                predicate: s => s.Id == updateProjectRequest.FinanceStaffId
+                            );
+
+                            if (newFinanceStaff.SystemRole != SystemRole.Finance || newFinanceStaff.Department != Department.FinancialDivision || !newFinanceStaff.IsActive)
+                                throw new InvalidOperationException("Invalid or inactive Finance Staff.");
+
+                            existingProject.FinanceStaffId = updateProjectRequest.FinanceStaffId;
+
+                            // Update or add ProjectStaff record for Finance
+                            var existingFinanceStaff = existingProject.ProjectStaffs.FirstOrDefault(ps => ps.ProjectRole == ProjectRole.Finance);
+                            if (existingFinanceStaff != null)
+                            {
+                                existingFinanceStaff.StaffId = updateProjectRequest.FinanceStaffId;
+                                projectStaffRepo.UpdateAsync(existingFinanceStaff);
+                            }
+                            else
+                            {
+                                var financeStaff = new ProjectStaff
+                                {
+                                    Id = Guid.NewGuid(),
+                                    ProjectId = existingProject.Id,
+                                    StaffId = updateProjectRequest.FinanceStaffId,
+                                    ProjectRole = ProjectRole.Finance
+                                };
+                                await projectStaffRepo.InsertAsync(financeStaff);
+                            }
                         }
 
-                        _unitOfWork.GetRepository<Project>().UpdateAsync(existingProject);
+                        // Explicitly save changes
+                        projectRepo.UpdateAsync(existingProject);
                         await _unitOfWork.CommitAsync();
                         await transaction.CommitAsync();
 
-                        return _mapper.Map<CreateProjectResponse>(existingProject);
+                        // Re-fetch updated project including all relations for accurate response mapping
+                        var updatedProject = await projectRepo.SingleOrDefaultAsync(
+    predicate: p => p.Id == existingProject.Id,
+    include: q => q.Include(p => p.ProjectManager)
+                   .Include(p => p.FinanceStaff)
+                   .Include(p => p.ProjectStaffs)
+                       .ThenInclude(ps => ps.Staff)
+);
+
+                        return _mapper.Map<CreateProjectResponse>(updatedProject);
                     }
-                    catch (Exception)
+                    catch
                     {
                         await transaction.RollbackAsync();
                         throw;
