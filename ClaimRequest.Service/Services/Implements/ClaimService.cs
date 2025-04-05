@@ -56,7 +56,6 @@ namespace ClaimRequest.BLL.Services.Implements
         }
 
 
-        #region Nguyen_Anh_Quan
         public async Task<CancelClaimResponse> CancelClaim(Guid claimId, CancelClaimRequest cancelClaimRequest)
         {
             try
@@ -250,15 +249,15 @@ namespace ClaimRequest.BLL.Services.Implements
                 throw;
             }
         }
-        #endregion
-
         public async Task<CreateClaimResponse> CreateClaim(CreateClaimRequest createClaimRequest)
         {
             try
             {
                 return await _unitOfWork.ProcessInTransactionAsync(async () =>
                 {
+                    var projectOfCreateClaimRequest = await _unitOfWork.GetRepository<Project>().GetByIdAsync(createClaimRequest.ProjectId) ?? throw new KeyNotFoundException("Can't find the project which this claim is assigned");
                     var newClaim = _mapper.Map<Claim>(createClaimRequest);
+                    newClaim.FinanceId = projectOfCreateClaimRequest.FinanceStaffId;
                     await _unitOfWork.GetRepository<Claim>().InsertAsync(newClaim);
                     return _mapper.Map<CreateClaimResponse>(newClaim);
                 });
@@ -838,11 +837,6 @@ namespace ClaimRequest.BLL.Services.Implements
                 if (claims == null || claims.Count == 0)
                 {
                     throw new NotFoundException("No pending claims found.");
-                }
-
-                foreach (var claim in claims)
-                {
-                    _logger.LogInformation($"Pending Claim - ID: {claim.c.Id}, FinanceId: {claim.c.FinanceId}");
                 }
 
                 return _mapper.Map<List<ViewClaimResponse>>(claims.Select(c => c.c).ToList());
