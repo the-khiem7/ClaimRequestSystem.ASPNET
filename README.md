@@ -2,12 +2,17 @@
 
 A centralized system that supports the creation of claims and reduces paperwork for FPT Software staff.
 
+## Quick Links
+- **API Documentation**: [Swagger UI](https://claim-request-system.azurewebsites.net/swagger/index.html)
+- **Live Demo**: [Frontend Application](https://crs24.vercel.app/)
+- **Documentation**: [Presentation Slides](Document/FinalDemoNET04.pptx)
+
 ## Table of Contents
+- [Quick Links](#quick-links)
 - [Getting Started](#getting-started)
 - [Architecture](#architecture)
 - [Features](#features)
 - [Testing](#testing)
-- [Demo Links](#demo-links)
 
 ## Getting Started
 
@@ -218,9 +223,3 @@ Using Docker:
 ```bash
 ./scripts/run-tests.sh
 ```
-
-## Demo Links
-
-- Backend API Documentation: [Swagger Link]
-- Frontend Demo: [Azure/Vercel Link]
-- Presentation Slides: FinalDemoNET04.pptx
