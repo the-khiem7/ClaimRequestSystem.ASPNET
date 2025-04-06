@@ -1,11 +1,15 @@
-# Claim Request System
+<h1 align="center">Claim Request System</h1>
 
-A centralized system that supports the creation of claims and reduces paperwork for FPT Software staff.
+<p align="center">A centralized system that supports the creation of claims and reduces paperwork for FPT Software staff.</p>
+
+<div align="center">
 
 ## Quick Links
-- **API Documentation**: [Swagger UI](https://claim-request-system.azurewebsites.net/swagger/index.html)
-- **Live Demo**: [Frontend Application](https://crs24.vercel.app/)
-- **Documentation**: [Presentation Slides](Document/Demo/FinalDemoNET04.pptx)
+**[API Documentation](https://claim-request-system.azurewebsites.net/swagger/index.html)** • 
+**[Live Demo](https://crs24.vercel.app/)** • 
+**[Documentation](Document/Demo/FinalDemoNET04.pptx)**
+
+</div>
 
 ## Table of Contents
 - [Quick Links](#quick-links)
@@ -458,12 +462,19 @@ deactivate IGenericRepository
 
 ## Features
 
-### Authentication
+<h3 align="center">Authentication</h3>
 
-#### Login with Google OAuth2
+<h4 align="center">Login with Google OAuth2</h4>
+
+<div align="center">
+
 ![Login](Document/Feature/Auth/Login.png)
 
-#### Password Management
+</div>
+
+<h4 align="center">Password Management</h4>
+
+<div align="center">
 
 ##### Change Password
 ![Change Password](Document/Feature/Auth/ChangePassword.png)
@@ -474,7 +485,11 @@ deactivate IGenericRepository
 ##### Refresh Token Service
 ![Refresh Token](Document/Feature/Auth/RefreshTokensService.png)
 
-### Email Services
+</div>
+
+<h3 align="center">Email Services</h3>
+
+<div align="center">
 
 #### Email Notifications
 ![Email Service](Document/Feature/Email/EmailSerivce.png)
@@ -482,18 +497,22 @@ deactivate IGenericRepository
 #### OTP Email Confirmation
 ![OTP Email](Document/Feature/Email/SendOtpEmail.png)
 
-### Integration Services
+</div>
+
+<h3 align="center">Integration Services</h3>
+
+<div align="center">
 
 #### Cloud Storage Integration
 ![Cloudinary Service](Document/Feature/CloudinaryService.png)
 
 #### Payment Gateway Integration
 ![VNPay Payment](Document/Feature/VNPayPayment.png)
+</div>
 
-#### Database Context View
-![Database Context](Document/Feature/DbContext.png)
+<h3 align="center">Claim Management</h3>
 
-### Claim Management
+<div align="center">
 
 #### Create and Process Claims
 
@@ -532,7 +551,11 @@ deactivate IGenericRepository
 ##### Remove Staff from Claim
 ![Remove Staff](Document/Feature/Claim/RemoveStaff.png)
 
-### Staff Management
+</div>
+
+<h3 align="center">Staff Management</h3>
+
+<div align="center">
 
 #### Staff Listing and Details
 
@@ -555,6 +578,8 @@ deactivate IGenericRepository
 
 ##### Pagination Support
 ![Page Staff](Document/Feature/Staff/PageStaff.svg)
+
+</div>
 
 ## Testing
 
