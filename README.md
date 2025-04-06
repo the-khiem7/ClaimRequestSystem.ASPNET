@@ -5,7 +5,7 @@ A centralized system that supports the creation of claims and reduces paperwork 
 ## Quick Links
 - **API Documentation**: [Swagger UI](https://claim-request-system.azurewebsites.net/swagger/index.html)
 - **Live Demo**: [Frontend Application](https://crs24.vercel.app/)
-- **Documentation**: [Presentation Slides](Document/FinalDemoNET04.pptx)
+- **Documentation**: [Presentation Slides](Document/Demo/FinalDemoNET04.pptx)
 
 ## Table of Contents
 - [Quick Links](#quick-links)
