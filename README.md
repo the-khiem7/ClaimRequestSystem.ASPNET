@@ -15,6 +15,7 @@ A centralized system that supports the creation of claims and reduces paperwork 
   - [Building the Solution](#building-the-solution)
 - [Architecture](#architecture)
   - [Data Access Layer Architecture](#data-access-layer-architecture)
+  - [Additional Design Patterns](#additional-design-patterns)
 - [Features](#features)
   - [Authentication](#authentication)
   - [Claim Management](#claim-management)
@@ -115,6 +116,110 @@ public class ClaimService
 - Change tracking and validation
 - Exception handling with rollback
 - Repository pattern implementation
+
+### Additional Design Patterns
+
+#### Dependency Injection Pattern
+```plantuml
+@startuml
+participant Program
+participant ServiceCollection
+participant Container
+participant BaseService
+participant Services
+
+Program -> ServiceCollection : AddScoped<IClaimService, ClaimService>()
+Program -> ServiceCollection : AddScoped<IStaffService, StaffService>()
+Program -> ServiceCollection : AddScoped<IUnitOfWork, UnitOfWork>()
+ServiceCollection -> Container : BuildServiceProvider()
+Container --> BaseService : Inject Dependencies
+note right of BaseService
+  Constructor injection:
+  - IUnitOfWork
+  - ILogger
+  - IMapper
+  - IHttpContextAccessor
+end note
+BaseService -> Services : Provide dependencies
+@enduml
+```
+
+#### Singleton Pattern
+```plantuml
+@startuml
+participant Program
+participant ServiceCollection
+participant JwtUtil
+participant OtpUtil
+
+Program -> ServiceCollection : AddSingleton<JwtUtil>()
+Program -> ServiceCollection : AddSingleton<OtpUtil>()
+note right of JwtUtil : Single instance for\nentire application
+note right of OtpUtil : Single instance for\nentire application
+JwtUtil --> Program : Use same instance
+OtpUtil --> Program : Use same instance
+@enduml
+```
+
+#### Builder Pattern
+```plantuml
+@startuml
+participant Program
+participant DbContextOptionsBuilder
+participant DbContext
+
+Program -> DbContextOptionsBuilder : UseNpgsql()
+Program -> DbContextOptionsBuilder : EnableRetryOnFailure()
+DbContextOptionsBuilder -> DbContextOptionsBuilder : Configure options
+DbContextOptionsBuilder -> DbContext : Build DbContext
+note right of DbContextOptionsBuilder : Fluent configuration\nof database context
+@enduml
+```
+
+#### Middleware Pattern
+```plantuml
+@startuml
+participant Request
+participant Pipeline
+participant ExceptionHandler
+participant ResetPasswordOnly
+participant Response
+
+Request -> Pipeline : HTTP Request
+Pipeline -> ExceptionHandler : Process
+ExceptionHandler -> ResetPasswordOnly : Next
+ResetPasswordOnly -> Response : Process
+note right of Pipeline
+  Middleware Chain:
+  1. Exception Handling
+  2. Reset Password
+  3. Auth
+  4. CORS
+end note
+@enduml
+```
+
+#### Strategy Pattern
+```plantuml
+@startuml
+participant Client
+participant IGenericRepository
+participant GenericRepository
+participant QueryableStrategy
+
+Client -> IGenericRepository : SingleOrDefaultAsync()
+IGenericRepository -> GenericRepository : Execute Query
+GenericRepository -> QueryableStrategy : Apply Predicate
+GenericRepository -> QueryableStrategy : Apply OrderBy
+GenericRepository -> QueryableStrategy : Apply Include
+QueryableStrategy --> Client : Return Result
+note right of QueryableStrategy
+  Different query
+  strategies through
+  delegate parameters
+end note
+@enduml
+```
 
 ## Features
 
