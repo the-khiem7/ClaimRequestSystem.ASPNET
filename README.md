@@ -1,8 +1,12 @@
-<h1 align="center">Claim Request System</h1>
-
-<p align="center">A centralized system that supports the creation of claims and reduces paperwork for FPT Software staff.</p>
+![Claim Request System](https://res.cloudinary.com/crs2025/image/upload/v1743237101/CRSLogo_h5s8ez.png)
 
 <div align="center">
+
+# Claim Request System
+
+A centralized system that supports the creation of claims and reduces paperwork for FPT Software staff.
+
+
 
 ## Quick Links
 **[API Documentation](https://claim-request-system.azurewebsites.net/swagger/index.html)** • 
