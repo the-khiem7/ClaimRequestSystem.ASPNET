@@ -10,9 +10,17 @@ A centralized system that supports the creation of claims and reduces paperwork 
 ## Table of Contents
 - [Quick Links](#quick-links)
 - [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Database Setup](#database-setup)
+  - [Building the Solution](#building-the-solution)
 - [Architecture](#architecture)
+  - [Data Access Layer Architecture](#data-access-layer-architecture)
 - [Features](#features)
+  - [Authentication](#authentication)
+  - [Claim Management](#claim-management)
+  - [Staff Management](#staff-management)
 - [Testing](#testing)
+  - [Unit Test Results](#unit-test-results)
 
 ## Getting Started
 
