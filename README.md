@@ -7,7 +7,6 @@
 A centralized system that supports the creation of claims and reduces paperwork for FPT Software staff.
 
 
-
 ## Quick Links
 **[API Documentation](https://claim-request-system.azurewebsites.net/swagger/index.html)** • 
 **[Live Demo](https://crs24.vercel.app/)** • 
