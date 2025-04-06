@@ -15,7 +15,13 @@ A centralized system that supports the creation of claims and reduces paperwork 
   - [Building the Solution](#building-the-solution)
 - [Architecture](#architecture)
   - [Data Access Layer Architecture](#data-access-layer-architecture)
-  - [Additional Design Patterns](#additional-design-patterns)
+  - [Design Patterns](#design-patterns)
+    - [Unit of Work Pattern](#unitofwork-pattern-overview)
+    - [Dependency Injection Pattern](#dependency-injection-pattern)
+    - [Singleton Pattern](#singleton-pattern)
+    - [Builder Pattern](#builder-pattern)
+    - [Middleware Pattern](#middleware-pattern)
+    - [Strategy Pattern](#strategy-pattern)
 - [Features](#features)
   - [Authentication](#authentication)
   - [Claim Management](#claim-management)
@@ -117,9 +123,22 @@ public class ClaimService
 - Exception handling with rollback
 - Repository pattern implementation
 
-### Additional Design Patterns
 
-#### Dependency Injection Pattern
+### Dependency Injection Pattern
+![Dependency Injection Pattern](Document/Architecture/DependencyInjectionPattern.svg)
+
+#### Implementation Details
+- Services are registered with scoped lifetime
+- Constructor injection used in BaseService for:
+  - IUnitOfWork
+  - ILogger
+  - IMapper
+  - IHttpContextAccessor
+- Benefits:
+  - Loose coupling between components
+  - Easy to swap implementations
+  - Better testability through mocking
+
 ```plantuml
 @startuml
 participant Program
@@ -144,7 +163,18 @@ BaseService -> Services : Provide dependencies
 @enduml
 ```
 
-#### Singleton Pattern
+### Singleton Pattern
+![Singleton Pattern](Document/Architecture/SingletonPattern.svg)
+
+#### Implementation Details
+- Utility services registered as singletons:
+  - JwtUtil for token management
+  - OtpUtil for OTP operations
+- Characteristics:
+  - Single instance shared across application
+  - Thread-safe access to shared resources
+  - Used for stateless utility services
+
 ```plantuml
 @startuml
 participant Program
@@ -161,7 +191,20 @@ OtpUtil --> Program : Use same instance
 @enduml
 ```
 
-#### Builder Pattern
+### Builder Pattern
+
+#### Implementation Details
+- Used for fluent database context configuration
+- Step-by-step construction of DbContext:
+  1. Configure database provider
+  2. Set retry policies
+  3. Configure options
+  4. Build final context
+- Benefits:
+  - Clear separation of construction steps
+  - Fluent interface for configuration
+  - Complex object creation made simple
+
 ```plantuml
 @startuml
 participant Program
@@ -176,7 +219,21 @@ note right of DbContextOptionsBuilder : Fluent configuration\nof database contex
 @enduml
 ```
 
-#### Middleware Pattern
+### Middleware Pattern
+![Middleware Pattern](Document/Architecture/MiddlewarePattern.svg)
+
+#### Implementation Details
+- Pipeline components in order:
+  1. Exception Handling
+  2. Reset Password
+  3. Authentication
+  4. CORS
+- Features:
+  - Sequential request processing
+  - Each middleware can modify request/response
+  - Chain of responsibility pattern
+  - Centralized cross-cutting concerns
+
 ```plantuml
 @startuml
 participant Request
@@ -199,7 +256,21 @@ end note
 @enduml
 ```
 
-#### Strategy Pattern
+### Strategy Pattern
+![Strategy Pattern](Document/Architecture/StrategyPattern.svg)
+
+#### Implementation Details
+- Query strategies implemented through delegates
+- Components:
+  - Predicates for filtering data
+  - OrderBy for sorting results
+  - Include for eager loading relations
+- Benefits:
+  - Flexible query composition
+  - Runtime strategy selection
+  - Encapsulated query logic
+  - Reusable query components
+
 ```plantuml
 @startuml
 participant Client
