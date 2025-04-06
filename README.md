@@ -192,6 +192,7 @@ OtpUtil --> Program : Use same instance
 ```
 
 ### Builder Pattern
+![Builder Pattern](Document/Architecture/BuilderPattern.svg)
 
 #### Implementation Details
 - Used for fluent database context configuration
@@ -205,17 +206,100 @@ OtpUtil --> Program : Use same instance
   - Fluent interface for configuration
   - Complex object creation made simple
 
+```csharp
+// src/ClaimRequest.API/Program.cs
+void ConfigureDatabase()
+{
+    builder.Services.AddDbContext<ClaimRequestDbContext>(options =>
+    {
+        options.UseNpgsql(builder.Configuration.GetConnectionString("SupaBaseConnection"),
+            npgsqlOptionsAction: sqlOptions =>
+            {
+                sqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    errorCodesToAdd: null);
+            });
+    });
+}
+```
+
+```csharp
+// src/ClaimRequest.Data/Data/ClaimRequestDbContext.cs
+public class ClaimRequestDbContext : DbContext
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // Schema configuration
+        modelBuilder.HasDefaultSchema("ClaimRequest");
+
+        // Enum configurations
+        modelBuilder.Entity<Staff>()
+            .Property(s => s.SystemRole)
+            .HasConversion<string>();
+
+        // Relationship configurations
+        modelBuilder.Entity<Claim>()
+            .HasOne(c => c.Claimer)
+            .WithMany()
+            .HasForeignKey(c => c.ClaimerId);
+
+        // Precision configurations
+        modelBuilder.Entity<Claim>()
+            .Property(c => c.Amount)
+            .HasColumnType("decimal(18,2)");
+
+        // Date configurations
+        modelBuilder.Entity<Claim>()
+            .Property(c => c.StartDate)
+            .HasColumnType("date");
+    }
+}
+```
+
+
 ```plantuml
 @startuml
 participant Program
 participant DbContextOptionsBuilder
-participant DbContext
+participant NpgsqlOptionsAction
+participant ClaimRequestDbContext
+participant ModelBuilder
 
-Program -> DbContextOptionsBuilder : UseNpgsql()
-Program -> DbContextOptionsBuilder : EnableRetryOnFailure()
-DbContextOptionsBuilder -> DbContextOptionsBuilder : Configure options
-DbContextOptionsBuilder -> DbContext : Build DbContext
-note right of DbContextOptionsBuilder : Fluent configuration\nof database context
+Program -> DbContextOptionsBuilder : AddDbContext()
+activate DbContextOptionsBuilder
+
+DbContextOptionsBuilder -> DbContextOptionsBuilder : UseNpgsql(connectionString)
+activate NpgsqlOptionsAction
+
+NpgsqlOptionsAction -> NpgsqlOptionsAction : EnableRetryOnFailure(\n maxRetryCount: 5,\n maxRetryDelay: 30s)
+
+DbContextOptionsBuilder -> ClaimRequestDbContext : new(options)
+activate ClaimRequestDbContext
+
+ClaimRequestDbContext -> ModelBuilder : OnModelCreating()
+activate ModelBuilder
+
+ModelBuilder -> ModelBuilder : HasDefaultSchema("ClaimRequest")
+ModelBuilder -> ModelBuilder : ConfigureEnumConversions()
+note right: Configure Staff.SystemRole\nStaff.Department\nProject.Status\nClaim.Status etc.
+
+ModelBuilder -> ModelBuilder : ConfigureRelationships()
+note right: Configure relationships for\nClaim-Claimer\nClaim-Finance\nClaim-Project etc.
+
+ModelBuilder -> ModelBuilder : ConfigureDecimalPrecision()
+note right: Configure decimal precision for\nClaim.Amount\nProject.Budget\nStaff.Salary
+
+ModelBuilder -> ModelBuilder : ConfigureDateConversions()
+note right: Configure DateOnly conversions\nfor Claim and Project dates
+
+ModelBuilder -> ClaimRequestDbContext
+deactivate ModelBuilder
+
+ClaimRequestDbContext --> Program : Return configured context
+deactivate ClaimRequestDbContext
+deactivate NpgsqlOptionsAction
+deactivate DbContextOptionsBuilder
 @enduml
 ```
 
@@ -271,24 +355,102 @@ end note
   - Encapsulated query logic
   - Reusable query components
 
+
+```csharp
+// src/ClaimRequest.Data/Repositories/Implements/GenericRepository.cs
+public class GenericRepository<T> : IGenericRepository<T> where T : class
+{
+    protected readonly DbSet<T> _dbSet;
+
+    public virtual async Task<T> SingleOrDefaultAsync(
+        Expression<Func<T, bool>> predicate = null,
+        Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null,
+        Func<IQueryable<T>, IIncludableQueryable<T, object>> include = null)
+    {
+        IQueryable<T> query = _dbSet;
+
+        if (include != null)
+            query = include(query);
+
+        if (predicate != null)
+            query = query.Where(predicate);
+
+        if (orderBy != null)
+            return await orderBy(query).AsNoTracking().FirstOrDefaultAsync();
+
+        return await query.AsNoTracking().FirstOrDefaultAsync();
+    }
+}
+```
+
+```csharp
+// src/ClaimRequest.Service/Services/Implements/ProjectService.cs
+var project = await _unitOfWork.GetRepository<Project>()
+    .SingleOrDefaultAsync(
+        predicate: p => p.Id == id && p.IsActive,
+        include: q => q
+            .Include(p => p.ProjectManager)
+            .Include(p => p.FinanceStaff)
+            .Include(p => p.ProjectStaffs)
+                .ThenInclude(ps => ps.Staff)
+    );
+```
+
+
 ```plantuml
 @startuml
 participant Client
 participant IGenericRepository
 participant GenericRepository
+participant DbSet
 participant QueryableStrategy
+participant IncludeStrategy
 
-Client -> IGenericRepository : SingleOrDefaultAsync()
+Client -> IGenericRepository : SingleOrDefaultAsync(\npredicate, orderBy, include)
+activate IGenericRepository
+
 IGenericRepository -> GenericRepository : Execute Query
-GenericRepository -> QueryableStrategy : Apply Predicate
-GenericRepository -> QueryableStrategy : Apply OrderBy
-GenericRepository -> QueryableStrategy : Apply Include
-QueryableStrategy --> Client : Return Result
-note right of QueryableStrategy
-  Different query
-  strategies through
-  delegate parameters
-end note
+activate GenericRepository
+
+GenericRepository -> DbSet : AsQueryable()
+activate DbSet
+DbSet --> GenericRepository : IQueryable<T>
+
+alt Include Relations
+    GenericRepository -> IncludeStrategy : include(query)
+    activate IncludeStrategy
+    note right: Example:\nq.Include(p => p.ProjectManager)\n.Include(p => p.FinanceStaff)\n.Include(p => p.ProjectStaffs)
+    IncludeStrategy --> GenericRepository : Modified query
+    deactivate IncludeStrategy
+end
+
+alt Apply Predicate
+    GenericRepository -> QueryableStrategy : Where(predicate)
+    activate QueryableStrategy
+    note right: Example:\np => p.Id == id && p.IsActive
+    QueryableStrategy --> GenericRepository : Filtered query
+    deactivate QueryableStrategy
+end
+
+alt Apply Sorting
+    GenericRepository -> QueryableStrategy : orderBy(query)
+    activate QueryableStrategy
+    note right: Example:\nq => q.OrderBy(x => x.Name)
+    QueryableStrategy --> GenericRepository : Sorted query
+    deactivate QueryableStrategy
+end
+
+GenericRepository -> DbSet : AsNoTracking()
+GenericRepository -> DbSet : FirstOrDefaultAsync()
+
+DbSet --> GenericRepository : Result
+deactivate DbSet
+
+GenericRepository --> IGenericRepository : Return result
+deactivate GenericRepository
+
+IGenericRepository --> Client : Return result
+deactivate IGenericRepository
 @enduml
 ```
 
