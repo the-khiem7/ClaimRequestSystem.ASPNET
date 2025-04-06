@@ -106,73 +106,108 @@ public class ClaimService
 ## Features
 
 ### Authentication
-- Login with Google OAuth2
+Login with Google OAuth2
+
 ![Login](Document/Feature/Login.png)
 
-- Password Management
-  - Change Password
-  ![Change Password](Document/Feature/ChangePassword.png)
-  - Forgot Password with OTP
-  ![Forgot Password](Document/Feature/ForgotPassword.png)
-  ![OTP Email](Document/Feature/SendOtpEmail.png)
+Password Management:
+
+Change Password
+
+![Change Password](Document/Feature/ChangePassword.png)
+
+Forgot Password with OTP
+
+![Forgot Password](Document/Feature/ForgotPassword.png)
+
+OTP Email Confirmation
+
+![OTP Email](Document/Feature/SendOtpEmail.png)
 
 ### Claim Management
-- Create New Claims
+Create New Claims
+
 ![Create Claim](Document/Feature/CreateClaim.png)
 
-- Return Claims
+Return Claims
+
 ![Return Claim](Document/Feature/ReturnClaim.png)
 
-- Cancel Claims
+Cancel Claims
+
 ![Cancel Claim Validation](Document/Feature/Claim/CancelClaim_ValidateClaim.png)
+
 ![Cancel Claim User Validation](Document/Feature/Claim/CancelClaim_ValidateUser.png)
 
-- Download Claims
+Download Claims
+
 ![Download Claims](Document/Feature/Claim/DownloadClaim.png)
 
-- Paid Claims
+Paid Claims
+
 ![Paid Claims](Document/Feature/Claim/PaidClaim.png)
 
-- Staff Assignment
-  - Assign Staff to Claim
-  ![Assign Staff](Document/Feature/Claim/AssignStaff.png)
-  - Remove Staff from Claim
-  ![Remove Staff](Document/Feature/Claim/RemoveStaff.png)
+Staff Assignment:
+
+Assign Staff to Claim
+
+![Assign Staff](Document/Feature/Claim/AssignStaff.png)
+
+Remove Staff from Claim
+
+![Remove Staff](Document/Feature/Claim/RemoveStaff.png)
 
 ### Staff Management
-- View All Staff
+View All Staff
+
 ![Get All Staff](Document/Feature/Staff/GetAllStaff.svg)
 
-- Staff Details
+Staff Details
+
 ![Get Staff by ID](Document/Feature/Staff/GetStaffById.svg)
 
-- Staff Operations
-  - Create Staff
-  ![Create Staff](Document/Feature/Staff/CreateStaff.svg)
-  - Update Staff
-  ![Update Staff](Document/Feature/Staff/UpdateStaff.svg)
-  - Delete Staff
-  ![Delete Staff](Document/Feature/Staff/DeleteStaff.svg)
+Staff Operations:
 
-- Pagination Support
+Create Staff
+
+![Create Staff](Document/Feature/Staff/CreateStaff.svg)
+
+Update Staff
+
+![Update Staff](Document/Feature/Staff/UpdateStaff.svg)
+
+Delete Staff
+
+![Delete Staff](Document/Feature/Staff/DeleteStaff.svg)
+
+Pagination Support
+
 ![Page Staff](Document/Feature/Staff/PageStaff.svg)
 
 ## Testing
 
 ### Unit Test Results
-- Staff Service Tests
+Staff Service Tests
+
 ![Staff Service Test](Document/UnitTestResults/StaffServiceTest.png)
 
-- Email Service Tests
+Email Service Tests
+
 ![Email Service Tests](Document/UnitTestResults/EmailServiceTests.png)
 
-- Claim Service Tests
-  - Paid Claim Tests
-  ![Paid Claim Tests](Document/UnitTestResults/PaidClaimServiceTest.png)
-  - Reject Claim Tests
-  ![Reject Claim Tests](Document/UnitTestResults/RejectClaimTests.png)
-  - Assign/Remove Staff Tests
-  ![Assign Remove Staff Tests](Document/UnitTestResults/AssignRemoveStaffTests.png)
+Claim Service Tests:
+
+Paid Claim Tests
+
+![Paid Claim Tests](Document/UnitTestResults/PaidClaimServiceTest.png)
+
+Reject Claim Tests
+
+![Reject Claim Tests](Document/UnitTestResults/RejectClaimTests.png)
+
+Assign/Remove Staff Tests
+
+![Assign Remove Staff Tests](Document/UnitTestResults/AssignRemoveStaffTests.png)
 
 To run tests:
 ```bash
