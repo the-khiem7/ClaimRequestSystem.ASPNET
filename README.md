@@ -24,6 +24,8 @@ A centralized system that supports the creation of claims and reduces paperwork 
     - [Strategy Pattern](#strategy-pattern)
 - [Features](#features)
   - [Authentication](#authentication)
+  - [Email Services](#email-services)
+  - [Integration Services](#integration-services)
   - [Claim Management](#claim-management)
   - [Staff Management](#staff-management)
 - [Testing](#testing)
@@ -457,82 +459,101 @@ deactivate IGenericRepository
 ## Features
 
 ### Authentication
-Login with Google OAuth2
 
-![Login](Document/Feature/Login.png)
+#### Login with Google OAuth2
+![Login](Document/Feature/Auth/Login.png)
 
-Password Management:
+#### Password Management
 
-Change Password
+##### Change Password
+![Change Password](Document/Feature/Auth/ChangePassword.png)
 
-![Change Password](Document/Feature/ChangePassword.png)
+##### Forgot Password with OTP
+![Forgot Password](Document/Feature/Auth/ForgotPassword.png)
 
-Forgot Password with OTP
+##### Refresh Token Service
+![Refresh Token](Document/Feature/Auth/RefreshTokensService.png)
 
-![Forgot Password](Document/Feature/ForgotPassword.png)
+### Email Services
 
-OTP Email Confirmation
+#### Email Notifications
+![Email Service](Document/Feature/Email/EmailSerivce.png)
 
-![OTP Email](Document/Feature/SendOtpEmail.png)
+#### OTP Email Confirmation
+![OTP Email](Document/Feature/Email/SendOtpEmail.png)
+
+### Integration Services
+
+#### Cloud Storage Integration
+![Cloudinary Service](Document/Feature/CloudinaryService.png)
+
+#### Payment Gateway Integration
+![VNPay Payment](Document/Feature/VNPayPayment.png)
+
+#### Database Context View
+![Database Context](Document/Feature/DbContext.png)
 
 ### Claim Management
-Create New Claims
 
-![Create Claim](Document/Feature/CreateClaim.png)
+#### Create and Process Claims
 
-Return Claims
+##### Create New Claims
+![Create Claim](Document/Feature/Claim/CreateClaim.png)
 
-![Return Claim](Document/Feature/ReturnClaim.png)
+##### Update Claims
+![Update Claim](Document/Feature/Claim/UpdateClaim.png)
 
-Cancel Claims
+##### Return Claims
+![Return Claim](Document/Feature/Claim/ReturnClaim.png)
 
+#### Claim Review Process
+
+##### Approve Claims
+![Approve Claim](Document/Feature/Claim/ApproveClaim.png)
+
+##### Reject Claims
+![Reject Claim](Document/Feature/Claim/RejectClaim.png)
+
+#### Cancel Claims
 ![Cancel Claim Validation](Document/Feature/Claim/CancelClaim_ValidateClaim.png)
-
 ![Cancel Claim User Validation](Document/Feature/Claim/CancelClaim_ValidateUser.png)
 
-Download Claims
-
+#### Document Management
 ![Download Claims](Document/Feature/Claim/DownloadClaim.png)
 
-Paid Claims
-
+#### Payment Processing
 ![Paid Claims](Document/Feature/Claim/PaidClaim.png)
 
-Staff Assignment:
+#### Staff Assignment
 
-Assign Staff to Claim
-
+##### Assign Staff to Claim
 ![Assign Staff](Document/Feature/Claim/AssignStaff.png)
 
-Remove Staff from Claim
-
+##### Remove Staff from Claim
 ![Remove Staff](Document/Feature/Claim/RemoveStaff.png)
 
 ### Staff Management
-View All Staff
 
+#### Staff Listing and Details
+
+##### View All Staff
 ![Get All Staff](Document/Feature/Staff/GetAllStaff.svg)
 
-Staff Details
-
+##### Staff Details
 ![Get Staff by ID](Document/Feature/Staff/GetStaffById.svg)
 
-Staff Operations:
+#### Staff Operations
 
-Create Staff
-
+##### Create Staff
 ![Create Staff](Document/Feature/Staff/CreateStaff.svg)
 
-Update Staff
-
+##### Update Staff
 ![Update Staff](Document/Feature/Staff/UpdateStaff.svg)
 
-Delete Staff
-
+##### Delete Staff
 ![Delete Staff](Document/Feature/Staff/DeleteStaff.svg)
 
-Pagination Support
-
+##### Pagination Support
 ![Page Staff](Document/Feature/Staff/PageStaff.svg)
 
 ## Testing
