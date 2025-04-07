@@ -543,7 +543,7 @@ deactivate IGenericRepository
 ![Cancel Claim Validation](Document/Feature/Claim/CancelClaim_ValidateClaim.png)
 ![Cancel Claim User Validation](Document/Feature/Claim/CancelClaim_ValidateUser.png)
 
-#### Document Management
+#### Download Claims
 ![Download Claims](Document/Feature/Claim/DownloadClaim.png)
 
 #### Payment Processing
