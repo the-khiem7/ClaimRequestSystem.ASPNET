@@ -471,7 +471,7 @@ deactivate IGenericRepository
 
 <div align="center">
 
-![Login](Document/Feature/Auth/Login.png)
+![Login](Document/Feature/Auth/Login.svg)
 
 </div>
 
