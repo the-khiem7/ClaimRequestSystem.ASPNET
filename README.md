@@ -528,6 +528,9 @@ deactivate IGenericRepository
 ##### Return Claims
 ![Return Claim](Document/Feature/Claim/ReturnClaim.png)
 
+##### Submit Claims
+![Submit Claim](Document/Feature/Claim/SubmitClaim.png)
+
 #### Claim Review Process
 
 ##### Approve Claims
@@ -545,6 +548,11 @@ deactivate IGenericRepository
 
 #### Payment Processing
 ![Paid Claims](Document/Feature/Claim/PaidClaim.png)
+
+#### Claim Listing and Details
+
+##### View All Claims
+![Get All Claims](Document/Feature/Claim/GetAllClaims.png)
 
 #### Staff Assignment
 
@@ -604,6 +612,14 @@ Paid Claim Tests
 Reject Claim Tests
 
 ![Reject Claim Tests](Document/UnitTestResults/RejectClaimTests.png)
+
+Submit Claim Tests
+
+![Submit Claim Tests](Document/UnitTestResults/SubmitClaimServiceTest.png)
+
+Get Claim Tests
+
+![Get Claim Tests](Document/UnitTestResults/GetClaimServiceTest.png)
 
 Assign/Remove Staff Tests
 
