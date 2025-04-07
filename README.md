@@ -8,9 +8,9 @@ A centralized system that supports the creation of claims and reduces paperwork 
 
 
 ## Quick Links
-**[API Documentation](https://claim-request-system.azurewebsites.net/swagger/index.html)** • 
-**[Live Demo](https://crs24.vercel.app/)** • 
-**[Documentation](Document/Demo/FinalDemoNET04.pptx)**
+**[Swagger](https://claim-request-system.azurewebsites.net/swagger/index.html)** • 
+**[Frontend](https://crs24.vercel.app/)** • 
+**[Slide](Document/Demo/FinalDemoNET04.pptx)**
 
 </div>
 
