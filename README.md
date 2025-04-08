@@ -463,174 +463,232 @@ deactivate IGenericRepository
 @enduml
 ```
 
-## Features
+<br>
+<h2 align="center">💻 Features</h3>
+<br>
 
-<h3 align="center">Authentication</h3>
+<h3 align="center">🔐 Authentication</h3>
 
-<h4 align="center">Login with Google OAuth2</h4>
+<h4 align="center">🔑 Login with Google OAuth2</h4>
 
 <div align="center">
+<h4 style="color: #0366d6; margin: 20px 0;">Single Sign-On Flow</h4>
 
 ![Login](Document/Feature/Auth/Login.svg)
 
-</div>
+<h4 align="center">🔒 Password Management</h4>
 
-<h4 align="center">Password Management</h4>
+<h4 style="color: #0366d6; margin: 20px 0;">Change Password Flow</h4>
 
-<div align="center">
-
-##### Change Password
 ![Change Password](Document/Feature/Auth/ChangePassword.png)
 
-##### Forgot Password with OTP
+<h4 style="color: #0366d6; margin: 20px 0;">Password Recovery Process</h4>
+
 ![Forgot Password](Document/Feature/Auth/ForgotPassword.png)
 
-##### Refresh Token Service
-![Refresh Token](Document/Feature/Auth/RefreshTokensService.png)
+<h4 style="color: #0366d6; margin: 20px 0;">Token Refresh Mechanism</h4>
 
+![Refresh Token](Document/Feature/Auth/RefreshTokensService.png)
 </div>
 
-<h3 align="center">Email Services</h3>
+<h3 align="center">📧 Email Services</h3>
 
 <div align="center">
+<h4 style="color: #0366d6; margin: 20px 0;">Automated Email Notifications</h4>
 
-#### Email Notifications
 ![Email Service](Document/Feature/Email/EmailSerivce.png)
 
-#### OTP Email Confirmation
-![OTP Email](Document/Feature/Email/SendOtpEmail.png)
+<h4 style="color: #0366d6; margin: 20px 0;">Security Verification Process</h4>
 
+![OTP Email](Document/Feature/Email/SendOtpEmail.png)
 </div>
 
-<h3 align="center">Integration Services</h3>
+<h3 align="center">🔌 Integration Services</h3>
 
 <div align="center">
+<h4 style="color: #0366d6; margin: 20px 0;">Cloud Storage Management</h4>
 
-#### Cloud Storage Integration
 ![Cloudinary Service](Document/Feature/CloudinaryService.png)
 
-#### Payment Gateway Integration
+<h4 style="color: #0366d6; margin: 20px 0;">Payment Processing System</h4>
+
 ![VNPay Payment](Document/Feature/VNPayPayment.png)
 </div>
 
-<h3 align="center">Claim Management</h3>
+<h3 align="center">📝 Claim Management</h3>
 
 <div align="center">
 
-#### Create and Process Claims
+<h4 style="color: #0366d6; margin: 20px 0;">Claim Creation and Processing</h4>
 
-##### Create New Claims
+<h5 style="color: #2188ff; margin: 15px 0;">Initialize New Claim</h5>
+
 ![Create Claim](Document/Feature/Claim/CreateClaim.png)
 
-##### Update Claims
+<h5 style="color: #2188ff; margin: 15px 0;">Modify Existing Claim</h5>
+
 ![Update Claim](Document/Feature/Claim/UpdateClaim.png)
 
-##### Return Claims
+<h5 style="color: #2188ff; margin: 15px 0;">Return Claim Process</h5>
+
 ![Return Claim](Document/Feature/Claim/ReturnClaim.png)
 
-##### Submit Claims
+<h5 style="color: #2188ff; margin: 15px 0;">Submit for Review</h5>
+
 ![Submit Claim](Document/Feature/Claim/SubmitClaim.png)
 
-#### Claim Review Process
+<h4 style="color: #0366d6; margin: 20px 0;">Claim Review Workflow</h4>
 
-##### Approve Claims
+<h5 style="color: #2188ff; margin: 15px 0;">Approval Process</h5>
+
 ![Approve Claim](Document/Feature/Claim/ApproveClaim.png)
 
-##### Reject Claims
+<h5 style="color: #2188ff; margin: 15px 0;">Rejection Handling</h5>
+
 ![Reject Claim](Document/Feature/Claim/RejectClaim.png)
 
-#### Cancel Claims
+<h4 style="color: #0366d6; margin: 20px 0;">Claim Cancellation</h4>
+
+<h5 style="color: #2188ff; margin: 15px 0;">Validation Checks</h5>
+
 ![Cancel Claim Validation](Document/Feature/Claim/CancelClaim_ValidateClaim.png)
 ![Cancel Claim User Validation](Document/Feature/Claim/CancelClaim_ValidateUser.png)
 
-#### Download Claims
+<h4 style="color: #0366d6; margin: 20px 0;">Document Management</h4>
+
 ![Download Claims](Document/Feature/Claim/DownloadClaim.png)
 
-#### Payment Processing
+<h4 style="color: #0366d6; margin: 20px 0;">Financial Processing</h4>
+
 ![Paid Claims](Document/Feature/Claim/PaidClaim.png)
 
-#### Claim Listing and Details
+<h4 style="color: #0366d6; margin: 20px 0;">Claim Overview</h4>
 
-##### View All Claims
 ![Get All Claims](Document/Feature/Claim/GetAllClaims.png)
 
-#### Staff Assignment
+<h4 style="color: #0366d6; margin: 20px 0;">Staff Management</h4>
 
-##### Assign Staff to Claim
-![Assign Staff](Document/Feature/Claim/AssignStaff.png)
+<h5 style="color: #2188ff; margin: 15px 0;">Staff Assignment Process</h5>
 
-##### Remove Staff from Claim
-![Remove Staff](Document/Feature/Claim/RemoveStaff.png)
+![Assign Staff](Document/Feature/Staff/AssignStaff.png)
 
+<h5 style="color: #2188ff; margin: 15px 0;">Staff Removal Process</h5>
+
+![Remove Staff](Document/Feature/Staff/RemoveStaff.png)
 </div>
 
-<h3 align="center">Staff Management</h3>
+<h3 align="center">👥 Staff Management</h3>
 
 <div align="center">
 
-#### Staff Listing and Details
+<h4 style="color: #0366d6; margin: 20px 0;">Staff Information Management</h4>
 
-##### View All Staff
+<h5 style="color: #2188ff; margin: 15px 0;">View All Staff Members</h5>
+
 ![Get All Staff](Document/Feature/Staff/GetAllStaff.svg)
 
-##### Staff Details
+<h5 style="color: #2188ff; margin: 15px 0;">Detailed Staff Profile</h5>
+
 ![Get Staff by ID](Document/Feature/Staff/GetStaffById.svg)
 
-#### Staff Operations
+<h4 style="color: #0366d6; margin: 20px 0;">Staff Record Operations</h4>
 
-##### Create Staff
+<h5 style="color: #2188ff; margin: 15px 0;">New Staff Registration</h5>
+
 ![Create Staff](Document/Feature/Staff/CreateStaff.svg)
 
-##### Update Staff
+<h5 style="color: #2188ff; margin: 15px 0;">Staff Information Update</h5>
+
 ![Update Staff](Document/Feature/Staff/UpdateStaff.svg)
 
-##### Delete Staff
+<h5 style="color: #2188ff; margin: 15px 0;">Staff Record Removal</h5>
+
 ![Delete Staff](Document/Feature/Staff/DeleteStaff.svg)
 
-##### Pagination Support
+<h4 style="color: #0366d6; margin: 20px 0;">Advanced Features</h4>
+
+<h5 style="color: #2188ff; margin: 15px 0;">Smart List Navigation</h5>
+
 ![Page Staff](Document/Feature/Staff/PageStaff.svg)
 
 </div>
 
-## Testing
+<h1 align="center">🧪 Test Results</h3>
 
-### Unit Test Results
-Staff Service Tests
+<div align="center">
+
+<h4 style="color: #0366d6; margin: 20px 0;">Authentication Testing</h4>
+
+<h5 style="color: #2188ff; margin: 15px 0;">Password Management Tests</h5>
+
+![Change and Forgot Password Tests](Document/UnitTestResults/ChageAndForgotPasswordTests.png)
+
+<h4 style="color: #0366d6; margin: 20px 0;">Staff Service Testing</h4>
+
+<h5 style="color: #2188ff; margin: 15px 0;">Staff Operations Tests</h5>
 
 ![Staff Service Test](Document/UnitTestResults/StaffServiceTest.png)
 
-Email Service Tests
+<h4 style="color: #0366d6; margin: 20px 0;">Communication Testing</h4>
+
+<h5 style="color: #2188ff; margin: 15px 0;">Email Service Tests</h5>
 
 ![Email Service Tests](Document/UnitTestResults/EmailServiceTests.png)
 
-Claim Service Tests:
+<h4 style="color: #0366d6; margin: 20px 0;">Claim Processing Tests</h4>
 
-Paid Claim Tests
+<h5 style="color: #2188ff; margin: 15px 0;">Payment Processing</h5>
 
 ![Paid Claim Tests](Document/UnitTestResults/PaidClaimServiceTest.png)
 
-Reject Claim Tests
+<h5 style="color: #2188ff; margin: 15px 0;">Claim Rejection Flow</h5>
 
 ![Reject Claim Tests](Document/UnitTestResults/RejectClaimTests.png)
 
-Submit Claim Tests
+<h5 style="color: #2188ff; margin: 15px 0;">Submission Process</h5>
 
 ![Submit Claim Tests](Document/UnitTestResults/SubmitClaimServiceTest.png)
 
-Get Claim Tests
+<h5 style="color: #2188ff; margin: 15px 0;">Retrieval Operations</h5>
 
 ![Get Claim Tests](Document/UnitTestResults/GetClaimServiceTest.png)
 
-Assign/Remove Staff Tests
+<h5 style="color: #2188ff; margin: 15px 0;">Staff Assignment Tests</h5>
 
 ![Assign Remove Staff Tests](Document/UnitTestResults/AssignRemoveStaffTests.png)
 
-To run tests:
+<h4 style="color: #0366d6; margin: 20px 0;">Integration Testing</h4>
+
+<h5 style="color: #2188ff; margin: 15px 0;">Cloud Storage Tests</h5>
+
+![Cloudinary Service Tests](Document/UnitTestResults/CloudinaryServiceTests.png)
+
+<h4 style="color: #0366d6; margin: 20px 0;">Project Management Tests</h4>
+
+<h5 style="color: #2188ff; margin: 15px 0;">Creation Flow</h5>
+
+![Create Project Tests](Document/UnitTestResults/CreateProjectTests.png)
+
+<h5 style="color: #2188ff; margin: 15px 0;">Deletion Process</h5>
+
+![Delete Project Tests](Document/UnitTestResults/DeleteProjectTests.png)
+
+</div>
+
+<h3 align="center">🔄 Running Tests</h3>
+
+<div align="center">
+
+<h4 style="color: #0366d6; margin: 20px 0;">Local Development</h4>
+
 ```bash
 dotnet test
 ```
 
-Using Docker:
+<h4 style="color: #0366d6; margin: 20px 0;">Containerized Testing</h4>
+
 ```bash
 ./scripts/run-tests.sh
 ```
+
+</div>
