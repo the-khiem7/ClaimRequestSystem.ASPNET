@@ -9,9 +9,9 @@ namespace ClaimRequest.BLL.Services.Implements
     public class RefreshTokensService : IRefreshTokensService
     {
         private readonly IUnitOfWork<ClaimRequestDbContext> _unitOfWork;
-        private readonly IJwtUtil _jwtUtil;
+        private readonly JwtUtil _jwtUtil;
 
-        public RefreshTokensService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, IJwtUtil jwtUtil)
+        public RefreshTokensService(IUnitOfWork<ClaimRequestDbContext> unitOfWork, JwtUtil jwtUtil)
         {
             _unitOfWork = unitOfWork;
             _jwtUtil = jwtUtil;
