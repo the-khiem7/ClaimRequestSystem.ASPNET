@@ -8,7 +8,7 @@ using Claim = System.Security.Claims.Claim;
 
 namespace ClaimRequest.BLL.Utils
 {
-    public class JwtUtil : IJwtUtil
+    public class JwtUtil
     {
         private readonly string _jwtkey, _issuer, _audience;
         private readonly double _expired;

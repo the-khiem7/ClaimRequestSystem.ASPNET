@@ -94,7 +94,6 @@ void RegisterApplicationServices()
     builder.Services.AddScoped<IRefreshTokensService, RefreshTokensService>();
     builder.Services.AddScoped<IPasswordReminderService, PasswordReminderService>();
     builder.Services.AddScoped<IPendingReminderService, PendingReminderService>();
-    builder.Services.AddScoped<IJwtUtil, JwtUtil>();
 }
 
 // Method to configure the database
